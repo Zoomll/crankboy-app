@@ -1,0 +1,78 @@
+name: Nightly Build
+
+on:
+  # Triggers the workflow at 00:00 UTC every day.
+  schedule:
+    - cron: '0 0 * * *'
+  
+  # Allows you to run this workflow manually from the Actions tab on GitHub.
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Create Nightly Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository's code.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      # Step 2: Install Specific ARM GCC Toolchain (10.3-2021.10)
+      - name: Install ARM GCC Toolchain
+        run: |
+          echo "Downloading ARM GCC Toolchain..."
+          curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+          echo "Extracting toolchain..."
+          tar -xjf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+          TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-10.3-2021.10/bin"
+          echo "Adding $TOOLCHAIN_PATH to the system PATH for subsequent steps..."
+          echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+
+      # Step 3: Verify Toolchain and Download Playdate SDK
+      - name: Verify Toolchain and Download SDK
+        run: |
+          echo "Verifying compiler version:"
+          arm-none-eabi-gcc --version
+          echo "Downloading and extracting Playdate SDK..."
+          curl -LO https://download.panic.com/playdate_sdk/Linux/PlaydateSDK-latest.tar.gz
+          tar -xzf PlaydateSDK-latest.tar.gz
+          SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
+          echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
+
+      # Step 4: Build the Project
+      - name: Build Project
+        run: make device
+
+      # Step 5: Package and Name the Artifact (MODIFIED)
+      # This step now reads the version from Source/pdxinfo.
+      - name: Package Artifact
+        id: package
+        run: |
+          # Extract the version number from the pdxinfo file.
+          # `grep` finds the line, and `cut` splits by "=" to get the second part.
+          APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+          echo "Extracted App Version: $APP_VERSION"
+          
+          # Get the current date in YYYY-MM-DD format.
+          DATE_STAMP=$(date +'%Y-%m-%d')
+          
+          # Define the dynamic filename for the zip archive.
+          ZIP_FILENAME="CrankBoy-${APP_VERSION}-nightly-${DATE_STAMP}.zip"
+          echo "Packaging artifact as: $ZIP_FILENAME"
+          
+          # Create the zip archive.
+          zip -r "$ZIP_FILENAME" CrankBoy.pdx
+          
+          # Set the filename as a step output for the next step to use.
+          echo "zip_path=$ZIP_FILENAME" >> $GITHUB_OUTPUT
+
+      # Step 6: Upload the Zipped Artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Use the dynamic filename for the artifact name and path.
+          name: ${{ steps.package.outputs.zip_path }}
+          path: ${{ steps.package.outputs.zip_path }}
