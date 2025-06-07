@@ -148,7 +148,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->audioEnabled = preferences_sound_enabled;
     gameScene->audioLocked = false;
 
-    gameScene->forceFullRefresh = false;
     gameScene->menuImage = NULL;
 
     gameScene->staticSelectorUIDrawn = false;
@@ -777,10 +776,10 @@ __section__(".text.tick") __space
     bool gbScreenRequiresFullRefresh = false;
     if (gameScene->model.empty || gameScene->model.state != gameScene->state ||
         gameScene->model.error != gameScene->error ||
-        gameScene->forceFullRefresh)
+        gameScene->scene->forceFullRefresh)
     {
         gbScreenRequiresFullRefresh = true;
-        gameScene->forceFullRefresh = false;
+        gameScene->scene->forceFullRefresh = false;
     }
 
     bool animatedSelectorBitmapNeedsRedraw = false;
@@ -1178,7 +1177,7 @@ static void PGB_GameScene_menu(void *object)
 {
     PGB_GameScene *gameScene = object;
 
-    gameScene->forceFullRefresh = true;
+    gameScene->scene->forceFullRefresh = true;
 
     playdate->system->removeAllMenuItems();
 

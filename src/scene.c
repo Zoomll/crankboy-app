@@ -24,6 +24,7 @@ PGB_Scene *PGB_Scene_new(void)
 
     scene->preferredRefreshRate = 30;
     scene->refreshRateCompensation = 0;
+    scene->forceFullRefresh = false;
 
     // extra stack space, to avoid stack overflow.
     // (We use most of the normal stack for DTCM.)

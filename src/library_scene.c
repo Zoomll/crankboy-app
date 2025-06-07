@@ -13,6 +13,7 @@
 #include "game_scene.h"
 #include "minigb_apu.h"
 #include "preferences.h"
+#include "settings_scene.h"
 
 static void PGB_LibraryScene_update(void *object, float dt);
 static void PGB_LibraryScene_free(void *object);
@@ -157,9 +158,14 @@ static void PGB_LibraryScene_update(void *object, float dt)
     bool needsDisplay = false;
 
     if (libraryScene->model.empty ||
-        libraryScene->model.tab != libraryScene->tab)
+        libraryScene->model.tab != libraryScene->tab ||
+        libraryScene->scene->forceFullRefresh)
     {
         needsDisplay = true;
+        if (libraryScene->scene->forceFullRefresh)
+        {
+            libraryScene->scene->forceFullRefresh = false;
+        }
     }
 
     libraryScene->model.empty = false;
@@ -444,8 +450,16 @@ static void PGB_LibraryScene_update(void *object, float dt)
     }
 }
 
+static void PGB_LibraryScene_showSettings(void *userdata)
+{
+    PGB_SettingsScene *settingsScene = PGB_SettingsScene_new(NULL);
+    PGB_presentModal(settingsScene->scene);
+}
+
 static void PGB_LibraryScene_menu(void *object)
 {
+    playdate->system->addMenuItem("Settings…", PGB_LibraryScene_showSettings,
+                                  object);
 }
 
 static void PGB_LibraryScene_free(void *object)

@@ -145,6 +145,8 @@ void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
     if (PGB_App->parentScene)
     {
+        PGB_App->parentScene->forceFullRefresh = true;
+
         PGB_App->scene = PGB_App->parentScene;
         PGB_App->parentScene = NULL;
 

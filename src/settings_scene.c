@@ -18,9 +18,13 @@ static void PGB_SettingsScene_didSelectBack(void *userdata);
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
 {
     PGB_SettingsScene *settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
-    gameScene->audioLocked = true;
     settingsScene->gameScene = gameScene;
     settingsScene->cursorIndex = 0;
+
+    if (gameScene)
+    {
+        gameScene->audioLocked = true;
+    }
 
     PGB_Scene *scene = PGB_Scene_new();
     scene->managedObject = settingsScene;
@@ -62,17 +66,25 @@ static void PGB_SettingsScene_update(void *object, float dt)
         if (settingsScene->cursorIndex == 0)
         {  // Sound
             preferences_sound_enabled = !preferences_sound_enabled;
-            gameScene->audioEnabled = preferences_sound_enabled;
-            gameScene->context->gb->direct.sound =
-                preferences_sound_enabled ? 1 : 0;
-            audioGameScene = preferences_sound_enabled ? gameScene : NULL;
             audio_enabled = preferences_sound_enabled ? 1 : 0;
+
+            if (gameScene)
+            {
+                gameScene->audioEnabled = preferences_sound_enabled;
+                gameScene->context->gb->direct.sound =
+                    preferences_sound_enabled ? 1 : 0;
+                audioGameScene = preferences_sound_enabled ? gameScene : NULL;
+            }
         }
         else if (settingsScene->cursorIndex == 1)
-        {  // Frame Skip
+        {  // 30FPS Mode
             preferences_frame_skip = !preferences_frame_skip;
-            gameScene->context->gb->direct.frame_skip =
-                preferences_frame_skip ? 1 : 0;
+
+            if (gameScene)
+            {
+                gameScene->context->gb->direct.frame_skip =
+                    preferences_frame_skip ? 1 : 0;
+            }
         }
         else if (settingsScene->cursorIndex == 2)
         {  // Show FPS
@@ -118,15 +130,28 @@ static void PGB_SettingsScene_menu(void *object)
 {
     PGB_SettingsScene *settingsScene = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("Resume", PGB_SettingsScene_didSelectBack,
-                                  settingsScene);
+
+    if (settingsScene->gameScene)
+    {
+        playdate->system->addMenuItem("Resume", PGB_SettingsScene_didSelectBack,
+                                      settingsScene);
+    }
+    else
+    {
+        playdate->system->addMenuItem("Back", PGB_SettingsScene_didSelectBack,
+                                      settingsScene);
+    }
 }
 
 static void PGB_SettingsScene_free(void *object)
 {
     PGB_SettingsScene *settingsScene = object;
-    settingsScene->gameScene->audioLocked = false;
-    settingsScene->gameScene->forceFullRefresh = true;
+
+    if (settingsScene->gameScene)
+    {
+        settingsScene->gameScene->audioLocked = false;
+    }
+
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
 }
