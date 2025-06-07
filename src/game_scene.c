@@ -857,7 +857,7 @@ __section__(".text.tick") __space
 
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
-            context->gb->direct.frame_skip = !frame;
+            context->gb->direct.frame_skip = preferences_frame_skip != frame;
 #ifdef DTCM_ALLOC
             DTCM_VERIFY_DEBUG();
             ITCM_CORE_FN(gb_run_frame)(context->gb);
