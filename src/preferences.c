@@ -8,7 +8,7 @@
 
 #include "preferences.h"
 
-static const int pref_version = 2;
+static const int pref_version = 1;
 
 static const char *pref_filename = "preferences.bin";
 static SDFile *pref_file;
@@ -51,11 +51,8 @@ void preferences_read_from_disk(void)
 
         preferences_sound_enabled = preferences_read_uint8();
         preferences_display_fps = preferences_read_uint8();
+        preferences_frame_skip = preferences_read_uint8();
 
-        if (version >= 2)
-        {
-            preferences_frame_skip = preferences_read_uint8();
-        }
 
         playdate->file->close(pref_file);
     }
