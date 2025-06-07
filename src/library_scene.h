@@ -41,9 +41,12 @@ typedef struct PGB_LibraryScene
     PGB_Array *games;
     PGB_LibrarySceneModel model;
     PGB_ListView *listView;
-    bool firstLoad;
     PGB_LibrarySceneTab tab;
+
+    bool firstLoad;
     int lastSelectedItem;
+
+    LCDBitmap *missingCoverIcon;
 } PGB_LibraryScene;
 
 PGB_LibraryScene *PGB_LibraryScene_new(void);

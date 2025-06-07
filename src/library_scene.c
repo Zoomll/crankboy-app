@@ -48,6 +48,8 @@ PGB_LibraryScene *PGB_LibraryScene_new(void)
     libraryScene->tab = PGB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
 
+    libraryScene->missingCoverIcon = NULL;
+
     DTCM_VERIFY_DEBUG();
 
     PGB_LibraryScene_reloadList(libraryScene);
@@ -269,22 +271,120 @@ static void PGB_LibraryScene_update(void *object)
                 }
                 else
                 {
-                    const char *message = "Missing cover";
-                    playdate->graphics->setFont(PGB_App->bodyFont);
-                    int textWidth = playdate->graphics->getTextWidth(
-                        PGB_App->bodyFont, message, pgb_strlen(message),
-                        kUTF8Encoding, 0);
+                    if (libraryScene->missingCoverIcon == NULL)
+                    {
+                        libraryScene->missingCoverIcon =
+                            playdate->graphics->loadBitmap("launcher/icon",
+                                                           NULL);
+                    }
+
+                    LCDBitmap *iconBitmap = libraryScene->missingCoverIcon;
+
+                    static const char *title = "Missing cover";
+                    static const char *message1 = "Connect to a computer";
+                    static const char *message2 = "and copy covers to:";
+                    static const char *message3 = "Data/*.crankboy/covers";
+
+                    LCDFont *titleFont = PGB_App->bodyFont;
+                    LCDFont *bodyFont = PGB_App->subheadFont;
+
+                    int imageToTitleSpacing = 8;
+                    int titleToMessageSpacing = 6;
+                    int messageLineSpacing = 2;
+
+                    int iconWidth = 0, iconHeight = 0;
+                    if (iconBitmap)
+                    {
+                        playdate->graphics->getBitmapData(
+                            iconBitmap, &iconWidth, &iconHeight, NULL, NULL,
+                            NULL);
+                    }
+
+                    int titleHeight =
+                        playdate->graphics->getFontHeight(titleFont);
+                    int messageHeight =
+                        playdate->graphics->getFontHeight(bodyFont);
+
+                    int containerHeight =
+                        (iconHeight > 0 ? iconHeight + imageToTitleSpacing
+                                        : 0) +
+                        titleHeight + titleToMessageSpacing +
+                        (messageHeight * 3) + (messageLineSpacing * 2);
+                    int containerY_start = (screenHeight - containerHeight) / 2;
+
                     int panel_content_width = rightPanelWidth - 1;
-                    int textX = leftPanelWidth + 1 +
-                                (panel_content_width - textWidth) / 2;
-                    int textY =
-                        (screenHeight -
-                         playdate->graphics->getFontHeight(PGB_App->bodyFont)) /
-                        2;
+
+                    int iconX = leftPanelWidth + 1 +
+                                (panel_content_width - iconWidth) / 2;
+                    int titleX = leftPanelWidth + 1 +
+                                 (panel_content_width -
+                                  playdate->graphics->getTextWidth(
+                                      titleFont, title, pgb_strlen(title),
+                                      kUTF8Encoding, 0)) /
+                                     2;
+                    int message1_X =
+                        leftPanelWidth + 1 +
+                        (panel_content_width -
+                         playdate->graphics->getTextWidth(bodyFont, message1,
+                                                          pgb_strlen(message1),
+                                                          kUTF8Encoding, 0)) /
+                            2;
+                    int message2_X =
+                        leftPanelWidth + 1 +
+                        (panel_content_width -
+                         playdate->graphics->getTextWidth(bodyFont, message2,
+                                                          pgb_strlen(message2),
+                                                          kUTF8Encoding, 0)) /
+                            2;
+                    int message3_X =
+                        leftPanelWidth + 1 +
+                        (panel_content_width -
+                         playdate->graphics->getTextWidth(bodyFont, message3,
+                                                          pgb_strlen(message3),
+                                                          kUTF8Encoding, 0)) /
+                            2;
+
+                    int currentY = containerY_start;
+
+                    int iconY = currentY;
+                    if (iconBitmap)
+                    {
+                        currentY += iconHeight + imageToTitleSpacing;
+                    }
+
+                    int titleY = currentY;
+                    currentY += titleHeight + titleToMessageSpacing;
+
+                    int message1_Y = currentY;
+                    currentY += messageHeight + messageLineSpacing;
+
+                    int message2_Y = currentY;
+                    currentY += messageHeight + messageLineSpacing;
+
+                    int message3_Y = currentY;
+
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                    if (iconBitmap)
+                    {
+                        playdate->graphics->drawBitmap(iconBitmap, iconX, iconY,
+                                                       kBitmapUnflipped);
+                    }
 
                     playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                    playdate->graphics->drawText(message, pgb_strlen(message),
-                                                 kUTF8Encoding, textX, textY);
+                    playdate->graphics->setFont(titleFont);
+                    playdate->graphics->drawText(title, pgb_strlen(title),
+                                                 kUTF8Encoding, titleX, titleY);
+
+                    playdate->graphics->setFont(bodyFont);
+                    playdate->graphics->drawText(message1, pgb_strlen(message1),
+                                                 kUTF8Encoding, message1_X,
+                                                 message1_Y);
+                    playdate->graphics->drawText(message2, pgb_strlen(message2),
+                                                 kUTF8Encoding, message2_X,
+                                                 message2_Y);
+                    playdate->graphics->drawText(message3, pgb_strlen(message3),
+                                                 kUTF8Encoding, message3_X,
+                                                 message3_Y);
                 }
             }
             playdate->graphics->drawLine(leftPanelWidth, 0, leftPanelWidth,
@@ -383,6 +483,11 @@ static void PGB_LibraryScene_menu(void *object)
 static void PGB_LibraryScene_free(void *object)
 {
     PGB_LibraryScene *libraryScene = object;
+
+    if (libraryScene->missingCoverIcon)
+    {
+        playdate->graphics->freeBitmap(libraryScene->missingCoverIcon);
+    }
 
     PGB_Scene_free(libraryScene->scene);
 
