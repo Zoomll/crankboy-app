@@ -23,7 +23,7 @@ typedef struct PGB_Scene
 
     bool use_user_stack;
 
-    void (*update)(void *object);
+    void (*update)(void *object, float dt);
     void (*menu)(void *object);
     void (*free)(void *object);
     void (*event)(void *object, PDSystemEvent event, uint32_t arg);
@@ -33,7 +33,7 @@ PGB_Scene *PGB_Scene_new(void);
 
 void PGB_Scene_refreshMenu(PGB_Scene *scene);
 
-void PGB_Scene_update(void *scene);
+void PGB_Scene_update(void *scene, float dt);
 void PGB_Scene_free(void *scene);
 
 #endif /* scene_h */

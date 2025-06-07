@@ -84,11 +84,11 @@ __section__(".text.main") void PGB_update(float dt)
         DTCM_VERIFY_DEBUG();
         if (PGB_App->scene->use_user_stack)
         {
-            call_with_user_stack_1(PGB_App->scene->update, managedObject);
+            call_with_user_stack_2(PGB_App->scene->update, managedObject, *(uint32_t*)&dt);
         }
         else
         {
-            PGB_App->scene->update(managedObject);
+            PGB_App->scene->update(managedObject, dt);
         }
         DTCM_VERIFY_DEBUG();
     }

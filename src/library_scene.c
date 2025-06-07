@@ -14,7 +14,7 @@
 #include "minigb_apu.h"
 #include "preferences.h"
 
-static void PGB_LibraryScene_update(void *object);
+static void PGB_LibraryScene_update(void *object, float dt);
 static void PGB_LibraryScene_free(void *object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene);
 static void PGB_LibraryScene_menu(void *object);
@@ -132,11 +132,11 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene)
     PGB_ListView_reload(libraryScene->listView);
 }
 
-static void PGB_LibraryScene_update(void *object)
+static void PGB_LibraryScene_update(void *object, float dt)
 {
     PGB_LibraryScene *libraryScene = object;
 
-    PGB_Scene_update(libraryScene->scene);
+    PGB_Scene_update(libraryScene->scene, dt);
 
     PDButtons released;
     playdate->system->getButtonState(NULL, NULL, &released);
