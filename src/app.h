@@ -109,7 +109,7 @@ void itcm_core_init(void);
 #endif
 
 // attempt to stay on top of frames per second
-#define DYNAMIC_RATE_ADJUSTMENT 1
+#define DYNAMIC_RATE_ADJUSTMENT 0
 
 // don't exceed 60 fps
 #define CAP_FRAME_RATE 1

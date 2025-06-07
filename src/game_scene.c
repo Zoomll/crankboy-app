@@ -277,8 +277,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             // This means the first frame will draw everything.
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
 
-            context->gb->direct.frame_skip = preferences_frame_skip ? 1 : 0;
-
             // set game state to loaded
             gameScene->state = PGB_GameSceneStateLoaded;
         }
@@ -680,13 +678,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
     float progress = 0.5f;
     
     #if DYNAMIC_RATE_ADJUSTMENT
-    if (!context->gb->display.frame_skip_count)
+    if (true)
     {
-        static int k = 0;
-        if (++k % 17 == 0)
-        {
-            printf("dt: %f | pdt: %f\n", 1000*(double)dt, 1000*(double)gameScene->prev_dt);
-        }
         if (dt > TARGET_FRAME_TIME_S)
         {
             static int frame_i;
@@ -707,7 +700,6 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
         }
     }
     gameScene->prev_dt = dt;
-    context->gb->direct.interlace_mask = 0xFF;
     #endif
 
     gameScene->selector.startPressed = false;
@@ -842,27 +834,35 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
 
         PGB_ASSERT(context == context->gb->direct.priv);
 
-#ifdef DTCM_ALLOC
-        DTCM_VERIFY_DEBUG();
-        ITCM_CORE_FN(gb_run_frame)(context->gb);
-        DTCM_VERIFY_DEBUG();
-#else
+#ifndef DTCM_ALLOC
         // copy gb to stack (DTCM) temporarily
         struct gb_s gb;
         struct gb_s *tmp_gb = context->gb;
         context->gb = &gb;
         memcpy(&gb, tmp_gb, sizeof(struct gb_s));
+#endif
 
-        gb_run_frame(&gb);
+    for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+    {
+        context->gb->direct.frame_skip = !frame;
+#ifdef DTCM_ALLOC
+        DTCM_VERIFY_DEBUG();
+        ITCM_CORE_FN(gb_run_frame)(context->gb);
+        DTCM_VERIFY_DEBUG();
+#else
+        gb_run_frame(context->gb);
+#endif
+    }
 
+#ifndef DTCM_ALLOC
         memcpy(tmp_gb, &gb, sizeof(struct gb_s));
         context->gb = tmp_gb;
 #endif
 
-        if (context->gb->cart_battery)
-        {
-            save_check(context->gb);
-        }
+    if (context->gb->cart_battery)
+    {
+        save_check(context->gb);
+    }
 
 #if DYNAMIC_RATE_ADJUSTMENT
         float logic_time = playdate->system->getElapsedTime();
@@ -892,9 +892,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
 
         // Determine if drawing is actually needed based on changes or
         // forced display
-        bool actual_gb_draw_needed =
-            !context->gb->direct.frame_skip
-            || context->gb->display.frame_skip_count;
+        bool actual_gb_draw_needed = true;
 
         if (actual_gb_draw_needed)
         {
@@ -916,11 +914,13 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
             );
         }
 
-        // Always request the update loop to run at 60 FPS.
+        // Always request the update loop to run at 30 FPS.
+        // (60 gameboy frames per second.)
         // This ensures gb_run_frame() is called at a consistent rate.
-        gameScene->scene->preferredRefreshRate = 60;
+        gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
         gameScene->scene->refreshRateCompensation =
-            (1.0f / 60.0f - PGB_App->dt);
+        //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
+            0;
 
         if (gameScene->cartridge_has_rtc)
         {

@@ -489,9 +489,6 @@ struct gb_s
 
         uint8_t window_clear;
         uint8_t WY;
-
-        /* Only support 30fps frame skip. */
-        uint8_t frame_skip_count : 1;
     } display;
 
     /**
@@ -1603,9 +1600,16 @@ __core_section("draw") static u8 __gb_get_pixel(uint8_t *line, u8 x)
 // renders one scanline
 __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 {
+#if ENABLE_BGCACHE
+    int next_bgcache_line_stride = BGCACHE_STRIDE;
+#endif
+
 #if DYNAMIC_RATE_ADJUSTMENT
     if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
         return;
+
+    if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY+1) % 8)) & 1) == 0)
+        next_bgcache_line_stride *= 2;
 #endif
     
 #if ENABLE_BGCACHE_DEFERRED
@@ -1702,6 +1706,8 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             uint16_t p = raw1 | raw2;
             *((uint16_t *)line_priority + i) = p ^ 0xFFFF;
         }
+        
+        __builtin_prefetch(&bgcache[next_bgcache_line_stride/sizeof(uint32_t) + (bg_x / 16)], 1);
 #else
         /* The displays (what the player sees) X coordinate, drawn right
          * to left. */
@@ -1823,6 +1829,8 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             uint16_t p = raw1 | raw2;
             *((uint16_t *)line_priority + i) |= p ^ 0xFFFF;
         }
+        
+        __builtin_prefetch(&bgcache[next_bgcache_line_stride/sizeof(uint32_t) + (bg_x / 16)], 1);
 #else
         /* Calculate Window Map Address. */
         uint16_t win_line =
@@ -5121,19 +5129,6 @@ done_instr:
 
             if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
                 gb->gb_reg.IF |= LCDC_INTR;
-
-#if ENABLE_LCD
-            /* If frame skip is activated, check if we need to draw
-             * the frame or skip it. */
-            if (gb->direct.frame_skip)
-            {
-                gb->display.frame_skip_count = !gb->display.frame_skip_count;
-            }
-            else
-            {
-                gb->display.frame_skip_count = 0;
-            }
-#endif
         }
         /* Normal Line */
         else if (gb->gb_reg.LY < LCD_HEIGHT)
@@ -5167,7 +5162,7 @@ done_instr:
         gb->lcd_mode = LCD_TRANSFER;
 #if ENABLE_LCD
         if (gb->lcd_master_enable && !gb->lcd_blank &&
-            !gb->display.frame_skip_count)
+            !gb->direct.frame_skip)
             __gb_draw_line(gb);
 #endif
     }
@@ -5529,7 +5524,6 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s *gb)
 void gb_init_lcd(struct gb_s *gb)
 {
     gb->direct.frame_skip = 0;
-    gb->display.frame_skip_count = 0;
 
     gb->display.window_clear = 0;
     gb->display.WY = 0;
