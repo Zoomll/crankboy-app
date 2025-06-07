@@ -718,7 +718,7 @@ __section__(".text.tick") __space
     if (!playdate->system->isCrankDocked())
     {
         float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
-        
+
         context->gb->direct.crank_docked = 0;
         context->gb->direct.crank = (angle / 360.0f) * 0x10000;
 

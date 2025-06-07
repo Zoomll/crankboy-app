@@ -138,8 +138,8 @@ static void PGB_SettingsScene_menu(void *object)
     }
     else
     {
-        playdate->system->addMenuItem("Back", PGB_SettingsScene_didSelectBack,
-                                      settingsScene);
+        playdate->system->addMenuItem(
+            "Library", PGB_SettingsScene_didSelectBack, settingsScene);
     }
 }
 
