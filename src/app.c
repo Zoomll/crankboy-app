@@ -113,12 +113,15 @@ __section__(".text.main") void PGB_update(float dt)
         compensation = PGB_App->scene->refreshRateCompensation;
     }
 
+#if CAP_FRAME_RATE
+    // cap frame rate
     if (refreshRate > 0)
     {
         float refreshInterval = 1.0f / refreshRate + compensation;
         while (playdate->system->getElapsedTime() < refreshInterval)
             ;
     }
+#endif
 
 #endif
     DTCM_VERIFY_DEBUG();

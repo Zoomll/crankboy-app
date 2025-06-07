@@ -492,9 +492,6 @@ struct gb_s
 
         /* Only support 30fps frame skip. */
         uint8_t frame_skip_count : 1;
-
-        /* Playdate custom implementation */
-        uint8_t back_fb_enabled : 1;
     } display;
 
     /**
@@ -513,6 +510,10 @@ struct gb_s
         uint8_t sound : 1;
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
+        
+        
+        // where this is 0, skip the line
+        uint8_t interlace_mask;
 
         union
         {
@@ -1332,17 +1333,17 @@ __core_section("short") static void __gb_write(struct gb_s *gb,
 }
 
 __core_section("util") clalign
-    void gb_fast_memcpy_32(void *restrict _dst, const void *restrict _src,
+    void gb_fast_memcpy_64(void *restrict _dst, const void *restrict _src,
                            size_t len)
 {
-    PGB_ASSERT(len % 4 == 0);
+    PGB_ASSERT(len % 8 == 0);
     PGB_ASSERT(len > 0);
-    uint32_t *dst = _dst;
-    const uint32_t *src = _src;
+    uint64_t *dst = _dst;
+    const uint64_t *src = _src;
     do
     {
         dst[0] = src[0];
-        len -= 4;
+        len -= 8;
         dst++;
         src++;
     } while (len > 0);
@@ -1602,6 +1603,11 @@ __core_section("draw") static u8 __gb_get_pixel(uint8_t *line, u8 x)
 // renders one scanline
 __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 {
+#if DYNAMIC_RATE_ADJUSTMENT
+    if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
+        return;
+#endif
+    
 #if ENABLE_BGCACHE_DEFERRED
     if unlikely (gb->dirty_tile_data_master)
         __gb_process_deferred_tile_data_update(gb);
@@ -5123,10 +5129,9 @@ done_instr:
             {
                 gb->display.frame_skip_count = !gb->display.frame_skip_count;
             }
-
-            if (!gb->direct.frame_skip || !gb->display.frame_skip_count)
+            else
             {
-                gb->display.back_fb_enabled = !gb->display.back_fb_enabled;
+                gb->display.frame_skip_count = 0;
             }
 #endif
         }
@@ -5162,7 +5167,7 @@ done_instr:
         gb->lcd_mode = LCD_TRANSFER;
 #if ENABLE_LCD
         if (gb->lcd_master_enable && !gb->lcd_blank &&
-            !(gb->direct.frame_skip && !gb->display.frame_skip_count))
+            !gb->display.frame_skip_count)
             __gb_draw_line(gb);
 #endif
     }
@@ -5395,6 +5400,7 @@ __section__(".rare") enum gb_init_error_e
     gb->lcd_blank = 0;
 
     gb->direct.sound = ENABLE_SOUND;
+    gb->direct.interlace_mask = 0xFF;
 
     gb_reset(gb);
 
@@ -5524,8 +5530,6 @@ void gb_init_lcd(struct gb_s *gb)
 {
     gb->direct.frame_skip = 0;
     gb->display.frame_skip_count = 0;
-
-    gb->display.back_fb_enabled = 0;
 
     gb->display.window_clear = 0;
     gb->display.WY = 0;

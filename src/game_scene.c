@@ -22,9 +22,6 @@
 #include "game_scene.h"
 // clang-format on
 
-// attempt to stay on top of frames per second
-#define DYNAMIC_RATE_ADJUSTMENT 1
-
 // TODO: double-check these
 
 // approximately how long it takes to render one gameboy line
@@ -34,7 +31,7 @@
 #define LINE_RENDER_MARGIN_S 0.0005f
 
 // let's try to render a frame at least this fast
-#define TARGET_RENDER_TIME_S 0.0167f
+#define TARGET_FRAME_TIME_S 0.0167f
 
 PGB_GameScene *audioGameScene = NULL;
 
@@ -305,6 +302,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gb_get_rom_name(context->gb, name);
     playdate->system->logToConsole("ROM name: \"%s\"", name);
     gameScene->script = script_begin(name, gameScene);
+    gameScene->prev_dt = 0;
     if (!gameScene->script)
     {
         playdate->system->logToConsole(
@@ -680,6 +678,37 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
     PGB_Scene_update(gameScene->scene, dt);
 
     float progress = 0.5f;
+    
+    #if DYNAMIC_RATE_ADJUSTMENT
+    if (!context->gb->display.frame_skip_count)
+    {
+        static int k = 0;
+        if (++k % 17 == 0)
+        {
+            printf("dt: %f | pdt: %f\n", 1000*(double)dt, 1000*(double)gameScene->prev_dt);
+        }
+        if (dt > TARGET_FRAME_TIME_S)
+        {
+            static int frame_i;
+            frame_i++;
+            
+            if (dt > TARGET_FRAME_TIME_S + 40 * LINE_RENDER_TIME_S)
+            {
+                context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i % 2);
+            }
+            else
+            {
+                context->gb->direct.interlace_mask = 0b111011101110 >> (frame_i % 4);
+            }
+        }
+        else
+        {
+            context->gb->direct.interlace_mask = 0xFF;
+        }
+    }
+    gameScene->prev_dt = dt;
+    context->gb->direct.interlace_mask = 0xFF;
+    #endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -861,45 +890,11 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
             line_has_changed[y] = changed;
         }
 
-#if DYNAMIC_RATE_ADJUSTMENT
-        uint16_t interlace_mask = 0xFFFF;
-        static int interlace_i = 0;
-        float time_for_rendering =
-            TARGET_RENDER_TIME_S - LINE_RENDER_MARGIN_S - logic_time;
-        static int frame_i = 0;
-        if (++frame_i % 256 == 16)
-        {
-            printf("logic: %f, time for rendering: %f; %f\n",
-                   1000 * (double)logic_time, 1000 * (double)time_for_rendering,
-                   1000 * (double)(line_changed_count * LINE_RENDER_TIME_S));
-        }
-        if (time_for_rendering < line_changed_count * LINE_RENDER_TIME_S)
-        {
-            ++interlace_i;
-
-            if (time_for_rendering >=
-                line_changed_count * LINE_RENDER_TIME_S * 0.75f)
-            {
-                // render 3 out of 4 lines
-                interlace_mask = 0b11101110111011101110 >> (interlace_i % 4);
-            }
-            else
-            {
-                // render 1 out of 2 lines
-                interlace_mask =
-                    (interlace_i % 2) ? 0b1010101010101010 : 0b0101010101010101;
-            }
-        }
-
-        static volatile int k = 0;
-        if (k == 1)
-            interlace_mask = 0xFFFF;
-#endif
-
         // Determine if drawing is actually needed based on changes or
         // forced display
-        bool actual_gb_draw_needed = true;
-        // gbScreenRequiresFullRefresh;
+        bool actual_gb_draw_needed =
+            !context->gb->direct.frame_skip
+            || context->gb->display.frame_skip_count;
 
         if (actual_gb_draw_needed)
         {
@@ -910,29 +905,15 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
                     line_has_changed[i] = 0xFFFF;
                 }
             }
-#if DYNAMIC_RATE_ADJUSTMENT
-            else
-            {
-                for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                {
-                    line_has_changed[i] &= interlace_mask;
-                }
-            }
-#endif
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows);
 
-            for (int i = 0; i < LCD_HEIGHT; i++)
-            {
-                if ((line_has_changed[i / 16] >> (i % 16)) & 1)
-                {
-                    ITCM_CORE_FN(gb_fast_memcpy_32)(
-                        context->previous_lcd + LCD_WIDTH_PACKED * i,
-                        current_lcd + LCD_WIDTH_PACKED * i, LCD_WIDTH_PACKED);
-                }
-            }
+            ITCM_CORE_FN(gb_fast_memcpy_64)(
+                        context->previous_lcd,
+                        current_lcd, LCD_WIDTH_PACKED * LCD_HEIGHT
+            );
         }
 
         // Always request the update loop to run at 60 FPS.

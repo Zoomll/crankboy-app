@@ -111,6 +111,8 @@ typedef struct PGB_GameScene
     bool debug_updatedRows[LCD_ROWS];
 #endif
 
+    float prev_dt;
+
     lua_State *script;
 } PGB_GameScene;
 
