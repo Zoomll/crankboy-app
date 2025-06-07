@@ -30,6 +30,7 @@ SRC += src/game_scene.c
 SRC += src/array.c
 SRC += src/listview.c
 SRC += src/preferences.c
+SRC += src/settings_scene.c
 
 SRC += minigb_apu/minigb_apu.c
 SRC += main.c

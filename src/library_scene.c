@@ -19,10 +19,6 @@ static void PGB_LibraryScene_free(void *object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene);
 static void PGB_LibraryScene_menu(void *object);
 
-static PDMenuItem *audioMenuItem;
-static PDMenuItem *fpsMenuItem;
-static PDMenuItem *frameSkipMenuItem;
-
 PGB_LibraryScene *PGB_LibraryScene_new(void)
 {
     playdate->system->setCrankSoundsDisabled(false);
@@ -448,36 +444,8 @@ static void PGB_LibraryScene_update(void *object, float dt)
     }
 }
 
-static void PGB_LibraryScene_didChangeSound(void *userdata)
-{
-    preferences_sound_enabled =
-        playdate->system->getMenuItemValue(audioMenuItem);
-}
-
-static void PGB_LibraryScene_didChangeFPS(void *userdata)
-{
-    preferences_display_fps = playdate->system->getMenuItemValue(fpsMenuItem);
-}
-
-static void PGB_LibraryScene_didChangeFrameSkip(void *userdata)
-{
-    preferences_frame_skip =
-        playdate->system->getMenuItemValue(frameSkipMenuItem);
-}
-
 static void PGB_LibraryScene_menu(void *object)
 {
-    PGB_LibraryScene *libraryScene = object;
-
-    audioMenuItem = playdate->system->addCheckmarkMenuItem(
-        "Sound", preferences_sound_enabled, PGB_LibraryScene_didChangeSound,
-        libraryScene);
-    frameSkipMenuItem = playdate->system->addCheckmarkMenuItem(
-        "Frame skip", preferences_frame_skip,
-        PGB_LibraryScene_didChangeFrameSkip, libraryScene);
-    fpsMenuItem = playdate->system->addCheckmarkMenuItem(
-        "Show FPS", preferences_display_fps, PGB_LibraryScene_didChangeFPS,
-        libraryScene);
 }
 
 static void PGB_LibraryScene_free(void *object)

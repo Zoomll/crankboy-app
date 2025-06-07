@@ -15,6 +15,7 @@
 #include "preferences.h"
 #include "revcheck.h"
 #include "script.h"
+#include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
 
@@ -66,6 +67,10 @@ static const uint16_t PGB_dither_lut_c1 =
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
+
+static PDMenuItem *audioMenuItem;
+static PDMenuItem *fpsMenuItem;
+static PDMenuItem *frameSkipMenuItem;
 
 #if ITCM_CORE
 void *core_itcm_reloc = NULL;
@@ -142,6 +147,9 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     gameScene->audioEnabled = preferences_sound_enabled;
     gameScene->audioLocked = false;
+
+    gameScene->forceFullRefresh = false;
+    gameScene->menuImage = NULL;
 
     gameScene->staticSelectorUIDrawn = false;
 
@@ -668,7 +676,8 @@ __core_section("fb") void update_fb_dirty_lines(
 
 static void save_check(struct gb_s *gb);
 
-__section__(".text.tick") __space static void PGB_GameScene_update(void *object, float dt)
+__section__(".text.tick") __space
+    static void PGB_GameScene_update(void *object, float dt)
 {
     PGB_GameScene *gameScene = object;
     PGB_GameSceneContext *context = gameScene->context;
@@ -676,22 +685,24 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
     PGB_Scene_update(gameScene->scene, dt);
 
     float progress = 0.5f;
-    
-    #if DYNAMIC_RATE_ADJUSTMENT
+
+#if DYNAMIC_RATE_ADJUSTMENT
     if (true)
     {
         if (dt > TARGET_FRAME_TIME_S)
         {
             static int frame_i;
             frame_i++;
-            
+
             if (dt > TARGET_FRAME_TIME_S + 40 * LINE_RENDER_TIME_S)
             {
-                context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i % 2);
+                context->gb->direct.interlace_mask =
+                    0b101010101010 >> (frame_i % 2);
             }
             else
             {
-                context->gb->direct.interlace_mask = 0b111011101110 >> (frame_i % 4);
+                context->gb->direct.interlace_mask =
+                    0b111011101110 >> (frame_i % 4);
             }
         }
         else
@@ -700,7 +711,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
         }
     }
     gameScene->prev_dt = dt;
-    #endif
+#endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -765,9 +776,11 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
 
     bool gbScreenRequiresFullRefresh = false;
     if (gameScene->model.empty || gameScene->model.state != gameScene->state ||
-        gameScene->model.error != gameScene->error)
+        gameScene->model.error != gameScene->error ||
+        gameScene->forceFullRefresh)
     {
         gbScreenRequiresFullRefresh = true;
+        gameScene->forceFullRefresh = false;
     }
 
     bool animatedSelectorBitmapNeedsRedraw = false;
@@ -842,27 +855,27 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
         memcpy(&gb, tmp_gb, sizeof(struct gb_s));
 #endif
 
-    for (int frame = 0; frame <= preferences_frame_skip; ++frame)
-    {
-        context->gb->direct.frame_skip = !frame;
+        for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+        {
+            context->gb->direct.frame_skip = !frame;
 #ifdef DTCM_ALLOC
-        DTCM_VERIFY_DEBUG();
-        ITCM_CORE_FN(gb_run_frame)(context->gb);
-        DTCM_VERIFY_DEBUG();
+            DTCM_VERIFY_DEBUG();
+            ITCM_CORE_FN(gb_run_frame)(context->gb);
+            DTCM_VERIFY_DEBUG();
 #else
-        gb_run_frame(context->gb);
+            gb_run_frame(context->gb);
 #endif
-    }
+        }
 
 #ifndef DTCM_ALLOC
         memcpy(tmp_gb, &gb, sizeof(struct gb_s));
         context->gb = tmp_gb;
 #endif
 
-    if (context->gb->cart_battery)
-    {
-        save_check(context->gb);
-    }
+        if (context->gb->cart_battery)
+        {
+            save_check(context->gb);
+        }
 
 #if DYNAMIC_RATE_ADJUSTMENT
         float logic_time = playdate->system->getElapsedTime();
@@ -908,18 +921,17 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void *object,
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows);
 
-            ITCM_CORE_FN(gb_fast_memcpy_64)(
-                        context->previous_lcd,
-                        current_lcd, LCD_WIDTH_PACKED * LCD_HEIGHT
-            );
+            ITCM_CORE_FN(gb_fast_memcpy_64)(context->previous_lcd, current_lcd,
+                                            LCD_WIDTH_PACKED * LCD_HEIGHT);
         }
 
         // Always request the update loop to run at 30 FPS.
         // (60 gameboy frames per second.)
         // This ensures gb_run_frame() is called at a consistent rate.
-        gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
+        gameScene->scene->preferredRefreshRate =
+            preferences_frame_skip ? 30 : 60;
         gameScene->scene->refreshRateCompensation =
-        //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
+            //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
             0;
 
         if (gameScene->cartridge_has_rtc)
@@ -1155,12 +1167,22 @@ __section__(".rare") void PGB_GameScene_didSelectLibrary(void *userdata)
     DTCM_VERIFY();
 }
 
+__section__(".rare") static void PGB_GameScene_showSettings(void *userdata)
+{
+    PGB_GameScene *gameScene = userdata;
+    PGB_SettingsScene *settingsScene = PGB_SettingsScene_new(gameScene);
+    PGB_presentModal(settingsScene->scene);
+}
+
 static void PGB_GameScene_menu(void *object)
 {
     PGB_GameScene *gameScene = object;
+
+    gameScene->forceFullRefresh = true;
+
     playdate->system->removeAllMenuItems();
 
-    if (gameScene->rom_filename != NULL)
+    if (gameScene->menuImage == NULL && gameScene->rom_filename != NULL)
     {
         char *rom_basename_full = string_copy(gameScene->rom_filename);
         char *filename_part = rom_basename_full;
@@ -1169,19 +1191,15 @@ static void PGB_GameScene_menu(void *object)
         {
             filename_part = last_slash + 1;
         }
-
         char *rom_basename_ext = string_copy(filename_part);
-
         char *basename_no_ext = string_copy(rom_basename_ext);
         char *ext = strrchr(basename_no_ext, '.');
         if (ext != NULL)
         {
             *ext = '\0';
         }
-
         char *cleanName_no_ext = string_copy(basename_no_ext);
         pgb_sanitize_string_for_filename(cleanName_no_ext);
-
         char *actual_cover_path =
             pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
 
@@ -1194,45 +1212,40 @@ static void PGB_GameScene_menu(void *object)
             if (cover_art.status == PGB_COVER_ART_SUCCESS &&
                 cover_art.bitmap != NULL)
             {
-                LCDBitmap *menuImage =
+                gameScene->menuImage =
                     playdate->graphics->newBitmap(400, 240, kColorClear);
-                if (menuImage != NULL)
+                if (gameScene->menuImage != NULL)
                 {
+                    playdate->graphics->pushContext(gameScene->menuImage);
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                    playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
+                    playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
                     int final_scaled_width = cover_art.scaled_width;
                     int final_scaled_height = cover_art.scaled_height;
-
                     int drawX = (200 - final_scaled_width) / 2;
                     if (drawX < 0)
                     {
                         drawX = 0;
                     }
-
                     int drawY = 40 + (160 - final_scaled_height) / 2;
-
-                    playdate->graphics->pushContext(menuImage);
-                    playdate->graphics->setDrawMode(kDrawModeCopy);
-
-                    playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
-                    playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
-
                     playdate->graphics->drawBitmap(cover_art.bitmap, drawX,
                                                    drawY, kBitmapUnflipped);
-
                     playdate->graphics->popContext();
-                    playdate->system->setMenuImage(menuImage, 0);
                 }
                 pgb_free_loaded_cover_art_bitmap(&cover_art);
             }
             pgb_free(actual_cover_path);
         }
-
         pgb_free(cleanName_no_ext);
         pgb_free(basename_no_ext);
         pgb_free(rom_basename_ext);
         pgb_free(rom_basename_full);
     }
 
+    playdate->system->setMenuImage(gameScene->menuImage, 0);
     playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary,
+                                  gameScene);
+    playdate->system->addMenuItem("Settings…", PGB_GameScene_showSettings,
                                   gameScene);
 }
 
@@ -1316,6 +1329,11 @@ static void PGB_GameScene_free(void *object)
     PGB_GameSceneContext *context = gameScene->context;
 
     audioGameScene = NULL;
+
+    if (gameScene->menuImage)
+    {
+        playdate->graphics->freeBitmap(gameScene->menuImage);
+    }
 
     playdate->system->setMenuImage(NULL, 0);
 

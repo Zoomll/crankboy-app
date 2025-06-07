@@ -35,6 +35,7 @@ typedef struct PGB_Application
     float crankChange;
     PGB_Scene *scene;
     PGB_Scene *pendingScene;
+    PGB_Scene *parentScene;
     LCDFont *bodyFont;
     LCDFont *titleFont;
     LCDFont *subheadFont;
@@ -52,6 +53,8 @@ void PGB_update(float dt);
 void PGB_present(PGB_Scene *scene);
 void PGB_quit(void);
 void PGB_goToLibrary(void);
+void PGB_presentModal(PGB_Scene *scene);
+void PGB_dismiss(PGB_Scene *scene);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.

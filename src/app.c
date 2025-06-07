@@ -22,6 +22,9 @@ void PGB_init(void)
     PGB_App = pgb_malloc(sizeof(PGB_Application));
 
     PGB_App->scene = NULL;
+
+    PGB_App->pendingScene = NULL;
+    PGB_App->parentScene = NULL;
     PGB_App->pendingScene = NULL;
 
     playdate->file->mkdir("games");
@@ -56,8 +59,6 @@ void PGB_init(void)
 
 __section__(".rare") static void switchToPendingScene(void)
 {
-    // present pending scene
-
     if (PGB_App->scene)
     {
         preferences_save_to_disk();
@@ -84,7 +85,8 @@ __section__(".text.main") void PGB_update(float dt)
         DTCM_VERIFY_DEBUG();
         if (PGB_App->scene->use_user_stack)
         {
-            call_with_user_stack_2(PGB_App->scene->update, managedObject, *(uint32_t*)&dt);
+            call_with_user_stack_2(PGB_App->scene->update, managedObject,
+                                   *(uint32_t *)&dt);
         }
         else
         {
@@ -130,6 +132,29 @@ __section__(".text.main") void PGB_update(float dt)
 void PGB_present(PGB_Scene *scene)
 {
     PGB_App->pendingScene = scene;
+}
+
+void PGB_presentModal(PGB_Scene *scene)
+{
+    PGB_App->parentScene = PGB_App->scene;
+    PGB_App->scene = scene;
+    PGB_Scene_refreshMenu(PGB_App->scene);
+}
+
+void PGB_dismiss(PGB_Scene *sceneToDismiss)
+{
+    if (PGB_App->parentScene)
+    {
+        PGB_App->scene = PGB_App->parentScene;
+        PGB_App->parentScene = NULL;
+
+        if (sceneToDismiss && sceneToDismiss->free)
+        {
+            sceneToDismiss->free(sceneToDismiss->managedObject);
+        }
+
+        PGB_Scene_refreshMenu(PGB_App->scene);
+    }
 }
 
 void PGB_goToLibrary(void)

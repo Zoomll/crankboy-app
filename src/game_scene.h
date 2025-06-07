@@ -91,6 +91,7 @@ typedef struct PGB_GameScene
     bool audioEnabled;
     bool audioLocked;
     bool cartridge_has_rtc;
+    bool forceFullRefresh;
     bool staticSelectorUIDrawn;
     bool save_data_loaded_successfully;
 
@@ -114,6 +115,8 @@ typedef struct PGB_GameScene
     float prev_dt;
 
     lua_State *script;
+
+    LCDBitmap *menuImage;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);

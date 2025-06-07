@@ -53,7 +53,6 @@ void preferences_read_from_disk(void)
         preferences_display_fps = preferences_read_uint8();
         preferences_frame_skip = preferences_read_uint8();
 
-
         playdate->file->close(pref_file);
     }
 }
