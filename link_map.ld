@@ -44,6 +44,7 @@ SECTIONS
 		
 		. = ALIGN(0x1000); . += 0x720;
 		*(.text.pgb)
+		*(.text.pgb_rare)
 
 		. = ALIGN(32);
 		build/*(.text)
@@ -78,6 +79,7 @@ SECTIONS
 		
 		. = ALIGN(32);
 		__rare_start__ = .;
+		*(.rare.pgb)
 		*(.rare)
 		*(.rare.*)
         

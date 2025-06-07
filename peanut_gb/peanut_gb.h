@@ -507,7 +507,7 @@ struct gb_s
         uint8_t sound : 1;
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
-        
+        uint8_t crank_docked : 1;
         
         // where this is 0, skip the line
         uint8_t interlace_mask;
@@ -530,6 +530,16 @@ struct gb_s
 
 #define PGB_MIN_FRAMES_SAVE 90
 #define PGB_MAX_FRAMES_SAVE (60 * 100)
+
+        union {
+            uint16_t peripherals[4];
+            struct {
+                uint16_t crank;
+                uint16_t accel_x;
+                uint16_t accel_y;
+                uint16_t accel_z;
+            };
+        };
 
         /* Implementation defined data. Set to NULL if not required. */
         void *priv;
@@ -628,6 +638,45 @@ __section__(".text.pgb") static void __gb_update_selected_bank_addr(
     offset *= ROM_BANK_SIZE;
 
     gb->selected_bank_addr = gb->gb_rom + offset;
+}
+
+__section__(".rare.pgb")
+void __gb_rare_io_write(struct gb_s *gb, const uint8_t addr, const uint8_t val)
+{
+    switch (addr)
+    {
+    case 0x57:
+        playdate->system->logToConsole("Set accelerometer enabled: %d", val&1);
+        playdate->system->setPeripheralsEnabled(
+            (val & 1) ? kAccelerometer : kNone
+        );
+        return;
+        
+    /* Interrupt Enable Register */
+    case 0xFF:
+        gb->gb_reg.IE = val;
+        return;
+        
+    default:
+        (gb->gb_error)(gb, GB_INVALID_WRITE, 0xFF00 | addr);
+    }
+}
+
+__section__(".rare.pgb")
+uint8_t __gb_rare_io_read(struct gb_s *gb, const uint8_t addr)
+{
+    switch (addr)
+    {
+    case 0x57:
+        return gb->direct.crank_docked;
+    case 0x58 ... 0x5F:
+        return gb->direct.peripherals[(addr - 0x58)/2] >> (8*(addr % 2));
+    /* Interrupt Enable Register */
+    case 0xFF:
+        return gb->gb_reg.IE;
+    default:
+        return 0xFF;
+    }
 }
 
 /**
@@ -792,13 +841,8 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
         case 0x4B:
             return gb->gb_reg.WX;
 
-        /* Interrupt Enable Register */
-        case 0xFF:
-            return gb->gb_reg.IE;
-
-        /* Unused registers return 1 */
         default:
-            return 0xFF;
+            return __gb_rare_io_read(gb, addr & 0xFF);
         }
     }
 
@@ -1288,10 +1332,9 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
         case 0x50:
             gb->gb_bios_enable = 0;
             return;
-
-        /* Interrupt Enable Register */
-        case 0xFF:
-            gb->gb_reg.IE = val;
+            
+        default:
+            __gb_rare_io_write(gb, addr & 0xFF, val);
             return;
         }
     }

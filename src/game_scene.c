@@ -718,6 +718,9 @@ __section__(".text.tick") __space
     if (!playdate->system->isCrankDocked())
     {
         float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
+        
+        context->gb->direct.crank_docked = 0;
+        context->gb->direct.crank = (angle / 360.0f) * 0x10000;
 
         if (angle <= (180 - gameScene->selector.deadAngle))
         {
@@ -748,6 +751,10 @@ __section__(".text.tick") __space
             gameScene->selector.startPressed = true;
             gameScene->selector.selectPressed = true;
         }
+    }
+    else
+    {
+        context->gb->direct.crank_docked = 1;
     }
 
     int selectorIndex;
