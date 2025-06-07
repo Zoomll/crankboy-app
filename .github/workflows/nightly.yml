@@ -42,37 +42,41 @@ jobs:
           SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
           echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
-      # Step 4: Build the Project
+      # Step 4: Update Build Number in pdxinfo (NEW)
+      # This step modifies the buildNumber just for this run.
+      - name: Update Build Number
+        run: |
+          # Get the current date in YYYYMMDD format.
+          DATE_STAMP=$(date +'%Y%m%d')
+          echo "Updating buildNumber in Source/pdxinfo to $DATE_STAMP"
+          
+          # Use sed to find the line starting with "buildNumber=" and replace it.
+          # The -i flag modifies the file in-place.
+          sed -i "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+          
+          echo "Contents of pdxinfo after update:"
+          cat Source/pdxinfo
+
+      # Step 5: Build the Project
+      # The 'make' command will now use the pdxinfo file with the updated build number.
       - name: Build Project
         run: make device
 
-      # Step 5: Package and Name the Artifact (MODIFIED)
-      # This step now reads the version from Source/pdxinfo.
+      # Step 6: Package and Name the Artifact
       - name: Package Artifact
         id: package
         run: |
-          # Extract the version number from the pdxinfo file.
-          # `grep` finds the line, and `cut` splits by "=" to get the second part.
           APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
           echo "Extracted App Version: $APP_VERSION"
-          
-          # Get the current date in YYYY-MM-DD format.
-          DATE_STAMP=$(date +'%Y-%m-%d')
-          
-          # Define the dynamic filename for the zip archive.
-          ZIP_FILENAME="CrankBoy-${APP_VERSION}-nightly-${DATE_STAMP}.zip"
+          DATE_STAMP_HYPHENATED=$(date +'%Y-%m-%d')
+          ZIP_FILENAME="CrankBoy-${APP_VERSION}-nightly-${DATE_STAMP_HYPHENATED}.zip"
           echo "Packaging artifact as: $ZIP_FILENAME"
-          
-          # Create the zip archive.
           zip -r "$ZIP_FILENAME" CrankBoy.pdx
-          
-          # Set the filename as a step output for the next step to use.
           echo "zip_path=$ZIP_FILENAME" >> $GITHUB_OUTPUT
 
-      # Step 6: Upload the Zipped Artifact
+      # Step 7: Upload the Zipped Artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          # Use the dynamic filename for the artifact name and path.
           name: ${{ steps.package.outputs.zip_path }}
           path: ${{ steps.package.outputs.zip_path }}
