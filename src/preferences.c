@@ -29,7 +29,7 @@ void preferences_init(void)
 {
     preferences_sound_enabled = true;
     preferences_display_fps = false;
-    preferences_frame_skip = true;
+    preferences_frame_skip = false;
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
