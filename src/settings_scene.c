@@ -83,7 +83,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     playdate->graphics->clear(kColorWhite);
     playdate->graphics->setFont(PGB_App->bodyFont);
 
-    const char *options[] = {"Sound", "Frame Skip", "Show FPS"};
+    const char *options[] = {"Sound", "30FPS Mode", "Show FPS"};
     bool values[] = {preferences_sound_enabled, preferences_frame_skip,
                      preferences_display_fps};
 
