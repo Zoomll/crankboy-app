@@ -47,10 +47,9 @@ static void PGB_GameScene_event(void *object, PDSystemEvent event,
 static uint8_t *read_rom_to_ram(const char *filename,
                                 PGB_GameSceneError *sceneError);
 
-static void read_cart_ram_file(const char *save_filename, uint8_t **dest,
-                               const size_t len);
-static void write_cart_ram_file(const char *save_filename, uint8_t *src,
-                                const size_t len);
+static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
+                               unsigned int *last_save_time);
+static void write_cart_ram_file(const char *save_filename, struct gb_s *gb);
 
 static void gb_error(struct gb_s *gb, const enum gb_error_e gb_err,
                      const uint16_t val);
@@ -221,14 +220,26 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             char *save_filename = pgb_save_filename(rom_filename, false);
             gameScene->save_filename = save_filename;
 
-            read_cart_ram_file(save_filename, &context->cart_ram,
-                               gb_get_save_size(context->gb));
+            // 1. Declare a variable to hold the timestamp we read from the save
+            // file.
+            unsigned int last_save_time = 0;
 
+            // 2. Call the new read function. It will attempt to load SRAM, RTC
+            // registers, and the saved timestamp. It returns true only if RTC
+            // and timestamp were loaded.
+            bool rtc_was_loaded =
+                read_cart_ram_file(save_filename, context->gb, &last_save_time);
+
+            // 3. Link the cart_ram pointer so it can be freed later.
+            context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
 
-            context->gb->gb_cart_ram = context->cart_ram;
-            context->gb->gb_cart_ram_size = gb_get_save_size(context->gb);
+            // 4. Set up the host-side time references for the update loop.
+            unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+            gameScene->rtc_time = now;  // For handling in-session pauses.
+            gameScene->rtc_seconds_to_catch_up = 0;
 
+            // 5. Check the cartridge type to see if we need to do RTC logic.
             uint8_t actual_cartridge_type = context->gb->gb_rom[0x0147];
             if (actual_cartridge_type == 0x0F || actual_cartridge_type == 0x10)
             {
@@ -237,27 +248,42 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                     "Cartridge Type 0x%02X (MBC: %d): RTC Enabled.",
                     actual_cartridge_type, context->gb->mbc);
 
-                // Initialize Playdate-side RTC tracking variables
-                gameScene->rtc_time =
-                    playdate->system->getSecondsSinceEpoch(NULL);
-                gameScene->rtc_seconds_to_catch_up = 0;
-
-                // Set the GB core's RTC
-                time_t time_for_core =
-                    gameScene->rtc_time + 946684800;  // Unix epoch
-                struct tm *timeinfo = localtime(&time_for_core);
-                if (timeinfo != NULL)
+                // 6. Decide how to handle the clock based on whether we loaded
+                // a save.
+                if (rtc_was_loaded)
                 {
-                    gb_set_rtc(context->gb, timeinfo);
+                    // RTC state was loaded successfully!
+                    playdate->system->logToConsole(
+                        "Loaded RTC state and timestamp from save file.");
+
+                    // Calculate the time that passed *between* sessions.
+                    if (now > last_save_time)
+                    {
+                        gameScene->rtc_seconds_to_catch_up =
+                            now - last_save_time;
+                    }
+                    .
                 }
                 else
                 {
+                    // This is a first boot or the save was old/invalid.
+                    // Initialize the emulator's clock to the current system
+                    // time.
                     playdate->system->logToConsole(
-                        "Error: localtime() failed during RTC setup.");
+                        "No valid RTC save data. Initializing clock to system "
+                        "time.");
+                    time_t time_for_core = gameScene->rtc_time +
+                                           946684800;  // Adjust for Unix epoch
+                    struct tm *timeinfo = localtime(&time_for_core);
+                    if (timeinfo != NULL)
+                    {
+                        gb_set_rtc(context->gb, timeinfo);
+                    }
                 }
             }
             else
             {
+                // This is a non-RTC cart.
                 gameScene->cartridge_has_rtc = false;
                 playdate->system->logToConsole(
                     "Cartridge Type 0x%02X (MBC: %d): RTC Disabled.",
@@ -267,22 +293,14 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             audio_init(gb->hram + 0x10);
             if (gameScene->audioEnabled)
             {
-                // init audio
                 playdate->sound->channel->setVolume(
                     playdate->sound->getDefaultChannel(), 0.2f);
-
                 context->gb->direct.sound = 1;
                 audioGameScene = gameScene;
             }
 
-            // init lcd
             gb_init_lcd(context->gb);
-
-            // Initialize previous_lcd, for simplicity, let's zero it.
-            // This means the first frame will draw everything.
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-
-            // set game state to loaded
             gameScene->state = PGB_GameSceneStateLoaded;
         }
         else
@@ -434,60 +452,134 @@ static uint8_t *read_rom_to_ram(const char *filename,
     return rom;
 }
 
-static void read_cart_ram_file(const char *save_filename, uint8_t **dest,
-                               const size_t len)
+static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
+                               unsigned int *last_save_time)
 {
+    *last_save_time = 0;
 
-    /* If save file not required. */
-    if (len == 0)
-    {
-        *dest = NULL;
-        return;
-    }
+    const size_t sram_len = gb_get_save_size(gb);
+    const uint8_t cart_type = gb->gb_rom[0x0147];
+    const bool has_rtc = (cart_type == 0x0F || cart_type == 0x10);
 
-    /* Allocate enough memory to hold save file. */
-    if ((*dest = pgb_malloc(len)) == NULL)
+    // Allocate memory for SRAM
+    gb->gb_cart_ram = (sram_len > 0) ? pgb_malloc(sram_len) : NULL;
+    if (gb->gb_cart_ram)
     {
-        playdate->system->logToConsole("%s:%i: Error allocating save file %s",
-                                       __FILE__, __LINE__, save_filename);
+        memset(gb->gb_cart_ram, 0, sram_len);
     }
+    gb->gb_cart_ram_size = sram_len;
 
     SDFile *f = playdate->file->open(save_filename, kFileReadData);
-
-    /* It doesn't matter if the save file doesn't exist. We initialise the
-     * save memory allocated above. The save file will be created on exit. */
     if (f == NULL)
     {
-        memset(*dest, 0, len);
-        return;
+        return false;
     }
 
-    /* Read save file to allocated memory. */
-    playdate->file->read(f, *dest, (unsigned int)len);
+    // 1. Read SRAM
+    if (sram_len > 0)
+    {
+        playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
+    }
+
+    // 2. If RTC, read registers and the saved timestamp
+    bool rtc_loaded_successfully = false;
+    if (has_rtc)
+    {
+        // Try to read the 5 RTC bytes
+        if (playdate->file->read(f, gb->cart_rtc, sizeof(gb->cart_rtc)) ==
+            sizeof(gb->cart_rtc))
+        {
+            // Success, now try to read the absolute timestamp that follows
+            if (playdate->file->read(f, last_save_time, sizeof(unsigned int)) ==
+                sizeof(unsigned int))
+            {
+                // We successfully loaded the RTC registers AND the last save
+                // time.
+                rtc_loaded_successfully = true;
+            }
+        }
+    }
+
     playdate->file->close(f);
+    return rtc_loaded_successfully;
 }
 
-static void write_cart_ram_file(const char *save_filename, uint8_t *src,
-                                const size_t len)
+static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
 {
-    if (len == 0 || src == NULL)
+    // Get the size of the save RAM from the gb context.
+    const size_t sram_len = gb_get_save_size(gb);
+
+    // Check if the cartridge has an RTC.
+    const uint8_t cart_type = gb->gb_rom[0x0147];
+    const bool has_rtc = (cart_type == 0x0F || cart_type == 0x10);
+
+    // If there is nothing to save, exit.
+    if (sram_len == 0 && !has_rtc)
     {
         return;
     }
 
-    playdate->system->logToConsole("Saving SRAM to file %s", save_filename);
+    // --- Check for directory before creating it ---
+    char *dir_path = string_copy(save_filename);
+    char *last_slash = strrchr(dir_path, '/');
+    if (last_slash != NULL)
+    {
+        // Isolate the directory path (e.g., "saves")
+        *last_slash = '\0';
+
+        FileStat stat_info;
+        // Try to get stats on the directory path. This will fail if it doesn't
+        // exist.
+        if (playdate->file->stat(dir_path, &stat_info) != 0)
+        {
+            // The stat call failed, which means the directory does not exist.
+            // NOW it is safe to create it.
+            playdate->system->logToConsole(
+                "Save directory '%s' not found, creating it.", dir_path);
+            int mkdir_err = playdate->file->mkdir(dir_path);
+            if (mkdir_err != 0)
+            {
+                // If creating it *also* fails, we have a serious problem.
+                const char *err_str = playdate->file->geterr();
+                playdate->system->logToConsole(
+                    "FATAL: Could not create save directory '%s': %s", dir_path,
+                    err_str);
+            }
+        }
+        // If the stat call succeeded, it means the directory already exists,
+        // so we do nothing and proceed.
+    }
+    pgb_free(dir_path);
+
+    playdate->system->logToConsole("Saving SRAM, RTC, and timestamp to: %s",
+                                   save_filename);
 
     SDFile *f = playdate->file->open(save_filename, kFileWrite);
-
     if (f == NULL)
     {
-        playdate->system->logToConsole("%s:%i: Can't write save file", __FILE__,
-                                       __LINE__, save_filename);
+        playdate->system->logToConsole(
+            "%s:%i: Can't open save file for writing: %s", __FILE__, __LINE__,
+            save_filename);
         return;
     }
 
-    /* Record save file. */
-    playdate->file->write(f, src, (unsigned int)(len * sizeof(uint8_t)));
+    // 1. Write the main save RAM data first.
+    if (sram_len > 0 && gb->gb_cart_ram != NULL)
+    {
+        playdate->file->write(f, gb->gb_cart_ram, (unsigned int)sram_len);
+    }
+
+    // 2. If the cartridge has an RTC, append its data.
+    if (has_rtc)
+    {
+        // Write the 5 internal RTC register bytes.
+        playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
+
+        // Write the current Playdate epoch time as an absolute timestamp.
+        unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+        playdate->file->write(f, &now, sizeof(now));
+    }
+
     playdate->file->close(f);
 }
 
@@ -503,8 +595,7 @@ static void gb_save_to_disk(struct gb_s *gb)
 
     if (gameScene->save_filename)
     {
-        write_cart_ram_file(gameScene->save_filename, context->gb->gb_cart_ram,
-                            gb_get_save_size(context->gb));
+        write_cart_ram_file(gameScene->save_filename, context->gb);
     }
     else
     {
@@ -558,8 +649,7 @@ static void gb_error(struct gb_s *gb, const enum gb_error_e gb_err,
         {
             char *recovery_filename =
                 pgb_save_filename(context->scene->rom_filename, true);
-            write_cart_ram_file(recovery_filename, context->gb->gb_cart_ram,
-                                gb_get_save_size(context->gb));
+            write_cart_ram_file(recovery_filename, context->gb);
             pgb_free(recovery_filename);
         }
 
@@ -1295,7 +1385,8 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
     case kEventLock:
     case kEventPause:
     case kEventTerminate:
-        if (context->gb->direct.sram_dirty)
+        if (context->gb->direct.sram_dirty &&
+            gameScene->save_data_loaded_successfully)
         {
             playdate->system->logToConsole("saving (system event)");
             gb_save_to_disk(context->gb);
@@ -1308,8 +1399,7 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
             // save a recovery file
             char *recovery_filename =
                 pgb_save_filename(context->scene->rom_filename, true);
-            write_cart_ram_file(recovery_filename, context->gb->gb_cart_ram,
-                                gb_get_save_size(context->gb));
+            write_cart_ram_file(recovery_filename, context->gb);
             pgb_free(recovery_filename);
         }
         break;
