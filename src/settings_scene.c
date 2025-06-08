@@ -94,8 +94,9 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     playdate->graphics->clear(kColorWhite);
 
-    // Draw the 60/40 vertical divider line (at 60% of 400px width)
-    playdate->graphics->drawLine(240, 0, 240, 240, 1, kColorBlack);
+    // Draw the 60/40 vertical divider line
+    int dividerX = 240;
+    playdate->graphics->drawLine(dividerX, 0, dividerX, 240, 1, kColorBlack);
 
     // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
@@ -106,22 +107,32 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     for (int i = 0; i < 3; i++)
     {
-        char fullText[50];
-        snprintf(fullText, 50, "%s: %s", options[i], values[i] ? "On" : "Off");
+        int y = 50 + i * 30;
+        const char *stateText = values[i] ? "On" : "Off";
+
+        // Calculate position for right-aligned state text
+        int stateWidth = playdate->graphics->getTextWidth(
+            PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0);
+        int stateX =
+            dividerX - stateWidth - 20;  // 20px padding from the divider
 
         if (i == settingsScene->cursorIndex)
         {
-            // Highlight selection, constrained to the left pane
-            playdate->graphics->fillRect(0, 50 + i * 30 - 2, 240, 24,
-                                         kColorBlack);
+            // Highlight selection
+            playdate->graphics->fillRect(0, y - 2, dividerX, 24, kColorBlack);
             playdate->graphics->setDrawMode(kDrawModeFillWhite);
         }
         else
         {
             playdate->graphics->setDrawMode(kDrawModeFillBlack);
         }
-        playdate->graphics->drawText(fullText, strlen(fullText), kUTF8Encoding,
-                                     20, 50 + i * 30);
+
+        // Draw the option name (left-aligned)
+        playdate->graphics->drawText(options[i], strlen(options[i]),
+                                     kUTF8Encoding, 20, y);
+        // Draw the state (right-aligned)
+        playdate->graphics->drawText(stateText, strlen(stateText),
+                                     kUTF8Encoding, stateX, y);
     }
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
@@ -141,14 +152,15 @@ static void PGB_SettingsScene_update(void *object, float dt)
     strncpy(descriptionCopy, selectedDescription, sizeof(descriptionCopy));
 
     char *line = strtok(descriptionCopy, "\n");
-    int y = 50;  // Starting Y position for description text
+    int descY = 50;  // Starting Y position for description text
     int lineHeight = playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
 
     while (line != NULL)
     {
-        // Draw text in the right pane (x > 240), with 10px padding
-        playdate->graphics->drawText(line, strlen(line), kUTF8Encoding, 250, y);
-        y += lineHeight;
+        // Draw text in the right pane, with 10px padding from divider
+        playdate->graphics->drawText(line, strlen(line), kUTF8Encoding,
+                                     dividerX + 10, descY);
+        descY += lineHeight;
         line = strtok(NULL, "\n");
     }
 }
