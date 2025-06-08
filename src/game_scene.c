@@ -1035,29 +1035,39 @@ __section__(".text.tick") __space
             // Check if time has passed since our last check.
             if (now > gameScene->rtc_time)
             {
-                // Calculate how many seconds have elapsed.
                 unsigned int seconds_passed = now - gameScene->rtc_time;
-
-                // Add the elapsed seconds to the catch-up queue.
                 gameScene->rtc_seconds_to_catch_up += seconds_passed;
-
-                // Update our record of the last time we checked.
                 gameScene->rtc_time = now;
             }
 
-            // --- RTC Catch-up ---
-            // Process one tick per frame to prevent freezing the game if the
-            // clock needs to advance by a large amount (e.g., after a long
-            // pause).
-            const uint8_t MAX_RTC_TICKS_PER_FRAME = 1;
-            uint8_t ticks_this_frame = 0;
-
-            while (gameScene->rtc_seconds_to_catch_up > 0 &&
-                   ticks_this_frame < MAX_RTC_TICKS_PER_FRAME)
+            if (gameScene->rtc_seconds_to_catch_up > 0)
             {
-                gb_tick_rtc(context->gb);
-                gameScene->rtc_seconds_to_catch_up--;
-                ticks_this_frame++;
+                // Define our time budget for catch-up in milliseconds.
+                // A budget of 1-2ms is very safe and shouldn't impact the frame
+                // rate.
+                const float CATCH_UP_TIME_BUDGET_MS = 2.0f;
+
+                // Get the time before we start the loop.
+                float start_time_ms =
+                    playdate->system->getElapsedTime() * 1000.0f;
+                float current_time_ms = start_time_ms;
+
+                // Loop until we run out of seconds to catch up OR we exceed our
+                // time budget.
+                while (gameScene->rtc_seconds_to_catch_up > 0)
+                {
+                    gb_tick_rtc(context->gb);
+                    gameScene->rtc_seconds_to_catch_up--;
+
+                    // Check the elapsed time.
+                    current_time_ms =
+                        playdate->system->getElapsedTime() * 1000.0f;
+                    if (current_time_ms - start_time_ms >
+                        CATCH_UP_TIME_BUDGET_MS)
+                    {
+                        break;  // Our time budget for this frame is used up.
+                    }
+                }
             }
         }
 
