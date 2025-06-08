@@ -766,7 +766,7 @@ __section__(".text.tick") __space
     else
     {
         selectorIndex =
-            1 + roundf(progress * (gameScene->selector.numberOfFrames - 2));
+            1 + floorf(progress * (gameScene->selector.numberOfFrames - 2));
 
         if (progress == 0)
         {
