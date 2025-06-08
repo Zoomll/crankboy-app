@@ -131,7 +131,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     gameScene->rtc_time = playdate->system->getSecondsSinceEpoch(NULL);
     gameScene->rtc_seconds_to_catch_up = 0;
-    gameScene->rtc_fractional_second_accumulator = 0.0f;
 
     gameScene->rom_filename = string_copy(rom_filename);
     gameScene->save_filename = NULL;
@@ -235,14 +234,13 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             {
                 gameScene->cartridge_has_rtc = true;
                 playdate->system->logToConsole(
-                    "Cartridge Type 0x%02X: RTC Enabled.",
-                    actual_cartridge_type);
+                    "Cartridge Type 0x%02X (MBC: %d): RTC Enabled.",
+                    actual_cartridge_type, context->gb->mbc);
 
                 // Initialize Playdate-side RTC tracking variables
                 gameScene->rtc_time =
                     playdate->system->getSecondsSinceEpoch(NULL);
                 gameScene->rtc_seconds_to_catch_up = 0;
-                gameScene->rtc_fractional_second_accumulator = 0.0f;
 
                 // Set the GB core's RTC
                 time_t time_for_core =
@@ -942,35 +940,29 @@ __section__(".text.tick") __space
 
         if (gameScene->cartridge_has_rtc)
         {
-            const uint8_t MAX_RTC_TICKS_PER_FRAME = 1;
-            const uint8_t MAX_CATCH_UP_INCREMENT = 255;  // 4 minutes 15 seconds
+            // Get the current time from the system clock.
+            unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
 
-            gameScene->rtc_fractional_second_accumulator += PGB_App->dt;
-
-            if (gameScene->rtc_fractional_second_accumulator >= 1.0f)
+            // Check if time has passed since our last check.
+            if (now > gameScene->rtc_time)
             {
-                unsigned int total_whole_seconds_accumulated =
-                    (unsigned int)gameScene->rtc_fractional_second_accumulator;
+                // Calculate how many seconds have elapsed.
+                unsigned int seconds_passed = now - gameScene->rtc_time;
 
-                uint8_t seconds_to_process_now;
+                // Add the elapsed seconds to the catch-up queue.
+                gameScene->rtc_seconds_to_catch_up += seconds_passed;
 
-                if (total_whole_seconds_accumulated > MAX_CATCH_UP_INCREMENT)
-                {
-                    seconds_to_process_now = MAX_CATCH_UP_INCREMENT;
-                }
-                else
-                {
-                    seconds_to_process_now =
-                        (uint8_t)total_whole_seconds_accumulated;
-                }
-
-                gameScene->rtc_seconds_to_catch_up += seconds_to_process_now;
-                gameScene->rtc_fractional_second_accumulator -=
-                    (float)seconds_to_process_now;
-                gameScene->rtc_time += seconds_to_process_now;
+                // Update our record of the last time we checked.
+                gameScene->rtc_time = now;
             }
 
+            // --- RTC Catch-up ---
+            // Process one tick per frame to prevent freezing the game if the
+            // clock needs to advance by a large amount (e.g., after a long
+            // pause).
+            const uint8_t MAX_RTC_TICKS_PER_FRAME = 1;
             uint8_t ticks_this_frame = 0;
+
             while (gameScene->rtc_seconds_to_catch_up > 0 &&
                    ticks_this_frame < MAX_RTC_TICKS_PER_FRAME)
             {

@@ -97,8 +97,6 @@ typedef struct PGB_GameScene
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;
 
-    float rtc_fractional_second_accumulator;
-
     PGB_GameSceneState state;
     PGB_GameSceneContext *context;
     PGB_GameSceneModel model;
