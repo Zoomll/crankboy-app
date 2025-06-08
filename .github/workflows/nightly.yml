@@ -3,8 +3,8 @@ name: Nightly Build
 on:
   # Triggers the workflow at 00:00 UTC every day.
   schedule:
-    - cron: '0 0 * * *'
-  
+    - cron: "0 0 * * *"
+
   # Allows you to run this workflow manually from the Actions tab on GitHub.
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
 
       # Step 2: Install Specific ARM GCC Toolchain (10.3-2021.10)
       - name: Install ARM GCC Toolchain
@@ -42,23 +42,28 @@ jobs:
           SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
           echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
-      # Step 4: Update Build Number in pdxinfo (NEW)
-      # This step modifies the buildNumber just for this run.
-      - name: Update Build Number
+      # Step 4: Update Version and Build Number in pdxinfo (MODIFIED)
+      # This step now modifies both the version and buildNumber lines.
+      - name: Update Version and Build Number
         run: |
           # Get the current date in YYYYMMDD format.
           DATE_STAMP=$(date +'%Y%m%d')
-          echo "Updating buildNumber in Source/pdxinfo to $DATE_STAMP"
-          
-          # Use sed to find the line starting with "buildNumber=" and replace it.
-          # The -i flag modifies the file in-place.
-          sed -i "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
-          
+
+          # Read the current base version from the file.
+          CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+
+          # Create the new, combined version string.
+          NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
+          echo "Updating version in Source/pdxinfo to $NEW_VERSION"
+
+          # Use sed to perform both replacements in one go.
+          # -e allows multiple expressions. The first updates the version, the second updates the buildNumber.
+          sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+
           echo "Contents of pdxinfo after update:"
           cat Source/pdxinfo
 
       # Step 5: Build the Project
-      # The 'make' command will now use the pdxinfo file with the updated build number.
       - name: Build Project
         run: make device
 
@@ -66,11 +71,14 @@ jobs:
       - name: Package Artifact
         id: package
         run: |
+          # This command now correctly reads the full new version string (e.g., "0.9.9.20250608").
           APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
-          echo "Extracted App Version: $APP_VERSION"
+          echo "Extracted Full App Version: $APP_VERSION"
+
           DATE_STAMP_HYPHENATED=$(date +'%Y-%m-%d')
           ZIP_FILENAME="CrankBoy-${APP_VERSION}-nightly-${DATE_STAMP_HYPHENATED}.zip"
           echo "Packaging artifact as: $ZIP_FILENAME"
+
           zip -r "$ZIP_FILENAME" CrankBoy.pdx
           echo "zip_path=$ZIP_FILENAME" >> $GITHUB_OUTPUT
 
