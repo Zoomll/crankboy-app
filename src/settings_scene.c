@@ -93,6 +93,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
     }
 
     playdate->graphics->clear(kColorWhite);
+
+    // Draw the 60/40 vertical divider line (at 60% of 400px width)
+    playdate->graphics->drawLine(240, 0, 240, 240, 1, kColorBlack);
+
+    // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
 
     const char *options[] = {"Sound", "30FPS Mode", "Show FPS"};
@@ -106,7 +111,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
         if (i == settingsScene->cursorIndex)
         {
-            playdate->graphics->fillRect(0, 50 + i * 30 - 2, 400, 24,
+            // Highlight selection, constrained to the left pane
+            playdate->graphics->fillRect(0, 50 + i * 30 - 2, 240, 24,
                                          kColorBlack);
             playdate->graphics->setDrawMode(kDrawModeFillWhite);
         }
@@ -118,6 +124,33 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                      20, 50 + i * 30);
     }
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+    // --- Right Pane (Description - 40%) ---
+    playdate->graphics->setFont(PGB_App->labelFont);
+
+    const char *descriptions[] = {
+        "Toggles all in-game\naudio. Muting may\nimprove performance.",
+        "Limits framerate to\n30 FPS. Improves\nperformance in\ndemanding "
+        "games.",
+        "Displays the current\nframes-per-second\non screen."};
+
+    const char *selectedDescription = descriptions[settingsScene->cursorIndex];
+
+    // strtok modifies the string, so we need a mutable copy
+    char descriptionCopy[256];
+    strncpy(descriptionCopy, selectedDescription, sizeof(descriptionCopy));
+
+    char *line = strtok(descriptionCopy, "\n");
+    int y = 50;  // Starting Y position for description text
+    int lineHeight = playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
+
+    while (line != NULL)
+    {
+        // Draw text in the right pane (x > 240), with 10px padding
+        playdate->graphics->drawText(line, strlen(line), kUTF8Encoding, 250, y);
+        y += lineHeight;
+        line = strtok(NULL, "\n");
+    }
 }
 
 static void PGB_SettingsScene_didSelectBack(void *userdata)
