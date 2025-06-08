@@ -262,7 +262,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                         gameScene->rtc_seconds_to_catch_up =
                             now - last_save_time;
                     }
-                    .
                 }
                 else
                 {
