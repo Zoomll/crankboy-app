@@ -18,6 +18,7 @@ PlaydateAPI *playdate;
 const char *PGB_savesPath = "saves";
 const char *PGB_gamesPath = "games";
 const char *PGB_coversPath = "covers";
+const char *PGB_statesPath = "states";
 
 /* clang-format off */
 const clalign uint8_t PGB_patterns[4][4][4] = {
@@ -68,6 +69,51 @@ char *pgb_strrchr(const char *s, int c)
 int pgb_strcmp(const char *s1, const char *s2)
 {
     return strcmp(s1, s2);
+}
+
+char *pgb_basename(const char *filename, bool stripExtension) {
+    if (filename == NULL) {
+        return NULL;
+    }
+
+    const char *last_slash = strrchr(filename, '/');
+    const char *last_backslash = strrchr(filename, '\\');
+    const char *start = filename;
+
+    if (last_slash != NULL || last_backslash != NULL) {
+        if (last_slash != NULL && last_backslash != NULL) {
+            start = (last_slash > last_backslash) ? last_slash + 1 : last_backslash + 1;
+        } else if (last_slash != NULL) {
+            start = last_slash + 1;
+        } else {
+            start = last_backslash + 1;
+        }
+    }
+
+    if (*start == '\0') {
+        return strdup(filename);
+    }
+
+    const char* end = start + strlen(start);
+
+    if (stripExtension) {
+        const char* last_dot = strrchr(start, '.');
+        if (last_dot != NULL && last_dot != start) {
+            end = last_dot;
+        }
+    }
+
+    size_t len = end - start;
+
+    char *result = malloc(len + 1);
+    if (result == NULL) {
+        return NULL;
+    }
+
+    strncpy(result, start, len);
+    result[len] = '\0';
+
+    return result;
 }
 
 char *pgb_save_filename(const char *path, bool isRecovery)

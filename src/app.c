@@ -27,9 +27,10 @@ void PGB_init(void)
     PGB_App->parentScene = NULL;
     PGB_App->pendingScene = NULL;
 
-    playdate->file->mkdir("games");
-    playdate->file->mkdir("covers");
-    playdate->file->mkdir("saves");
+    playdate->file->mkdir(PGB_gamesPath);
+    playdate->file->mkdir(PGB_coversPath);
+    playdate->file->mkdir(PGB_savesPath);
+    playdate->file->mkdir(PGB_statesPath);
 
     preferences_init();
 

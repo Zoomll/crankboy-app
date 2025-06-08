@@ -35,6 +35,7 @@ extern const uint8_t PGB_patterns[4][4][4];
 extern const char *PGB_savesPath;
 extern const char *PGB_gamesPath;
 extern const char *PGB_coversPath;
+extern const char *PGB_statesPath;
 
 typedef enum
 {
@@ -56,6 +57,7 @@ typedef struct
 
 char *string_copy(const char *string);
 
+char *pgb_basename(const char *filename, bool stripExtension);
 char *pgb_save_filename(const char *filename, bool isRecovery);
 char *pgb_extract_fs_error_code(const char *filename);
 
