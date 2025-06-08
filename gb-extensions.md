@@ -3,9 +3,19 @@
 To allow gameboy games access to Playdate features such as the crank and accelerometer,
 CrankBoy includes some custom I/O registers for this purpose. They must first be enabled before use (`FF57`)
 
-## `FF57` [w] - Peripherals Enable
+## `FF57` [w] - Features Enable
 
-Write a 1 to this register to enable accelerometer.
+Different bits enable/disable different features:
+
+```
+bit 0 - accelerometer
+bit 1 - xram
+bits 2-7 - reserved (assume 0 as safe default)
+```
+
+If bit 0 is set, accelerometer is enabled; otherwise it is disabled.
+
+If bit 1 is set, RAM range 0xFEA0-0xFEFF becomes a read-writeable 0x60 byte region. (Normally this region is unused.)
 
 ## `FF57` [r] - Crank Docked
 

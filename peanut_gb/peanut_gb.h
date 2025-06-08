@@ -156,6 +156,9 @@ typedef int16_t s16;
 #define LCD_WIDTH_PACKED (LCD_WIDTH / LCD_PACKING)
 #define LCD_HEIGHT 144
 
+// FIXME -- do we need *2? Was intended for front buffer / back buffer
+#define LCD_SIZE (LCD_HEIGHT * LCD_WIDTH_PACKED * 2)
+
 // 2 tile indexing modes
 // 2 screens
 // 256 lines
@@ -197,6 +200,9 @@ typedef int16_t s16;
 #define MAX_BREAKPOINTS 0x80
 
 #define PEANUT_GB_ARRAYSIZE(array) (sizeof(array) / sizeof(array[0]))
+
+#define PGB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
+#define PGB_SAVE_STATE_VERSION 0
 
 typedef struct gb_breakpoint
 {
@@ -508,6 +514,7 @@ struct gb_s
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
         uint8_t crank_docked : 1;
+        uint8_t enable_xram : 1;
         
         // where this is 0, skip the line
         uint8_t interlace_mask;
@@ -640,43 +647,74 @@ __section__(".text.pgb") static void __gb_update_selected_bank_addr(
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
 
+static uint8_t xram[0x100 - 0xA0];
+
 __section__(".rare.pgb")
-void __gb_rare_io_write(struct gb_s *gb, const uint8_t addr, const uint8_t val)
+static void __gb_rare_write(struct gb_s *gb, const uint16_t addr, const uint8_t val)
 {
-    switch (addr)
+    // unused memory area
+    if (addr >= 0xFEA0 && addr < 0xFF00)
     {
-    case 0x57:
-        playdate->system->logToConsole("Set accelerometer enabled: %d", val&1);
-        playdate->system->setPeripheralsEnabled(
-            (val & 1) ? kAccelerometer : kNone
-        );
+        if (gb->direct.enable_xram)
+        {
+            xram[addr - 0xFEA0] = val;
+        }
         return;
-        
-    /* Interrupt Enable Register */
-    case 0xFF:
-        gb->gb_reg.IE = val;
-        return;
-        
-    default:
-        (gb->gb_error)(gb, GB_INVALID_WRITE, 0xFF00 | addr);
     }
+    
+    if ((addr >> 8) == 0xFF)
+    {
+        switch (addr & 0xFF)
+        {
+        case 0x57:
+            playdate->system->logToConsole("Set accelerometer enabled: %d", val&1);
+            playdate->system->setPeripheralsEnabled(
+                (val & 1) ? kAccelerometer : kNone
+            );
+            gb->direct.enable_xram = !!(val & 2);
+            return;
+            
+        /* Interrupt Enable Register */
+        case 0xFF:
+            gb->gb_reg.IE = val;
+            return;
+        }
+    }
+    
+    (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
 __section__(".rare.pgb")
-uint8_t __gb_rare_io_read(struct gb_s *gb, const uint8_t addr)
+static uint8_t __gb_rare_read(struct gb_s *gb, const uint16_t addr)
 {
-    switch (addr)
+    if (addr >= 0xFEA0 && addr < 0xFF00)
     {
-    case 0x57:
-        return gb->direct.crank_docked;
-    case 0x58 ... 0x5F:
-        return gb->direct.peripherals[(addr - 0x58)/2] >> (8*(addr % 2));
-    /* Interrupt Enable Register */
-    case 0xFF:
-        return gb->gb_reg.IE;
-    default:
-        return 0xFF;
+        if (gb->direct.enable_xram)
+        {
+            return xram[addr - 0xFEA0];
+        }
+        else
+        {
+            return 0x00;
+        }
     }
+    
+    if ((addr >> 8) == 0xFF)
+    {
+        switch (addr & 0xFF)
+        {
+        case 0x57:
+            return gb->direct.crank_docked;
+        case 0x58 ... 0x5F:
+            return gb->direct.peripherals[((addr & 0xFF) - 0x58)/2] >> (8*(addr % 2));
+        /* Interrupt Enable Register */
+        case 0xFF:
+            return gb->gb_reg.IE;
+        }
+    }
+    
+    (gb->gb_error)(gb, GB_INVALID_READ, addr);
+    return 0xFF;
 }
 
 /**
@@ -740,7 +778,7 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
 
         /* Unusable memory area. Reading from this area returns 0.*/
         if (addr < IO_ADDR)
-            return 0xFF;
+            goto rare_read;
 
         /* HRAM */
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
@@ -840,14 +878,11 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
 
         case 0x4B:
             return gb->gb_reg.WX;
-
-        default:
-            return __gb_rare_io_read(gb, addr & 0xFF);
         }
     }
 
-    (gb->gb_error)(gb, GB_INVALID_READ, addr);
-    return 0xFF;
+rare_read:
+    return __gb_rare_read(gb, addr);
 }
 
 #if ENABLE_BGCACHE
@@ -1168,7 +1203,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
 
         /* Unusable memory area. */
         if (addr < IO_ADDR)
-            return;
+            goto rare_write;
 
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
         {
@@ -1332,14 +1367,11 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
         case 0x50:
             gb->gb_bios_enable = 0;
             return;
-            
-        default:
-            __gb_rare_io_write(gb, addr & 0xFF, val);
-            return;
         }
     }
 
-    (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
+rare_write:
+    __gb_rare_write(gb, addr, val);
 }
 
 __core_section("short") static uint8_t
@@ -5232,6 +5264,165 @@ __core void gb_run_frame(struct gb_s *gb)
     }
 }
 
+#define ROM_HEADER_START 0x134
+#define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
+
+// Note: this version can be used on unswizzled structs,
+// i.e. no pointers should be followed
+__section__(".rare")
+uint32_t gb_get_state_size(struct gb_s *gb)
+{
+    return strlen(PGB_SAVE_STATE_MAGIC)
+        + sizeof(uint32_t) // save state version number
+        + sizeof(struct gb_s)
+        + ROM_HEADER_SIZE // for safe-keeping
+        + WRAM_SIZE
+        + VRAM_SIZE
+        + sizeof(xram)
+        + gb->gb_cart_ram_size
+        + MAX_BREAKPOINTS*sizeof(gb_breakpoint);
+    
+    // skipped: lcd; bgcache; rom
+    
+    // TODO: audio
+}
+
+__section__(".rare")
+void gb_state_save(struct gb_s *gb, char* out)
+{
+    // header
+    strcpy(out, PGB_SAVE_STATE_MAGIC);
+    out += strlen(PGB_SAVE_STATE_MAGIC);
+    *(uint32_t*)out = PGB_SAVE_STATE_VERSION;
+    out += 4;
+    
+    // gb
+    memcpy(out, gb, sizeof(*gb));
+    out += sizeof(*gb);
+    
+    // rom header (so we know the associated rom for this state)
+    memcpy(out, gb->gb_rom + ROM_HEADER_START, ROM_HEADER_SIZE);
+    out += ROM_HEADER_SIZE;
+    
+    // wram 
+    memcpy(out, gb->wram, WRAM_SIZE);
+    out += WRAM_SIZE;
+    
+    // vram
+    memcpy(out, gb->vram, VRAM_SIZE);
+    out += VRAM_SIZE;
+    
+    // xram
+    memcpy(out, xram, sizeof(xram));
+    out += sizeof(xram);
+    
+    // cart ram
+    if (gb->gb_cart_ram_size > 0)
+    {
+        memcpy(out, gb->gb_cart_ram, gb->gb_cart_ram_size);
+        out += gb->gb_cart_ram_size;
+    }
+    
+    // breakpoints
+    memcpy(out, gb->breakpoints, MAX_BREAKPOINTS*sizeof(gb_breakpoint));
+    out += MAX_BREAKPOINTS*sizeof(gb_breakpoint);
+    
+    // intentionally skipped: lcd; bgcache; rom
+    
+    // TODO: audio
+}
+
+// returns NULL on success; error message otherwise
+// if failure, no change is made to gb.
+// Note: provided gb must already be initialized for the given ROM;
+// in particular, it needs to have a gb_cart_ram field init'd with the correct size,
+// and rom needs to be already loaded.
+__section__(".rare")
+const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
+{
+    // at least enough to read save header, rom header, and gb struct fields
+    if (size < 0x20 + sizeof(struct gb_s) + ROM_HEADER_SIZE)
+    {
+        return "State size too small";
+    }
+    
+    if (strncmp(in, PGB_SAVE_STATE_MAGIC, strlen(PGB_SAVE_STATE_MAGIC)))
+    {
+        return "Not a CrankBoy savestate";
+    }
+    in += strlen(PGB_SAVE_STATE_MAGIC);
+    
+    const u32 version = *(u32*)in;
+    in += sizeof(u32);
+    if (version != PGB_SAVE_STATE_VERSION)
+    {
+        return "Save state version mismatch";
+    }
+    
+    struct gb_s* in_gb = (struct gb_s*)(void*)in;
+    in += sizeof(*gb);
+    size_t state_size = gb_get_state_size(in_gb);
+    
+    if (size != state_size)
+    {
+        return "State size mismatch";
+    }
+    
+    if (gb->gb_cart_ram_size != in_gb->gb_cart_ram_size)
+    {
+        return "Cartridge RAM size mismatch";
+    }
+    
+    const uint8_t* in_rom_header = (const uint8_t*)in;
+    const uint8_t* gb_rom_header = gb->gb_rom + ROM_HEADER_START;
+    if (memcmp(in_rom_header, gb_rom_header, 15))
+    {
+        return "State appears to be for a different ROM";
+    }
+    in += ROM_HEADER_SIZE;
+    
+    // we're in the clear now
+    memcpy(gb, in_gb, sizeof(*gb));
+    
+    // wram
+    memcpy(gb->wram, in, WRAM_SIZE);
+    in += WRAM_SIZE;
+    
+    // vram
+    memcpy(gb->vram, in, VRAM_SIZE);
+    in += VRAM_SIZE;
+    
+    // xram
+    memcpy(xram, in, sizeof(xram));
+    in += sizeof(xram);
+    
+    // cartridge ram
+    if (gb->gb_cart_ram_size > 0)
+    {
+        memcpy(gb->gb_cart_ram, in, gb->gb_cart_ram_size);
+        in += gb->gb_cart_ram_size;
+    }
+    
+    // breakpoints
+    memcpy(gb->breakpoints, in, MAX_BREAKPOINTS*sizeof(gb_breakpoint));
+    in += MAX_BREAKPOINTS*sizeof(gb_breakpoint);
+    
+    // clear caches and other presentation-layer data
+    memset(gb->lcd, 0, LCD_SIZE);
+    #if ENABLE_BGCACHE
+    for (size_t i = 0; i < 0x800; ++i)
+    {
+        __gb_update_bgcache_tile_data_deferred(gb, i);
+    }
+    #endif
+    
+    // intentionally skipped: lcd; bgcache; rom
+    
+    // TODO: audio
+    
+    return NULL;
+}
+
 /**
  * Gets the size of the save file required for the ROM.
  */
@@ -5395,6 +5586,7 @@ __section__(".rare") enum gb_init_error_e
     memset(bgcache, 0, sizeof(bgcache));
     gb->bgcache = bgcache;
 #endif
+    memset(xram, 0, sizeof(xram));
     gb->lcd = lcd;
     gb->gb_rom = gb_rom;
     gb->gb_error = gb_error;
@@ -5439,6 +5631,7 @@ __section__(".rare") enum gb_init_error_e
 
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
+    gb->direct.enable_xram = 0;
 
     gb_reset(gb);
 

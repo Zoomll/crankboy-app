@@ -208,7 +208,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     {
         context->rom = rom;
 
-        static uint8_t lcd[LCD_HEIGHT * LCD_WIDTH_PACKED * 2];
+        static uint8_t lcd[LCD_SIZE];
         memset(lcd, 0, sizeof(lcd));
 
         enum gb_init_error_e gb_ret =
@@ -1388,6 +1388,11 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
 {
     PGB_GameScene *gameScene = object;
     PGB_GameSceneContext *context = gameScene->context;
+    
+    // TODO: once save states are implemented properly,
+    // change this to just be the normal slot 0 or something
+    static void* debug_save_state = NULL;
+    static size_t debug_save_state_size = 0;
 
     switch (event)
     {
@@ -1412,6 +1417,35 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
             pgb_free(recovery_filename);
         }
         break;
+    case kEventKeyPressed:
+        printf("Key pressed: %x\n", (unsigned)arg);
+        switch(arg)
+        {
+            case 0x35: // 5
+                {
+                    if (debug_save_state_size != gb_get_state_size(context->gb))
+                    {
+                        debug_save_state_size = gb_get_state_size(context->gb);
+                        debug_save_state = realloc(debug_save_state, debug_save_state_size);
+                    }
+                    gb_state_save(context->gb, debug_save_state);
+                }
+                break;
+            case 0x37: // 7
+                if (debug_save_state && debug_save_state_size)
+                {
+                    const char* errmsg = gb_state_load(context->gb, debug_save_state, debug_save_state_size);
+                    if (errmsg)
+                    {
+                        printf("FAILED TO LOAD STATE: %s\n", errmsg);
+                    }
+                    else
+                    {
+                        printf("Successfully loaded state\n");
+                    }
+                }
+                break;
+        }
     default:
         break;
     }
