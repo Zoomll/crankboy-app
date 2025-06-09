@@ -87,7 +87,7 @@ typedef struct PGB_GameScene
     PGB_Scene *scene;
     char *save_filename;
     char *rom_filename;
-    char *base_filename; // rom filename with extension stripped
+    char *base_filename;  // rom filename with extension stripped
 
     bool audioEnabled;
     bool audioLocked;
@@ -97,6 +97,7 @@ typedef struct PGB_GameScene
     unsigned int last_save_time;
     bool save_data_loaded_successfully;
 
+    // clang-format off
     // [7700] We disable save states for carts with battery-backed ram
     // because one could easily lose their save data by mistake.
     //
@@ -108,6 +109,7 @@ typedef struct PGB_GameScene
     // BIG WARNING MESSAGE before they save state on a battery-backed ROM so that
     // they accept responsibility for what misery may ensue when mixing save types.
                                 bool save_states_supported;
+    // clang-format off
 
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;

@@ -221,6 +221,11 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
             gameScene->base_filename = pgb_basename(rom_filename, true);
 
+            gameScene->cartridge_has_battery = context->gb->cart_battery;
+            playdate->system->logToConsole(
+                "Cartridge has battery: %s",
+                gameScene->cartridge_has_battery ? "Yes" : "No");
+
             //      _             ____
             //     / \           /    \,
             //    / ! \         | STOP |
@@ -230,7 +235,9 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING
             // THIS LINE
             //      |              |
-            gameScene->save_states_supported = !context->gb->cart_battery;
+            gameScene->save_states_supported =
+                !gameScene->cartridge_has_battery;
+            ;
 
             gameScene->last_save_time = 0;
 
@@ -243,10 +250,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
             gameScene->rtc_time = now;
             gameScene->rtc_seconds_to_catch_up = 0;
-            gameScene->cartridge_has_battery = context->gb->cart_battery;
-            playdate->system->logToConsole(
-                "Cartridge has battery: %s",
-                gameScene->cartridge_has_battery ? "Yes" : "No");
 
             uint8_t actual_cartridge_type = context->gb->gb_rom[0x0147];
             if (actual_cartridge_type == 0x0F || actual_cartridge_type == 0x10)
@@ -301,7 +304,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             gb_init_lcd(context->gb);
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
             gameScene->state = PGB_GameSceneStateLoaded;
-            
+
             playdate->system->logToConsole("gb context initialized.");
         }
         else
@@ -959,7 +962,7 @@ __section__(".text.tick") __space
         context->gb = tmp_gb;
 #endif
 
-        if (context->gb->cart_battery)
+        if (gameScene->cartridge_has_battery)
         {
             save_check(context->gb);
         }
@@ -1567,8 +1570,9 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
         SDFile *file = playdate->file->open(state_name, kFileWrite);
         if (!file)
         {
-            playdate->system->logToConsole("failed to open save state file \"%s\": %s\n",
-                                           state_name, playdate->file->geterr());
+            playdate->system->logToConsole(
+                "failed to open save state file \"%s\": %s\n", state_name,
+                playdate->file->geterr());
         }
         else
         {
@@ -1580,11 +1584,13 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
                 printf("Wrote %d bytes\n", written);
                 if (written == 0)
                 {
-                    printf("Error writing save file \"%s\" (0 bytes written)\n", state_name);
+                    printf("Error writing save file \"%s\" (0 bytes written)\n",
+                           state_name);
                 }
                 else if (written <= 0)
                 {
-                    printf("Error writing save file \"%s\": %s\n", state_name, playdate->file->geterr());
+                    printf("Error writing save file \"%s\": %s\n", state_name,
+                           playdate->file->geterr());
                     success = false;
                     break;
                 }
@@ -1615,8 +1621,9 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
     SDFile *file = playdate->file->open(state_name, kFileReadData);
     if (!file)
     {
-        playdate->system->logToConsole("failed to open save state file \"%s\": %s",
-                                       state_name, playdate->file->geterr());
+        playdate->system->logToConsole(
+            "failed to open save state file \"%s\": %s", state_name,
+            playdate->file->geterr());
     }
     else
     {
@@ -1647,7 +1654,9 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
                             playdate->file->read(file, buffptr, size_remaining);
                         if (read == 0)
                         {
-                            printf("Error, read 0 bytes from save file, \"%s\"\n", state_name);
+                            printf(
+                                "Error, read 0 bytes from save file, \"%s\"\n",
+                                state_name);
                             success = false;
                             break;
                         }
