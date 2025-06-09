@@ -547,6 +547,8 @@ lua_State *script_begin(const char *game_name, struct PGB_GameScene *game_scene)
     {
         return NULL;
     }
+    
+    playdate->system->logToConsole("Using script %s", info->script_path);
 
     L = luaL_newstate();
     open_sandboxed_libs(L);

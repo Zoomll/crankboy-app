@@ -206,6 +206,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     uint8_t *rom = read_rom_to_ram(rom_filename, &romError);
     if (rom)
     {
+        playdate->system->logToConsole("Opened ROM.");
         context->rom = rom;
 
         static uint8_t lcd[LCD_SIZE];
@@ -217,6 +218,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
         if (gb_ret == GB_INIT_NO_ERROR)
         {
+            playdate->system->logToConsole("Initialized gb context.");
             char *save_filename = pgb_save_filename(rom_filename, false);
             gameScene->save_filename = save_filename;
 
@@ -284,6 +286,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                     actual_cartridge_type, context->gb->mbc);
             }
 
+            playdate->system->logToConsole("Initializing audio...");
             audio_init(gb->hram + 0x10);
             if (gameScene->audioEnabled)
             {
@@ -296,6 +299,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             gb_init_lcd(context->gb);
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
             gameScene->state = PGB_GameSceneStateLoaded;
+            
+            playdate->system->logToConsole("gb context initialized.");
         }
         else
         {
@@ -308,6 +313,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     }
     else
     {
+        playdate->system->logToConsole("Failed to open ROM.");
         gameScene->state = PGB_GameSceneStateError;
         gameScene->error = romError;
     }
@@ -1403,8 +1409,8 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene,
         SDFile *file = playdate->file->open(state_name, kFileWrite);
         if (!file)
         {
-            playdate->system->logToConsole("failed to open save state file \"%s\"\n",
-                                           state_name);
+            playdate->system->logToConsole("failed to open save state file \"%s\": %s\n",
+                                           state_name, playdate->file->geterr());
         }
         else
         {
@@ -1413,9 +1419,14 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene,
             while (save_size > 0)
             {
                 int written = playdate->file->write(file, buffptr, save_size);
-                if (written <= 0)
+                printf("Wrote %d bytes\n", written);
+                if (written == 0)
                 {
-                    printf("Error writing save file \"%s\"\n", state_name);
+                    printf("Error writing save file \"%s\" (0 bytes written)\n", state_name);
+                }
+                else if (written <= 0)
+                {
+                    printf("Error writing save file \"%s\": %s\n", state_name, playdate->file->geterr());
                     success = false;
                     break;
                 }
@@ -1447,8 +1458,8 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene,
     SDFile *file = playdate->file->open(state_name, kFileReadData);
     if (!file)
     {
-        playdate->system->logToConsole("failed to open save state file \"%s\"",
-                                       state_name);
+        playdate->system->logToConsole("failed to open save state file \"%s\": %s",
+                                       state_name, playdate->file->geterr());
     }
     else
     {
@@ -1458,8 +1469,8 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene,
         {
             if (playdate->file->seek(file, 0, SEEK_SET))
             {
-                printf("Failed to seek to start of state file \"%s\"",
-                       state_name);
+                printf("Failed to seek to start of state file \"%s\": %s",
+                       state_name, playdate->file->geterr());
             }
             else
             {
@@ -1479,14 +1490,14 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene,
                             playdate->file->read(file, buffptr, size_remaining);
                         if (read == 0)
                         {
-                            printf("Save file too short, \"%s\"\n", state_name);
+                            printf("Error, read 0 bytes from save file, \"%s\"\n", state_name);
                             success = false;
                             break;
                         }
                         if (read < 0)
                         {
-                            printf("Error reading save file \"%s\"\n",
-                                   state_name);
+                            printf("Error reading save file \"%s\": %s\n",
+                                   state_name, playdate->file->geterr());
                             success = false;
                             break;
                         }

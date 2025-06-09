@@ -737,8 +737,10 @@ LUAMOD_API int luaopen_package (lua_State *L) {
   luaL_newlib(L, pk_funcs);  /* create 'package' table */
   createsearcherstable(L);
   /* set paths */
+  #if 0 /* modified for CrankBoy */
   setpath(L, "path", LUA_PATH_VAR, LUA_PATH_DEFAULT);
   setpath(L, "cpath", LUA_CPATH_VAR, LUA_CPATH_DEFAULT);
+  #endif
   /* store config information */
   lua_pushliteral(L, LUA_DIRSEP "\n" LUA_PATH_SEP "\n" LUA_PATH_MARK "\n"
                      LUA_EXEC_DIR "\n" LUA_IGMARK "\n");
