@@ -189,7 +189,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "games.",
         "Displays the current\nframes-per-second\non screen.",
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
-        "Load the previously-\ncreated snapshot",
+        "Load the previously\ncreated snapshot.",
     };
 
     if (!gameScene || !gameScene->save_states_supported)
