@@ -1403,7 +1403,7 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene,
         SDFile *file = playdate->file->open(state_name, kFileWrite);
         if (!file)
         {
-            playdate->system->logToConsole("failed to open save file \"%s\"\n",
+            playdate->system->logToConsole("failed to open save state file \"%s\"\n",
                                            state_name);
         }
         else
@@ -1447,7 +1447,7 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene,
     SDFile *file = playdate->file->open(state_name, kFileReadData);
     if (!file)
     {
-        playdate->system->logToConsole("failed to open save file \"%s\"",
+        playdate->system->logToConsole("failed to open save state file \"%s\"",
                                        state_name);
     }
     else
@@ -1458,7 +1458,7 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene,
         {
             if (playdate->file->seek(file, 0, SEEK_SET))
             {
-                printf("Failed to seek to start of save file \"%s\"",
+                printf("Failed to seek to start of state file \"%s\"",
                        state_name);
             }
             else

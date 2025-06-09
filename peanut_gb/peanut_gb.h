@@ -427,6 +427,7 @@ struct gb_s
     /* Whether the MBC has internal RAM. */
     uint8_t cart_ram : 1;
     uint8_t cart_battery : 1;
+    uint8_t enable_cart_ram : 1;
     /* Number of ROM banks in cartridge. */
     uint16_t num_rom_banks_mask;
     /* Number of RAM banks in cartridge. */
@@ -435,7 +436,6 @@ struct gb_s
     uint16_t selected_rom_bank;
     /* WRAM and VRAM bank selection not available. */
     uint8_t cart_ram_bank;
-    uint8_t enable_cart_ram;
     /* Cartridge ROM/RAM mode select. */
     uint8_t cart_mode_select;
     union
@@ -449,6 +449,8 @@ struct gb_s
             uint8_t high;
         } rtc_bits;
         uint8_t cart_rtc[5];
+        
+        // Put other MBC-specific data in this union.
     };
 
     union
@@ -744,7 +746,7 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
 
     case 0xA:
     case 0xB:
-        if (gb->cart_ram && gb->enable_cart_ram)
+        if (gb->enable_cart_ram)
         {
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
                 return gb->cart_rtc[gb->cart_ram_bank - 0x08];
@@ -807,7 +809,7 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
                 return gb->hram[addr - IO_ADDR] | ortab[addr - IO_ADDR];
             }
         }
-
+        
         /* IO and Interrupts. */
         switch (addr & 0xFF)
         {
@@ -1148,7 +1150,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
 
     case 0xA:
     case 0xB:
-        if (gb->cart_ram && gb->enable_cart_ram)
+        if (gb->enable_cart_ram)
         {
             const u8 prev = gb->gb_cart_ram[addr - CART_RAM_ADDR];
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
@@ -4812,6 +4814,20 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s *gb)
             }
             break;
         case 0x10:  // ld (a8)
+            {
+                cycles = 3;
+                u16 addr = 0xFF00 | (FETCH8(gb));
+                if (opcode & 0x10)
+                {
+                    u8 v = __gb_read(gb, addr);
+                    gb->cpu_reg.a = v;
+                }
+                else
+                {
+                    __gb_write(gb, addr, gb->cpu_reg.a);
+                }
+            }
+            break;
         case 0x12:  // ld (C)
         case 0x13:
         case 0x1B:  // di/ei
