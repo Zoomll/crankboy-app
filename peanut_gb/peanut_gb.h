@@ -427,7 +427,10 @@ struct gb_s
     /* Whether the MBC has internal RAM. */
     uint8_t cart_ram : 1;
     uint8_t cart_battery : 1;
+    
+    // state flags for cart ram
     uint8_t enable_cart_ram : 1;
+    uint8_t cart_mode_select : 1; // 1 if ram mode
     /* Number of ROM banks in cartridge. */
     uint16_t num_rom_banks_mask;
     /* Number of RAM banks in cartridge. */
@@ -436,8 +439,7 @@ struct gb_s
     uint16_t selected_rom_bank;
     /* WRAM and VRAM bank selection not available. */
     uint8_t cart_ram_bank;
-    /* Cartridge ROM/RAM mode select. */
-    uint8_t cart_mode_select;
+    uint8_t* selected_cart_bank_addr;
     union
     {
         struct
@@ -648,6 +650,35 @@ __section__(".text.pgb") static void __gb_update_selected_bank_addr(
 
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
+
+__section__(".text.pgb") static void __gb_update_selected_cart_bank_addr(
+    struct gb_s *gb)
+{
+    // NULL indicates special access, must do _full version
+    gb->selected_cart_bank_addr = NULL;
+    if (gb->enable_cart_ram)
+    {
+        if (gb->mbc == 3 && gb->cart_ram_bank >= 0x8)
+        {
+            gb->selected_cart_bank_addr = NULL;
+        }
+        else if ((gb->cart_mode_select || gb->mbc != 1) &&
+                     gb->cart_ram_bank < gb->num_ram_banks)
+        {
+            gb->selected_cart_bank_addr = gb->gb_cart_ram + (gb->cart_ram_bank * CRAM_BANK_SIZE);
+        }
+        else {
+            gb->selected_cart_bank_addr = gb->gb_cart_ram;
+        }
+    }
+    
+    if (gb->selected_cart_bank_addr)
+    {
+        // so that accesses don't need to subtract 0xA000
+        gb->selected_cart_bank_addr -= 0xA000;
+    }
+}
+
 
 static uint8_t xram[0x100 - 0xA0];
 
@@ -1068,8 +1099,10 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
     case 0x1:
         if (gb->mbc == 2 && addr & 0x10)
             return;
-        else if (gb->mbc > 0 && gb->cart_ram)
+        else if (gb->mbc > 0 && gb->cart_ram) {
             gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
+            __gb_update_selected_cart_bank_addr(gb);
+        }
 
         return;
 
@@ -1131,12 +1164,13 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
             gb->cart_ram_bank = val;
         else if (gb->mbc == 5)
             gb->cart_ram_bank = (val & 0x0F);
-
+        __gb_update_selected_cart_bank_addr(gb);
         return;
 
     case 0x6:
     case 0x7:
         gb->cart_mode_select = (val & 1);
+        __gb_update_selected_cart_bank_addr(gb);
         return;
 
     case 0x8:
@@ -1394,6 +1428,10 @@ __core_section("short") static uint8_t
     if likely (addr >= 0xFF80 && addr <= 0xFFFE)
     {
         return gb->hram[addr % 0x100];
+    }
+    if likely (addr >= 0xA000 && addr < 0xC000 && gb->selected_cart_bank_addr)
+    {
+        return gb->selected_cart_bank_addr[addr];
     }
     return __gb_read_full(gb, addr);
 }
@@ -5443,6 +5481,7 @@ const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
     void* preserved_fields[] = {
         &gb->gb_rom, &gb->wram, &gb->vram, &gb->gb_cart_ram,
         &gb->breakpoints, &gb->lcd, &gb->direct.priv,
+        &gb->gb_error, &gb->gb_serial_tx, &gb->gb_serial_rx,
     #if ENABLE_BGCACHE
         &gb->bgcache,
     #endif
@@ -5493,6 +5532,8 @@ const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
         __gb_update_bgcache_tile_data_deferred(gb, i);
     }
     #endif
+    __gb_update_selected_bank_addr(gb);
+    __gb_update_selected_cart_bank_addr(gb);
     
     // intentionally skipped: lcd; bgcache; rom
     
@@ -5556,6 +5597,7 @@ __section__(".rare") void gb_reset(struct gb_s *gb)
     gb->enable_cart_ram = 0;
     gb->cart_mode_select = 0;
     __gb_update_selected_bank_addr(gb);
+    __gb_update_selected_cart_bank_addr(gb);
 
     /* Initialise CPU registers as though a DMG. */
     gb->cpu_reg.af = 0x01B0;
