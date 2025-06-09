@@ -47,6 +47,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
     PGB_SettingsScene *settingsScene = object;
     PGB_GameScene *gameScene = settingsScene->gameScene;
 
+    // In the Game Scene we can show all items.
+    // But in the Library Scene only Sound, 30FPS Mode & FPS
+    const int menuItemCount = gameScene ? 5 : 3;
+
     PGB_Scene_update(settingsScene->scene, dt);
 
     PDButtons pushed;
@@ -55,8 +59,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
     if (pushed & kButtonDown)
     {
         settingsScene->cursorIndex++;
-        if (settingsScene->cursorIndex >= 5)
-            settingsScene->cursorIndex = 5;
+        if (settingsScene->cursorIndex >= menuItemCount)
+            settingsScene->cursorIndex = menuItemCount - 1;
     }
     if (pushed & kButtonUp)
     {
@@ -92,20 +96,31 @@ static void PGB_SettingsScene_update(void *object, float dt)
         else if (settingsScene->cursorIndex == 2)
         {  // Show FPS
             preferences_display_fps = !preferences_display_fps;
-        } else if (settingsScene->cursorIndex == 3 && gameScene->save_states_supported)
-        {   // save state
-            if (!save_state(gameScene, 0)) {
+        }
+        else if (settingsScene->cursorIndex == 3 && gameScene &&
+                 gameScene->save_states_supported)
+        {  // save state
+            if (!save_state(gameScene, 0))
+            {
                 // TODO: pop-up message
                 playdate->system->logToConsole("Error saving state %d", 0);
-            } else {
-                playdate->system->logToConsole("Saved state %d successfully", 0);
             }
-        } else if (settingsScene->cursorIndex == 4 && gameScene->save_states_supported)
-        {   // load state
-            if (!load_state(gameScene, 0)) {
+            else
+            {
+                playdate->system->logToConsole("Saved state %d successfully",
+                                               0);
+            }
+        }
+        else if (settingsScene->cursorIndex == 4 && gameScene &&
+                 gameScene->save_states_supported)
+        {  // load state
+            if (!load_state(gameScene, 0))
+            {
                 // TODO: pop-up message
                 playdate->system->logToConsole("Error loading state %d", 0);
-            } else {
+            }
+            else
+            {
                 playdate->system->logToConsole("Loaded save state %d", 0);
             }
         }
@@ -120,8 +135,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
 
-    const char *options[] = {"Sound", "30FPS Mode", "Show FPS", "Save State", "Load State"};
-    if (!gameScene->save_states_supported) {
+    const char *options[] = {"Sound", "30FPS Mode", "Show FPS", "Save State",
+                             "Load State"};
+    if (!gameScene || !gameScene->save_states_supported)
+    {
         options[3] = "(save state)";
         options[4] = "(load state)";
     }
@@ -129,7 +146,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
                      preferences_display_fps, 0, 0};
     bool is_option[] = {1, 1, 1, 0, 0};
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < menuItemCount; i++)
     {
         int y = 50 + i * 30;
         const char *stateText = values[i] ? "On" : "Off";
@@ -158,7 +175,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {
             // Draw the state (right-aligned)
             playdate->graphics->drawText(stateText, strlen(stateText),
-                                     kUTF8Encoding, stateX, y);
+                                         kUTF8Encoding, stateX, y);
         }
     }
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
@@ -174,9 +191,12 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
         "Load the previously-\ncreated snapshot",
     };
-    
-    if (!gameScene->save_states_supported) {
-        descriptions[3] = descriptions[4] = "CrankBoy does not\ncurrently support\ncreating save\nstates with a\nROM that has\nits own save data.";
+
+    if (!gameScene || !gameScene->save_states_supported)
+    {
+        descriptions[3] = descriptions[4] =
+            "CrankBoy does not\ncurrently support\ncreating save\nstates with "
+            "a\nROM that has\nits own save data.";
     }
 
     const char *selectedDescription = descriptions[settingsScene->cursorIndex];
