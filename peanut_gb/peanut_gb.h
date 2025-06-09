@@ -4679,7 +4679,8 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s *gb)
             {
                 if (srcidx == 7)
                 {
-                    return __gb_rare_instruction(gb, opcode);
+                    gb->gb_halt = 1;
+                    return 4;
                 }
                 else
                 {
@@ -5971,11 +5972,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s *restrict gb,
         gb->cpu_reg.a = a;
         gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
         gb->cpu_reg.f_bits.h = 0;
-    }
-        return 1 * 4;
-    case 0x76:  // halt
-    {
-        gb->gb_halt = 1;
     }
         return 1 * 4;
     case 0xE8:
