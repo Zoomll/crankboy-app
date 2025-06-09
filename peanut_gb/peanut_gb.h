@@ -4863,7 +4863,10 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s *gb)
         case 0x10:  // ld (a8)
             {
                 cycles = 3;
-                u16 addr = 0xFF00 | (FETCH8(gb));
+                // repurpose 'srcidx'
+                srcidx = (FETCH8(gb));
+            hram_op:;
+                u16 addr = 0xFF00 | srcidx;
                 if (opcode & 0x10)
                 {
                     u8 v = __gb_read(gb, addr);
@@ -4876,6 +4879,12 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s *gb)
             }
             break;
         case 0x12:  // ld (C)
+            {
+            cycles = 2;
+            srcidx = gb->cpu_reg.c;
+            goto hram_op;
+            }
+            break;
         case 0x13:
         case 0x1B:  // di/ei
         case 0x14:
@@ -5969,12 +5978,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s *restrict gb,
         gb->gb_halt = 1;
     }
         return 1 * 4;
-    case 0xE0:
-        __gb_write(gb, 0xFF00 | __gb_read(gb, gb->cpu_reg.pc++), gb->cpu_reg.a);
-        return 3 * 4;
-    case 0xE2:
-        __gb_write(gb, 0xFF00 | gb->cpu_reg.c, gb->cpu_reg.a);
-        return 2 * 4;
     case 0xE8:
     {
         int16_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
@@ -5985,12 +5988,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s *restrict gb,
     case 0xE9:
         gb->cpu_reg.pc = gb->cpu_reg.hl;
         return 4;
-    case 0xF0:
-        gb->cpu_reg.a = __gb_read(gb, 0xFF00 | __gb_read(gb, gb->cpu_reg.pc++));
-        return 3 * 4;
-    case 0xF2:
-        gb->cpu_reg.a = __gb_read(gb, 0xFF00 | gb->cpu_reg.c);
-        return 2 * 4;
     case 0xF3:
         gb->gb_ime = 0;
         return 1 * 4;
@@ -5999,7 +5996,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s *restrict gb,
         int16_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
         gb->cpu_reg.f = 0;
         gb->cpu_reg.hl = __gb_add16(gb, gb->cpu_reg.sp, offset);
-        return 3 * 4;
     }
         return 3 * 4;
     case 0xF9:
