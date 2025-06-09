@@ -91,6 +91,7 @@ typedef struct PGB_GameScene
 
     bool audioEnabled;
     bool audioLocked;
+    bool cartridge_has_battery;
     bool cartridge_has_rtc;
     bool staticSelectorUIDrawn;
     unsigned int last_save_time;

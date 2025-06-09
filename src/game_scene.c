@@ -128,9 +128,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     scene->preferredRefreshRate = 30;
 
-    gameScene->rtc_time = playdate->system->getSecondsSinceEpoch(NULL);
-    gameScene->rtc_seconds_to_catch_up = 0;
-
     gameScene->rom_filename = string_copy(rom_filename);
     gameScene->save_filename = NULL;
 
@@ -246,6 +243,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
             gameScene->rtc_time = now;
             gameScene->rtc_seconds_to_catch_up = 0;
+            gameScene->cartridge_has_battery = context->gb->cart_battery;
+            playdate->system->logToConsole(
+                "Cartridge has battery: %s",
+                gameScene->cartridge_has_battery ? "Yes" : "No");
 
             uint8_t actual_cartridge_type = context->gb->gb_rom[0x0147];
             if (actual_cartridge_type == 0x0F || actual_cartridge_type == 0x10)
@@ -459,10 +460,10 @@ static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
     *last_save_time = 0;
 
     const size_t sram_len = gb_get_save_size(gb);
-    const uint8_t cart_type = gb->gb_rom[0x0147];
-    const bool has_rtc = (cart_type == 0x0F || cart_type == 0x10);
 
-    // Allocate memory for SRAM
+    PGB_GameSceneContext *context = gb->direct.priv;
+    PGB_GameScene *gameScene = context->scene;
+
     gb->gb_cart_ram = (sram_len > 0) ? pgb_malloc(sram_len) : NULL;
     if (gb->gb_cart_ram)
     {
@@ -476,26 +477,20 @@ static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
         return false;
     }
 
-    // 1. Read SRAM
     if (sram_len > 0)
     {
         playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
     }
 
-    // 2. If RTC, read registers and the saved timestamp
     bool rtc_loaded_successfully = false;
-    if (has_rtc)
+    if (gameScene->cartridge_has_battery)
     {
-        // Try to read the 5 RTC bytes
         if (playdate->file->read(f, gb->cart_rtc, sizeof(gb->cart_rtc)) ==
             sizeof(gb->cart_rtc))
         {
-            // Success, now try to read the absolute timestamp that follows
             if (playdate->file->read(f, last_save_time, sizeof(unsigned int)) ==
                 sizeof(unsigned int))
             {
-                // We successfully loaded the RTC registers AND the last save
-                // time.
                 rtc_loaded_successfully = true;
             }
         }
@@ -510,12 +505,11 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
     // Get the size of the save RAM from the gb context.
     const size_t sram_len = gb_get_save_size(gb);
 
-    // Check if the cartridge has an RTC.
-    const uint8_t cart_type = gb->gb_rom[0x0147];
-    const bool has_rtc = (cart_type == 0x0F || cart_type == 0x10);
+    PGB_GameSceneContext *context = gb->direct.priv;
+    PGB_GameScene *gameScene = context->scene;
 
-    // If there is nothing to save, exit.
-    if (sram_len == 0 && !has_rtc)
+    // If there is no battery, exit.
+    if (!gameScene->cartridge_has_battery)
     {
         return;
     }
@@ -547,8 +541,6 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
                     err_str);
             }
         }
-        // If the stat call succeeded, it means the directory already exists,
-        // so we do nothing and proceed.
     }
     pgb_free(dir_path);
 
@@ -570,8 +562,8 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
         playdate->file->write(f, gb->gb_cart_ram, (unsigned int)sram_len);
     }
 
-    // 2. If the cartridge has an RTC, append its data.
-    if (has_rtc)
+    // 2. If the cartridge has a battery, append its data.
+    if (gameScene->cartridge_has_battery)
     {
         // Write the 5 internal RTC register bytes.
         playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
@@ -1326,7 +1318,7 @@ static void PGB_GameScene_menu(void *object)
         bool show_save_time = false;
         time_t save_timestamp = 0;
 
-        if (gameScene->cartridge_has_rtc && gameScene->last_save_time > 0)
+        if (gameScene->cartridge_has_battery && gameScene->last_save_time > 0)
         {
             show_save_time = true;
             save_timestamp = gameScene->last_save_time + 946684800;
