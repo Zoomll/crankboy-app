@@ -11,9 +11,10 @@ static uint32_t *dtcm_low_canary_addr = NULL;
 
 static bool is_dtcm_init = false;
 
-// low address that's within stack region,
+// high address that's within stack region,
 // can allocate global variables from here+
 void *dtcm_mempool = NULL;
+void* dtcm_mempool_start = NULL;
 
 __dtcm_ctrl void *dtcm_alloc(size_t size)
 {
@@ -47,32 +48,40 @@ __dtcm_ctrl void dtcm_init(void)
         return;
     is_dtcm_init = true;
 
-    if (dtcm_mempool == NULL)
+    if (dtcm_mempool_start == NULL)
     {
         is_dtcm_init = false;
         playdate->system->error(
             "Attempt to enable DTCM, but mempool region not set!");
         return;
     }
+    
+    dtcm_mempool = dtcm_mempool_start;
 
 #ifdef DTCM_ALLOC
-    *(uint32_t *)dtcm_mempool = DTCM_CANARY;
+    *(uint32_t *)dtcm_mempool_start = DTCM_CANARY;
     dtcm_low_canary_addr = (uint32_t *)dtcm_alloc(sizeof(uint32_t));
     *dtcm_low_canary_addr = DTCM_CANARY;
     playdate->system->logToConsole("DTCM init");
 #endif
 }
 
+__dtcm_ctrl void dtcm_deinit(void)
+{
+    is_dtcm_init = 0;
+    dtcm_mempool = dtcm_mempool_start;
+}
+
 __dtcm_ctrl void dtcm_set_mempool(void *addr)
 {
-    if (dtcm_mempool != NULL)
+    if (dtcm_mempool_start != NULL)
     {
         playdate->system->error("Cannot set DTCM mempool twice.");
         return;
     }
-    dtcm_mempool = addr;
+    dtcm_mempool_start = addr;
 #ifdef DTCM_ALLOC
-    playdate->system->logToConsole("DTCM mempool: %p\n", dtcm_mempool);
+    playdate->system->logToConsole("DTCM mempool: %p\n", dtcm_mempool_start);
 #endif
 }
 

@@ -7,6 +7,7 @@
 //
 
 #include "preferences.h"
+#include "revcheck.h"
 
 static const int pref_version = 1;
 
@@ -16,6 +17,7 @@ static SDFile *pref_file;
 bool preferences_sound_enabled = false;
 bool preferences_display_fps = false;
 bool preferences_frame_skip = false;
+bool preferences_itcm = false;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -30,6 +32,7 @@ void preferences_init(void)
     preferences_sound_enabled = true;
     preferences_display_fps = false;
     preferences_frame_skip = false;
+    preferences_itcm = (pd_rev == PD_REV_A);
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
@@ -52,6 +55,7 @@ void preferences_read_from_disk(void)
         preferences_sound_enabled = preferences_read_uint8();
         preferences_display_fps = preferences_read_uint8();
         preferences_frame_skip = preferences_read_uint8();
+        preferences_itcm = preferences_read_uint8();
 
         playdate->file->close(pref_file);
     }
@@ -59,6 +63,7 @@ void preferences_read_from_disk(void)
 
 void preferences_save_to_disk(void)
 {
+    playdate->system->logToConsole("Saving preferences.");
     pref_file = playdate->file->open(pref_filename, kFileWrite);
 
     preferences_write_uint32(pref_version);
@@ -66,6 +71,7 @@ void preferences_save_to_disk(void)
     preferences_write_uint8(preferences_sound_enabled ? 1 : 0);
     preferences_write_uint8(preferences_display_fps ? 1 : 0);
     preferences_write_uint8(preferences_frame_skip ? 1 : 0);
+    preferences_write_uint8(preferences_itcm ? 1 : 0);
 
     playdate->file->close(pref_file);
 }

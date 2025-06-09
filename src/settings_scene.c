@@ -49,12 +49,50 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     // In the Game Scene we can show all items.
     // But in the Library Scene only Sound, 30FPS Mode & FPS
-    const int menuItemCount = gameScene ? 5 : 3;
+    int menuItemCount = gameScene ? 5 : 3;
 
     PGB_Scene_update(settingsScene->scene, dt);
 
     PDButtons pushed;
     playdate->system->getButtonState(NULL, &pushed, NULL);
+    
+    const char *options[] = {"Sound", "30 FPS Mode", "Show FPS", "Save State",
+                             "Load State"};
+    if (!gameScene || !gameScene->save_states_supported)
+    {
+        options[3] = "(save state)";
+        options[4] = "(load state)";
+    }
+    bool values[] = {preferences_sound_enabled, preferences_frame_skip,
+                     preferences_display_fps, 0, 0};
+    bool is_option[] = {1, 1, 1, 0, 0};
+    
+    const char *descriptions[] = {
+        "Toggles all in-game\naudio. Muting may\nimprove performance.",
+        "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
+        "for most games.\n \nDespite appearing to be\n30 FPS, the game itself\nstill runs at full speed.",
+        "Displays the current\nframes-per-second\non screen.",
+        "Create a snapshot of\nthis moment, which\ncan be resumed later.",
+        "Load the previously\ncreated snapshot.",
+    };
+
+    if (!gameScene || !gameScene->save_states_supported)
+    {
+        descriptions[3] = descriptions[4] =
+            "CrankBoy does not\ncurrently support\ncreating save\nstates with "
+            "a\nROM that has\nits own save data.";
+    }
+    
+    #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+    if (!gameScene)
+    {
+        options[3] = "ITCM acceleration";
+        values[3] = preferences_itcm;
+        is_option[3] = 1;
+        descriptions[3] = "Unstable, but greatly\nimproves performance.\n\nRuns emulator core\ndirectly from the stack.";
+        ++menuItemCount;
+    }
+    #endif
 
     if (pushed & kButtonDown)
     {
@@ -97,6 +135,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {  // Show FPS
             preferences_display_fps = !preferences_display_fps;
         }
+        else if (settingsScene->cursorIndex == 3 && is_option[3])
+        {
+            preferences_itcm ^= 1;
+        }
         else if (settingsScene->cursorIndex == 3 && gameScene &&
                  gameScene->save_states_supported)
         {  // save state
@@ -135,17 +177,6 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
 
-    const char *options[] = {"Sound", "30FPS Mode", "Show FPS", "Save State",
-                             "Load State"};
-    if (!gameScene || !gameScene->save_states_supported)
-    {
-        options[3] = "(save state)";
-        options[4] = "(load state)";
-    }
-    bool values[] = {preferences_sound_enabled, preferences_frame_skip,
-                     preferences_display_fps, 0, 0};
-    bool is_option[] = {1, 1, 1, 0, 0};
-
     for (int i = 0; i < menuItemCount; i++)
     {
         int y = 50 + i * 30;
@@ -182,22 +213,6 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     // --- Right Pane (Description - 40%) ---
     playdate->graphics->setFont(PGB_App->labelFont);
-
-    const char *descriptions[] = {
-        "Toggles all in-game\naudio. Muting may\nimprove performance.",
-        "Limits framerate to 30 FPS.\nImproves performance in\ndemanding "
-        "games.\n \nThe game itself still\nruns at full speed.",
-        "Displays the current\nframes-per-second\non screen.",
-        "Create a snapshot of\nthis moment, which\ncan be resumed later.",
-        "Load the previously\ncreated snapshot.",
-    };
-
-    if (!gameScene || !gameScene->save_states_supported)
-    {
-        descriptions[3] = descriptions[4] =
-            "CrankBoy does not\ncurrently support\ncreating save\nstates with "
-            "a\nROM that has\nits own save data.";
-    }
 
     const char *selectedDescription = descriptions[settingsScene->cursorIndex];
 
@@ -253,4 +268,5 @@ static void PGB_SettingsScene_free(void *object)
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
+    preferences_save_to_disk();
 }

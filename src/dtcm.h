@@ -7,6 +7,7 @@ extern void *dtcm_mempool;
 
 void dtcm_set_mempool(void *addr);
 void dtcm_init(void);
+void dtcm_deinit(void);
 bool dtcm_verify(const char *context);
 bool dtcm_enabled(void);  // true if dtcm_init called and DTCM_ALLOC enabled
 

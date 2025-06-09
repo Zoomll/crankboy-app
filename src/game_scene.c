@@ -74,14 +74,8 @@ static PDMenuItem *frameSkipMenuItem;
 #if ITCM_CORE
 void *core_itcm_reloc = NULL;
 
-__section__(".rare") void itcm_core_init(void)
+__section__(".rare") void itcm_core_init()
 {
-    if (core_itcm_reloc == (void *)&__itcm_start)
-        core_itcm_reloc = NULL;
-
-    if (core_itcm_reloc != NULL)
-        return;
-
     if (!dtcm_enabled())
     {
         // just use original non-relocated code
@@ -89,6 +83,12 @@ __section__(".rare") void itcm_core_init(void)
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
+    
+    if (core_itcm_reloc == (void *)&__itcm_start)
+        core_itcm_reloc = NULL;
+
+    if (core_itcm_reloc != NULL)
+        return;
 
     // make region to copy instructions to; ensure it has same cache alignment
     core_itcm_reloc =
@@ -162,8 +162,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     // we don't use the DTCM trick on REV_B, because it's untested
     // FIXME
-    if (pd_rev == PD_REV_A)
+    if (preferences_itcm)
         dtcm_init();
+    else
+        dtcm_deinit();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
     static struct gb_s *gb = NULL;
