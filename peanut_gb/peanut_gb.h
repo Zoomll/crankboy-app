@@ -1390,6 +1390,10 @@ __core_section("short") static uint8_t
     {
         return gb->wram[addr % WRAM_SIZE];
     }
+    if likely (addr >= 0xFF80 && addr <= 0xFFFE)
+    {
+        return gb->hram[addr % 0x100];
+    }
     return __gb_read_full(gb, addr);
 }
 

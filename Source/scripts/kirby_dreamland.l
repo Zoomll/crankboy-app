@@ -1,3 +1,7 @@
+if true then
+    return
+end
+
 -- enable xram [0xFEA0-FEFF]
 pgb.ram_poke(0xFF57, 2)
 
