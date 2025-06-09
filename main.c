@@ -14,6 +14,7 @@
 #include "pd_api.h"
 #include "revcheck.h"
 #include "userstack.h"
+#include "version.h"
 
 #ifdef _WINDLL
 #define DllExport __declspec(dllexport)

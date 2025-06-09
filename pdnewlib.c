@@ -4,10 +4,19 @@ static const int PD_SEEK_SET = SEEK_SET;
 static const int PD_SEEK_CUR = SEEK_CUR;
 static const int PD_SEEK_END = SEEK_END;
 
+// print out newlib commands as they are invoked
+#define LOG_NEWLIB 0
+
 // clash -- unistd.h defines these, could be different
 #undef SEEK_SET
 #undef SEEK_CUR
 #undef SEEK_END
+
+#if LOG_NEWLIB
+#define LOG_NL(...) pd->system->logToConsole(__VA_ARGS__);
+#else
+#define LOG_NL(...) do {} while (0)
+#endif
 
 #ifdef TARGET_PLAYDATE
 #include <stdio.h>
@@ -50,6 +59,7 @@ int eventHandler_pdnewlib(PlaydateAPI* _pd, PDSystemEvent event, uint32_t arg)
 
 void _exit(int code)
 {
+
 	while (1)
 	{
 		pd->system->error("exited with code %d.", code);
@@ -63,10 +73,12 @@ void __exit(int code)
 
 int _kill(int pid, int sig)
 {
+	LOG_NL("_kill %d, %d", pid, sig);
 	return 0;
 }
 int _getpid(void)
 {
+	LOG_NL("_getpid");
 	return 1;
 }
 
@@ -121,22 +133,27 @@ static void log_buf_to_console(buf_t* buf)
 
 int _wait(int *status) {
   errno = ECHILD;
+  LOG_NL("_wait");
   return -1;
 }
 
 int _fork(void) {
+  LOG_NL("_fork");
   errno = ENOMEM;
   return -1;
 }
 
 int _execve(char *name, char **argv, char **env)
 {
+  LOG_NL("execve %s", name);
   errno = ENOMEM;
   return -1;
 }
 
 int _write(int handle, char* data, int size)
 {
+	if (handle >= FILEHANDLEOFF)
+		LOG_NL("_write f=%d, len=0x%x, d=%p", handle, size, data);
 	if (size == 0 || data == NULL) return 0;
 	
 	if (handle == HANDLE_STDOUT || handle == HANDLE_STDERR)
@@ -168,7 +185,8 @@ int _write(int handle, char* data, int size)
 
 int _read(int handle, char* data, int size)
 {
-	//pd->system->logToConsole("_read %d: %x bytes -> %p", handle, size, data);
+	if (handle >= FILEHANDLEOFF)
+		LOG_NL("_read f=%d, len=0x%x, d=%p", handle, size, data);
 	
 	if (size == 0 || data == NULL) return 0;
 	
@@ -194,7 +212,7 @@ int _read(int handle, char* data, int size)
 
 int _open(const char *name, int flags, int mode)
 {
-	//pd->system->logToConsole("_open \"%s\", %x, %x", name, flags, mode);
+	LOG_NL("_open \"%s\", flags=%x, mode=%x", name, flags, mode);
 	
 	int force_data = 0;
 	if (strncmp(name, "data:/", 5) == 0)
@@ -310,6 +328,8 @@ int _open(const char *name, int flags, int mode)
 
 int _close(int file)
 {
+	LOG_NL("_close f=%d", file);
+	
 	if (file >= FILEHANDLEOFF && file < FILEHANDLEOFF + MAXFILES)
 	{
 		file -= FILEHANDLEOFF;
@@ -318,7 +338,7 @@ int _close(int file)
 		{
 			if (pd->file->close(f))
 			{
-				// TODO: errno
+				errno = EIO;
 				return -1;
 			}
 			else
@@ -335,11 +355,13 @@ int _close(int file)
 
 int _mkdir(char* dir)
 {
+	LOG_NL("_mkdir \"%s\"", dir);
 	return pd->file->mkdir(dir);
 }
 
 int _rename(char* src, char* dst)
 {
+	LOG_NL("_rename \"%s\" -> \"%s\"", src, dst);
 	if (pd->file->rename(src, dst))
 	{
 		errno = ENOENT;
@@ -350,6 +372,7 @@ int _rename(char* src, char* dst)
 
 int _unlink(char* p)
 {
+	LOG_NL("_unlink \"%s\"", p);
 	if (pd->file->unlink(p, 1))
 	{
 		errno = ENOENT;
@@ -372,7 +395,7 @@ int _isatty(int file)
 }
 
 int _lseek(int file, int pos, int whence) {
-	
+	LOG_NL("_lseek f=%d, pos=%d, whence=%d", file, pos, whence);
 	// translate whence
 	int pdwhence;
 	switch (whence)
@@ -410,7 +433,7 @@ int _lseek(int file, int pos, int whence) {
 }
 
 int _fstat(int file, struct stat *st) {
-	//pd->system->logToConsole("_fstat");
+	LOG_NL("_fstat f=%d, %p", file, st);
 	memset(stat, 0, sizeof(stat));
 	if (_isatty(file))
 	{
@@ -426,7 +449,7 @@ int _fstat(int file, struct stat *st) {
 }
 
 int _stat(char *file, struct stat *st) {
-	//pd->system->logToConsole("_stat \"%s\"", file);
+	LOG_NL("_stat %p", st);
 	memset(stat, 0, sizeof(stat));
 	FileStat pdstat;
 	
@@ -447,6 +470,7 @@ int _stat(char *file, struct stat *st) {
 }
 
 clock_t _times(struct tms* buf) {
+	LOG_NL("_times %p", buf);
     // Get time in milliseconds since system start
     uint32_t ms = pd->system->getCurrentTimeMilliseconds();
     clock_t ticks = (clock_t)(ms / 10);  // pretend 1 tick = 10 ms = 100 Hz
@@ -462,6 +486,7 @@ clock_t _times(struct tms* buf) {
 }
 
 int _gettimeofday(struct timeval* tv, void* tz) {
+	LOG_NL("_gettimeofday %p %p", tv, tz);
     (void)tz;  // timezone is obsolete and unused
 
     uint32_t ms = pd->system->getCurrentTimeMilliseconds();
