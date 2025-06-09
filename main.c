@@ -54,6 +54,7 @@ __section__(".text.main") DllExport
         init_user_stack();
         pd_revcheck();
         playdate = pd;
+        playdate->system->logToConsole("Device: %s", pd_rev_description);
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");

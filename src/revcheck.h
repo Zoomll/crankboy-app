@@ -7,6 +7,7 @@
 #define PD_REV_SIMULATOR -1
 
 extern int pd_rev;
+extern const char* pd_rev_description;
 
 // calculates pd_rev (should run automatically on startup)
 void pd_revcheck(void);

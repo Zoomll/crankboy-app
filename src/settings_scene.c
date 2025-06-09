@@ -6,6 +6,7 @@
 //
 #include "settings_scene.h"
 
+#include "revcheck.h"
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "preferences.h"
@@ -89,7 +90,16 @@ static void PGB_SettingsScene_update(void *object, float dt)
         options[3] = "ITCM acceleration";
         values[3] = preferences_itcm;
         is_option[3] = 1;
-        descriptions[3] = "Unstable, but greatly\nimproves performance.\n\nRuns emulator core\ndirectly from the stack.";
+        static char* itcm_description = NULL;
+        if (itcm_description == NULL)
+        {
+            playdate->system->formatString(
+                &itcm_description,
+                "Unstable, but greatly\nimproves performance.\n\nRuns emulator core\ndirectly from the stack.\n \nWorks with Rev A.\n \n(Your device: %s)",
+                pd_rev_description
+            );
+        }
+        descriptions[3] = itcm_description ? itcm_description : "";
         ++menuItemCount;
     }
     #endif
