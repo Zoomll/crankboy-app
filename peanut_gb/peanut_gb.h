@@ -5267,14 +5267,24 @@ __core void gb_run_frame(struct gb_s *gb)
 #define ROM_HEADER_START 0x134
 #define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
 
+struct StateHeader {
+    char magic[8];
+    u32 version;
+    
+    // emulator architecture
+    uint8_t big_endian : 1;
+    uint8_t bits : 3;
+    
+    char reserved[8];
+};
+
 // Note: this version can be used on unswizzled structs,
 // i.e. no pointers should be followed
 __section__(".rare")
 uint32_t gb_get_state_size(struct gb_s *gb)
 {
     return strlen(PGB_SAVE_STATE_MAGIC)
-        + sizeof(uint32_t) // save state version number
-        + sizeof(struct gb_s)
+        + sizeof(struct StateHeader)
         + ROM_HEADER_SIZE // for safe-keeping
         + WRAM_SIZE
         + VRAM_SIZE
@@ -5291,10 +5301,19 @@ __section__(".rare")
 void gb_state_save(struct gb_s *gb, char* out)
 {
     // header
-    strcpy(out, PGB_SAVE_STATE_MAGIC);
-    out += strlen(PGB_SAVE_STATE_MAGIC);
-    *(uint32_t*)out = PGB_SAVE_STATE_VERSION;
-    out += 4;
+    struct StateHeader header;
+    memset(&header, 0, sizeof(header));
+    PGB_ASSERT(strlen(PGB_SAVE_STATE_MAGIC) == sizeof(header.magic));
+    strcpy(header.magic, PGB_SAVE_STATE_MAGIC);
+    header.version = PGB_SAVE_STATE_VERSION;
+    #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        header.big_endian = 1;
+    #else
+        header.big_endian = 0;
+    #endif
+    header.bits = sizeof(void*);
+    memcpy(out, &header, sizeof(header));
+    out += sizeof(header);
     
     // gb
     memcpy(out, gb, sizeof(*gb));
@@ -5341,22 +5360,36 @@ __section__(".rare")
 const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
 {
     // at least enough to read save header, rom header, and gb struct fields
-    if (size < 0x20 + sizeof(struct gb_s) + ROM_HEADER_SIZE)
+    if (size < sizeof(struct StateHeader) + sizeof(struct gb_s) + ROM_HEADER_SIZE)
     {
         return "State size too small";
     }
     
-    if (strncmp(in, PGB_SAVE_STATE_MAGIC, strlen(PGB_SAVE_STATE_MAGIC)))
+    struct StateHeader* header = (struct StateHeader*)in;
+    in += sizeof(struct StateHeader);
+    
+    if (strncmp(header->magic, PGB_SAVE_STATE_MAGIC, sizeof(header->magic)))
     {
         return "Not a CrankBoy savestate";
     }
-    in += strlen(PGB_SAVE_STATE_MAGIC);
     
-    const u32 version = *(u32*)in;
-    in += sizeof(u32);
-    if (version != PGB_SAVE_STATE_VERSION)
+    if (header->version != PGB_SAVE_STATE_VERSION)
     {
-        return "Save state version mismatch";
+        return "State comes from a different version of CrankBoy";
+    }
+    
+    if (header->bits != sizeof(void*))
+    {
+        return "State 64-bit/32-bit mismatch (note: Playdate/Simulator states cannot be shared)";
+    }
+    
+    #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        if (!header->big_endian)
+    #else
+        if (header->big_endian)
+    #endif
+    {
+        return "State endianness incorrect";
     }
     
     struct gb_s* in_gb = (struct gb_s*)(void*)in;
@@ -5381,8 +5414,29 @@ const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
     }
     in += ROM_HEADER_SIZE;
     
-    // we're in the clear now
+    // -- we're in the clear now --
+    
+    void* preserved_fields[] = {
+        &gb->gb_rom, &gb->wram, &gb->vram, &gb->gb_cart_ram,
+        &gb->breakpoints, &gb->lcd, &gb->direct.priv,
+    #if ENABLE_BGCACHE
+        &gb->bgcache,
+    #endif
+    };
+    
+    void* preserved_data[sizeof(preserved_fields)];
+    for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
+    {
+        memcpy(preserved_data + i, preserved_fields[i], sizeof(void*));
+    }
+    
+    // gb struct
     memcpy(gb, in_gb, sizeof(*gb));
+    
+    for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
+    {
+        memcpy(preserved_fields[i], preserved_data + i, sizeof(void*));
+    }
     
     // wram
     memcpy(gb->wram, in, WRAM_SIZE);
