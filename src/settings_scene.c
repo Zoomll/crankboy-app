@@ -15,6 +15,9 @@ static void PGB_SettingsScene_free(void *object);
 static void PGB_SettingsScene_menu(void *object);
 static void PGB_SettingsScene_didSelectBack(void *userdata);
 
+bool save_state(PGB_GameScene *gameScene, unsigned slot);
+bool load_state(PGB_GameScene *gameScene, unsigned slot);
+
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
 {
     PGB_SettingsScene *settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
@@ -52,8 +55,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
     if (pushed & kButtonDown)
     {
         settingsScene->cursorIndex++;
-        if (settingsScene->cursorIndex > 2)
-            settingsScene->cursorIndex = 2;
+        if (settingsScene->cursorIndex >= 5)
+            settingsScene->cursorIndex = 5;
     }
     if (pushed & kButtonUp)
     {
@@ -89,6 +92,18 @@ static void PGB_SettingsScene_update(void *object, float dt)
         else if (settingsScene->cursorIndex == 2)
         {  // Show FPS
             preferences_display_fps = !preferences_display_fps;
+        } else if (settingsScene->cursorIndex == 3 && gameScene->save_states_supported)
+        {   // save state
+            if (!save_state(gameScene, 0)) {
+                // TODO: pop-up message
+                playdate->system->logToConsole("Error saving state %d\n", 0);
+            }
+        } else if (settingsScene->cursorIndex == 4 && gameScene->save_states_supported)
+        {   // load state
+            if (!load_state(gameScene, 0)) {
+                // TODO: pop-up message
+                playdate->system->logToConsole("Error loading state %d\n", 0);
+            }
         }
     }
 
@@ -101,11 +116,16 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
 
-    const char *options[] = {"Sound", "30FPS Mode", "Show FPS"};
+    const char *options[] = {"Sound", "30FPS Mode", "Show FPS", "Save State", "Load State"};
+    if (!gameScene->save_states_supported) {
+        options[3] = "(save state)";
+        options[4] = "(load state)";
+    }
     bool values[] = {preferences_sound_enabled, preferences_frame_skip,
-                     preferences_display_fps};
+                     preferences_display_fps, 0, 0};
+    bool is_option[] = {1, 1, 1, 0, 0};
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 5; i++)
     {
         int y = 50 + i * 30;
         const char *stateText = values[i] ? "On" : "Off";
@@ -130,9 +150,12 @@ static void PGB_SettingsScene_update(void *object, float dt)
         // Draw the option name (left-aligned)
         playdate->graphics->drawText(options[i], strlen(options[i]),
                                      kUTF8Encoding, 20, y);
-        // Draw the state (right-aligned)
-        playdate->graphics->drawText(stateText, strlen(stateText),
+        if (is_option[i])
+        {
+            // Draw the state (right-aligned)
+            playdate->graphics->drawText(stateText, strlen(stateText),
                                      kUTF8Encoding, stateX, y);
+        }
     }
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
@@ -143,7 +166,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "Toggles all in-game\naudio. Muting may\nimprove performance.",
         "Limits framerate to\n30 FPS. Improves\nperformance in\ndemanding "
         "games.",
-        "Displays the current\nframes-per-second\non screen."};
+        "Displays the current\nframes-per-second\non screen.",
+        "Create a snapshot of\nthis moment, which\ncan be resumed later.",
+        "Load the previously-\ncreated snapshot",
+    };
+    
+    if (!gameScene->save_states_supported) {
+        descriptions[3] = descriptions[4] = "CrankBoy does not\ncurrently support\ncreating save\nstates with a\nROM that has\nits own save data.";
+    }
 
     const char *selectedDescription = descriptions[settingsScene->cursorIndex];
 

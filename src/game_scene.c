@@ -221,6 +221,16 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             gameScene->save_filename = save_filename;
 
             gameScene->base_filename = pgb_basename(rom_filename, true);
+            
+            //      _             ____  
+            //     / \           /    \, 
+            //    / ! \         | STOP |
+            //   /_____\         \____/
+            //      |              |
+            //      |              |
+            // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING THIS LINE
+            //      |              |
+            gameScene->save_states_supported = !context->gb->cart_battery;
 
             unsigned int last_save_time = 0;
 
@@ -1368,7 +1378,7 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 // returns true if successful
-__section__(".rare") static bool save_state(PGB_GameScene *gameScene,
+__section__(".rare") bool save_state(PGB_GameScene *gameScene,
                                             unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;
@@ -1423,7 +1433,7 @@ __section__(".rare") static bool save_state(PGB_GameScene *gameScene,
 }
 
 // returns true if successful
-__section__(".rare") static bool load_state(PGB_GameScene *gameScene,
+__section__(".rare") bool load_state(PGB_GameScene *gameScene,
                                             unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;

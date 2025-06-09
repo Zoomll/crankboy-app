@@ -94,6 +94,18 @@ typedef struct PGB_GameScene
     bool cartridge_has_rtc;
     bool staticSelectorUIDrawn;
     bool save_data_loaded_successfully;
+    
+    // [7700] We disable save states for carts with battery-backed ram
+    // because one could easily lose their save data by mistake.
+    //
+    // !! IF YOU BYPASS THIS, YOU ARE TAKING RESPONSIBILITY FOR YOUR OWN SAVE DATA !!
+    // !!  ~AND YOU ARE AIMING A LOADED GUN DIRECTLY AT YOUR FOOT WITH NO SAFETY~  !!
+    // !!                       >> You have been warned. <<                        !!
+    // 
+    // If you'd like to help enable save states on all ROMs, please give users a 
+    // BIG WARNING MESSAGE before they save state on a battery-backed ROM so that
+    // they accept responsibility for what misery may ensue when mixing save types.
+                                bool save_states_supported;
 
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;

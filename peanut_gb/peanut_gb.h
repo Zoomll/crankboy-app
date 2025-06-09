@@ -5273,7 +5273,7 @@ struct StateHeader {
     
     // emulator architecture
     uint8_t big_endian : 1;
-    uint8_t bits : 3;
+    uint8_t bits : 4;
     
     char reserved[8];
 };
@@ -5283,8 +5283,8 @@ struct StateHeader {
 __section__(".rare")
 uint32_t gb_get_state_size(struct gb_s *gb)
 {
-    return strlen(PGB_SAVE_STATE_MAGIC)
-        + sizeof(struct StateHeader)
+    return sizeof(struct StateHeader)
+        + sizeof(struct gb_s)
         + ROM_HEADER_SIZE // for safe-keeping
         + WRAM_SIZE
         + VRAM_SIZE
