@@ -656,7 +656,7 @@ __section__(".text.pgb") static void __gb_update_selected_cart_bank_addr(
 {
     // NULL indicates special access, must do _full version
     gb->selected_cart_bank_addr = NULL;
-    if (gb->enable_cart_ram)
+    if (gb->enable_cart_ram && gb->num_ram_banks > 0)
     {
         if (gb->mbc == 3 && gb->cart_ram_bank >= 0x8)
         {
@@ -1436,7 +1436,7 @@ __core_section("short") static uint8_t
     return __gb_read_full(gb, addr);
 }
 
-__core_section("short") static void __gb_write(struct gb_s *gb,
+__core_section("short") static void __gb_write(struct gb_s * restrict gb,
                                                const uint16_t addr, uint8_t v)
 {
     if likely (addr >= 0xC000 && addr < 0xE000)
@@ -1448,6 +1448,13 @@ __core_section("short") static void __gb_write(struct gb_s *gb,
     {
         gb->hram[addr % 0x100] = v;
         return;
+    }
+    if likely (addr >= 0xA000 && addr < 0xC000 && gb->selected_cart_bank_addr)
+    {
+        u8* b = &gb->selected_cart_bank_addr[addr];
+        u8 prev = *b;
+        *b = v;
+        gb->direct.sram_updated |= prev != v;
     }
     __gb_write_full(gb, addr, v);
 }
