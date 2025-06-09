@@ -223,21 +223,22 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             gameScene->save_filename = save_filename;
 
             gameScene->base_filename = pgb_basename(rom_filename, true);
-            
-            //      _             ____  
-            //     / \           /    \, 
+
+            //      _             ____
+            //     / \           /    \,
             //    / ! \         | STOP |
             //   /_____\         \____/
             //      |              |
             //      |              |
-            // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING THIS LINE
+            // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING
+            // THIS LINE
             //      |              |
             gameScene->save_states_supported = !context->gb->cart_battery;
 
-            unsigned int last_save_time = 0;
+            gameScene->last_save_time = 0;
 
-            bool rtc_was_loaded =
-                read_cart_ram_file(save_filename, context->gb, &last_save_time);
+            bool rtc_was_loaded = read_cart_ram_file(
+                save_filename, context->gb, &gameScene->last_save_time);
 
             context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
@@ -259,10 +260,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                     playdate->system->logToConsole(
                         "Loaded RTC state and timestamp from save file.");
 
-                    if (now > last_save_time)
+                    if (now > gameScene->last_save_time)
                     {
                         gameScene->rtc_seconds_to_catch_up =
-                            now - last_save_time;
+                            now - gameScene->last_save_time;
                     }
                 }
                 else
@@ -1223,7 +1224,7 @@ __section__(".text.tick") __space static void save_check(struct gb_s *gb)
     // save SRAM under some conditions
     // TODO: also save if menu opens, playdate goes to sleep, app closes, or
     // powers down
-    ++frames_since_last_save;
+    +frames_since_last_save;
     gb->direct.sram_dirty |= gb->direct.sram_updated;
     if (gb->cart_battery && gb->direct.sram_dirty)
     {
@@ -1280,64 +1281,230 @@ static void PGB_GameScene_menu(void *object)
 
     playdate->system->removeAllMenuItems();
 
-    if (gameScene->menuImage == NULL && gameScene->rom_filename != NULL)
+    if (gameScene->menuImage == NULL)
     {
-        char *rom_basename_full = string_copy(gameScene->rom_filename);
-        char *filename_part = rom_basename_full;
-        char *last_slash = strrchr(rom_basename_full, '/');
-        if (last_slash != NULL)
-        {
-            filename_part = last_slash + 1;
-        }
-        char *rom_basename_ext = string_copy(filename_part);
-        char *basename_no_ext = string_copy(rom_basename_ext);
-        char *ext = strrchr(basename_no_ext, '.');
-        if (ext != NULL)
-        {
-            *ext = '\0';
-        }
-        char *cleanName_no_ext = string_copy(basename_no_ext);
-        pgb_sanitize_string_for_filename(cleanName_no_ext);
-        char *actual_cover_path =
-            pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
+        PGB_LoadedCoverArt cover_art = {.bitmap = NULL};
+        char *actual_cover_path = NULL;
 
-        if (actual_cover_path != NULL)
+        // --- Get Cover Art ---
+        if (gameScene->rom_filename != NULL)
         {
-            PGB_LoadedCoverArt cover_art =
-                pgb_load_and_scale_cover_art_from_path(actual_cover_path, 200,
-                                                       200);
-
-            if (cover_art.status == PGB_COVER_ART_SUCCESS &&
-                cover_art.bitmap != NULL)
+            char *rom_basename_full = string_copy(gameScene->rom_filename);
+            char *filename_part = rom_basename_full;
+            char *last_slash = strrchr(rom_basename_full, '/');
+            if (last_slash != NULL)
             {
-                gameScene->menuImage =
-                    playdate->graphics->newBitmap(400, 240, kColorClear);
-                if (gameScene->menuImage != NULL)
+                filename_part = last_slash + 1;
+            }
+            char *rom_basename_ext = string_copy(filename_part);
+            char *basename_no_ext = string_copy(rom_basename_ext);
+            char *ext = strrchr(basename_no_ext, '.');
+            if (ext != NULL)
+            {
+                *ext = '\0';
+            }
+            char *cleanName_no_ext = string_copy(basename_no_ext);
+            pgb_sanitize_string_for_filename(cleanName_no_ext);
+            actual_cover_path =
+                pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
+
+            if (actual_cover_path != NULL)
+            {
+                cover_art = pgb_load_and_scale_cover_art_from_path(
+                    actual_cover_path, 200, 200);
+            }
+
+            pgb_free(cleanName_no_ext);
+            pgb_free(basename_no_ext);
+            pgb_free(rom_basename_ext);
+            pgb_free(rom_basename_full);
+        }
+        bool has_cover_art = (cover_art.status == PGB_COVER_ART_SUCCESS &&
+                              cover_art.bitmap != NULL);
+
+        // --- Get Save Time ---
+        bool show_save_time = false;
+        time_t save_timestamp = 0;
+
+        if (gameScene->cartridge_has_rtc && gameScene->last_save_time > 0)
+        {
+            show_save_time = true;
+            save_timestamp = gameScene->last_save_time + 946684800;
+        }
+
+        // --- Drawing Logic ---
+        if (has_cover_art || show_save_time)
+        {
+            gameScene->menuImage =
+                playdate->graphics->newBitmap(400, 240, kColorClear);
+            if (gameScene->menuImage != NULL)
+            {
+                playdate->graphics->pushContext(gameScene->menuImage);
+                playdate->graphics->setDrawMode(kDrawModeCopy);
+
+                if (has_cover_art)
                 {
-                    playdate->graphics->pushContext(gameScene->menuImage);
-                    playdate->graphics->setDrawMode(kDrawModeCopy);
                     playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
                     playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
-                    int final_scaled_width = cover_art.scaled_width;
-                    int final_scaled_height = cover_art.scaled_height;
-                    int drawX = (200 - final_scaled_width) / 2;
-                    if (drawX < 0)
-                    {
-                        drawX = 0;
-                    }
-                    int drawY = 40 + (160 - final_scaled_height) / 2;
-                    playdate->graphics->drawBitmap(cover_art.bitmap, drawX,
-                                                   drawY, kBitmapUnflipped);
-                    playdate->graphics->popContext();
                 }
-                pgb_free_loaded_cover_art_bitmap(&cover_art);
+                else if (show_save_time)
+                {
+                    // Draw a 50% gray checkerboard pattern line-by-line.
+                    static const uint8_t pattern_even[] = {
+                        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
+                    static const uint8_t pattern_odd[] = {
+                        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55};
+                    LCDColor color_even = (LCDColor)pattern_even;
+                    LCDColor color_odd = (LCDColor)pattern_odd;
+
+                    for (int y = 0; y < 240; ++y)
+                    {
+                        if (y % 2 == 0)
+                        {
+                            playdate->graphics->fillRect(0, y, 400, 1,
+                                                         color_even);
+                        }
+                        else
+                        {
+                            playdate->graphics->fillRect(0, y, 400, 1,
+                                                         color_odd);
+                        }
+                    }
+                }
+
+                int content_top = 40;
+                int content_height = 160;
+                int cover_art_y = 0, cover_art_height = 0;
+
+                // 1. Draw Cover Art if it exists
+                if (has_cover_art)
+                {
+                    int art_x = (200 - cover_art.scaled_width) / 2;
+                    if (!show_save_time)
+                    {
+                        cover_art_y =
+                            content_top +
+                            (content_height - cover_art.scaled_height) / 2;
+                    }
+                    playdate->graphics->drawBitmap(
+                        cover_art.bitmap, art_x, cover_art_y, kBitmapUnflipped);
+                    cover_art_height = cover_art.scaled_height;
+                }
+
+                // 2. Draw Save Time if it exists
+                if (show_save_time)
+                {
+                    playdate->graphics->setFont(PGB_App->labelFont);
+                    const char *line1 = "Cartridge data saved:";
+
+                    unsigned int utc_epoch = gameScene->last_save_time;
+                    int32_t offset = playdate->system->getTimezoneOffset();
+                    unsigned int local_epoch = utc_epoch + offset;
+
+                    struct PDDateTime time_info;
+                    playdate->system->convertEpochToDateTime(local_epoch,
+                                                             &time_info);
+
+                    char line2[32];
+                    if (playdate->system->shouldDisplay24HourTime())
+                    {
+                        snprintf(line2, sizeof(line2),
+                                 "%02d.%02d.%d - %02d:%02d:%02d", time_info.day,
+                                 time_info.month, time_info.year,
+                                 time_info.hour, time_info.minute,
+                                 time_info.second);
+                    }
+                    else
+                    {
+                        const char *suffix =
+                            (time_info.hour < 12) ? " am" : " pm";
+                        int display_hour = time_info.hour;
+                        if (display_hour == 0)
+                        {
+                            display_hour = 12;
+                        }
+                        else if (display_hour > 12)
+                        {
+                            display_hour -= 12;
+                        }
+                        snprintf(line2, sizeof(line2),
+                                 "%02d.%02d.%d - %d:%02d:%02d%s", time_info.day,
+                                 time_info.month, time_info.year, display_hour,
+                                 time_info.minute, time_info.second, suffix);
+                    }
+
+                    int font_height =
+                        playdate->graphics->getFontHeight(PGB_App->labelFont);
+                    int line1_width = playdate->graphics->getTextWidth(
+                        PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding,
+                        0);
+                    int line2_width = playdate->graphics->getTextWidth(
+                        PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding,
+                        0);
+                    int text_spacing = 4;
+                    int text_block_height = font_height * 2 + text_spacing;
+
+                    if (has_cover_art)
+                    {
+                        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                        int text_y = cover_art_y + cover_art_height + 6;
+                        playdate->graphics->drawText(
+                            line1, strlen(line1), kUTF8Encoding,
+                            (200 - line1_width) / 2, text_y);
+                        playdate->graphics->drawText(
+                            line2, strlen(line2), kUTF8Encoding,
+                            (200 - line2_width) / 2,
+                            text_y + font_height + text_spacing);
+                    }
+                    else
+                    {
+                        int padding_x = 10;
+                        int padding_y = 8;
+                        int border_size = 1;
+
+                        int box_width =
+                            PGB_MAX(line1_width, line2_width) + (padding_x * 2);
+                        int box_height = text_block_height + (padding_y * 2);
+
+                        // Center the box within the visible Game Boy screen
+                        int box_x = PGB_LCD_X + (LCD_WIDTH - box_width) / 2;
+                        int box_y =
+                            content_top + (content_height - box_height) / 2;
+
+                        playdate->graphics->fillRect(
+                            box_x - border_size, box_y - border_size,
+                            box_width + (border_size * 2),
+                            box_height + (border_size * 2), kColorBlack);
+
+                        playdate->graphics->fillRect(box_x, box_y, box_width,
+                                                     box_height, kColorWhite);
+
+                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+                        int text_y = content_top +
+                                     (content_height - text_block_height) / 2;
+                        playdate->graphics->drawText(
+                            line1, strlen(line1), kUTF8Encoding,
+                            PGB_LCD_X + (LCD_WIDTH - line1_width) / 2, text_y);
+                        playdate->graphics->drawText(
+                            line2, strlen(line2), kUTF8Encoding,
+                            PGB_LCD_X + (LCD_WIDTH - line2_width) / 2,
+                            text_y + font_height + text_spacing);
+                    }
+                }
+
+                playdate->graphics->popContext();
             }
+        }
+
+        if (has_cover_art)
+        {
+            pgb_free_loaded_cover_art_bitmap(&cover_art);
+        }
+        if (actual_cover_path != NULL)
+        {
             pgb_free(actual_cover_path);
         }
-        pgb_free(cleanName_no_ext);
-        pgb_free(basename_no_ext);
-        pgb_free(rom_basename_ext);
-        pgb_free(rom_basename_full);
     }
 
     playdate->system->setMenuImage(gameScene->menuImage, 0);
@@ -1384,8 +1551,7 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 // returns true if successful
-__section__(".rare") bool save_state(PGB_GameScene *gameScene,
-                                            unsigned slot)
+__section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;
     char *state_name;
@@ -1444,8 +1610,7 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene,
 }
 
 // returns true if successful
-__section__(".rare") bool load_state(PGB_GameScene *gameScene,
-                                            unsigned slot)
+__section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;
     char *state_name;
