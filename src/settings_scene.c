@@ -10,6 +10,8 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "preferences.h"
+#include "dtcm.h"
+#include "userstack.h"
 
 static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
@@ -269,6 +271,7 @@ static void PGB_SettingsScene_menu(void *object)
 
 static void PGB_SettingsScene_free(void *object)
 {
+    DTCM_VERIFY();
     PGB_SettingsScene *settingsScene = object;
 
     if (settingsScene->gameScene)
@@ -278,5 +281,6 @@ static void PGB_SettingsScene_free(void *object)
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
-    preferences_save_to_disk();
+    call_with_user_stack(preferences_save_to_disk);
+    DTCM_VERIFY();
 }
