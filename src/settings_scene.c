@@ -185,8 +185,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     const char *descriptions[] = {
         "Toggles all in-game\naudio. Muting may\nimprove performance.",
-        "Limits framerate to\n30 FPS. Improves\nperformance in\ndemanding "
-        "games.",
+        "Limits framerate to 30 FPS.\nImproves performance in\ndemanding "
+        "games.\n \nThe game itself still\nruns at full speed.",
         "Displays the current\nframes-per-second\non screen.",
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
         "Load the previously\ncreated snapshot.",
