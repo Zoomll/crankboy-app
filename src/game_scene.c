@@ -1246,6 +1246,12 @@ static void PGB_GameScene_menu(void *object)
 {
     PGB_GameScene *gameScene = object;
 
+    if (gameScene->menuImage != NULL)
+    {
+        playdate->graphics->freeBitmap(gameScene->menuImage);
+        gameScene->menuImage = NULL;
+    }
+
     gameScene->scene->forceFullRefresh = true;
 
     playdate->system->removeAllMenuItems();
@@ -1684,6 +1690,20 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
     {
     case kEventLock:
     case kEventPause:
+        if (context->gb->direct.sram_dirty &&
+            gameScene->save_data_loaded_successfully)
+        {
+            playdate->system->logToConsole("saving (system event)");
+            gb_save_to_disk(context->gb);
+        }
+
+        // Skip custom menu drawing when ITCM is enabled to prevent a system
+        // crash.
+        if (gameScene->cartridge_has_battery && !preferences_itcm)
+        {
+            PGB_GameScene_menu(gameScene);
+        }
+        break;
     case kEventTerminate:
         if (context->gb->direct.sram_dirty &&
             gameScene->save_data_loaded_successfully)
