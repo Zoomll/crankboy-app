@@ -96,13 +96,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {   // save state
             if (!save_state(gameScene, 0)) {
                 // TODO: pop-up message
-                playdate->system->logToConsole("Error saving state %d\n", 0);
+                playdate->system->logToConsole("Error saving state %d", 0);
+            } else {
+                playdate->system->logToConsole("Saved state %d successfully", 0);
             }
         } else if (settingsScene->cursorIndex == 4 && gameScene->save_states_supported)
         {   // load state
             if (!load_state(gameScene, 0)) {
                 // TODO: pop-up message
-                playdate->system->logToConsole("Error loading state %d\n", 0);
+                playdate->system->logToConsole("Error loading state %d", 0);
+            } else {
+                playdate->system->logToConsole("Loaded save state %d", 0);
             }
         }
     }
