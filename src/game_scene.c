@@ -83,7 +83,7 @@ __section__(".rare") void itcm_core_init()
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
-    
+
     if (core_itcm_reloc == (void *)&__itcm_start)
         core_itcm_reloc = NULL;
 
@@ -519,36 +519,6 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
         return;
     }
 
-    // --- Check for directory before creating it ---
-    char *dir_path = string_copy(save_filename);
-    char *last_slash = strrchr(dir_path, '/');
-    if (last_slash != NULL)
-    {
-        // Isolate the directory path (e.g., "saves")
-        *last_slash = '\0';
-
-        FileStat stat_info;
-        // Try to get stats on the directory path. This will fail if it doesn't
-        // exist.
-        if (playdate->file->stat(dir_path, &stat_info) != 0)
-        {
-            // The stat call failed, which means the directory does not exist.
-            // NOW it is safe to create it.
-            playdate->system->logToConsole(
-                "Save directory '%s' not found, creating it.", dir_path);
-            int mkdir_err = playdate->file->mkdir(dir_path);
-            if (mkdir_err != 0)
-            {
-                // If creating it *also* fails, we have a serious problem.
-                const char *err_str = playdate->file->geterr();
-                playdate->system->logToConsole(
-                    "FATAL: Could not create save directory '%s': %s", dir_path,
-                    err_str);
-            }
-        }
-    }
-    pgb_free(dir_path);
-
     playdate->system->logToConsole("Saving SRAM, RTC, and timestamp to: %s",
                                    save_filename);
 
@@ -575,6 +545,8 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
 
         // Write the current Playdate epoch time as an absolute timestamp.
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+        gameScene->last_save_time = now;
+
         playdate->file->write(f, &now, sizeof(now));
     }
 
