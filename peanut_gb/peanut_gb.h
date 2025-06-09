@@ -431,6 +431,9 @@ struct gb_s
     // state flags for cart ram
     uint8_t enable_cart_ram : 1;
     uint8_t cart_mode_select : 1; // 1 if ram mode
+    
+    uint8_t* selected_cart_bank_addr;
+    
     /* Number of ROM banks in cartridge. */
     uint16_t num_rom_banks_mask;
     /* Number of RAM banks in cartridge. */
@@ -439,7 +442,6 @@ struct gb_s
     uint16_t selected_rom_bank;
     /* WRAM and VRAM bank selection not available. */
     uint8_t cart_ram_bank;
-    uint8_t* selected_cart_bank_addr;
     union
     {
         struct
