@@ -432,6 +432,8 @@ static void open_sandboxed_libs(lua_State *L)
     lua_pop(L, 1);
     luaL_requiref(L, LUA_COLIBNAME, luaopen_coroutine, 1);
     lua_pop(L, 1);
+    luaL_requiref(L, LUA_LOADLIBNAME, luaopen_package, 1);
+    lua_pop(L, 1);
 }
 
 static void set_package_path_l(lua_State *L)
@@ -443,35 +445,13 @@ static void set_package_path_l(lua_State *L)
         return;
     }
 
-    lua_getfield(L, -1, "path");
-    const char *path = lua_tostring(L, -1);
-    lua_pop(L, 1);
-
-    // Replace all ".lua" with ".l"
-    const char *from = ".lua";
-    const char *to = ".l";
-    char *new_path = malloc(strlen(path) * 2);  // generous space
-    char *out = new_path;
-    const char *p = path;
-    while (*p)
-    {
-        if (strncmp(p, from, 4) == 0)
-        {
-            strcpy(out, to);
-            out += 2;
-            p += 4;
-        }
-        else
-        {
-            *out++ = *p++;
-        }
-    }
-    *out = '\0';
-
-    lua_pushstring(L, new_path);
+#ifdef TARGET_SIMULATOR
+    lua_pushstring(L, "./Source/scripts/?.l");
+#else
+    lua_pushstring(L, "./scripts/?.l");
+#endif
     lua_setfield(L, -2, "path");
     lua_pop(L, 1);
-    free(new_path);
 }
 
 typedef struct ScriptInfo

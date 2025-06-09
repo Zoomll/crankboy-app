@@ -4677,7 +4677,7 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s *gb)
             u8 dstidx = op8;
             if (dstidx == 7)
             {
-                if (srcidx == 7)
+                if unlikely(srcidx == 7)
                 {
                     gb->gb_halt = 1;
                     return 4;
