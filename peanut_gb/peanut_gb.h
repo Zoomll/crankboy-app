@@ -1383,7 +1383,6 @@ __core_section("short") static uint8_t
     }
     if likely (addr < 0x8000)
     {
-        // TODO: optimize
         return gb->selected_bank_addr[addr];
     }
     if likely (addr >= 0xC000 && addr < 0xE000)
@@ -1403,6 +1402,11 @@ __core_section("short") static void __gb_write(struct gb_s *gb,
     if likely (addr >= 0xC000 && addr < 0xE000)
     {
         gb->wram[addr % WRAM_SIZE] = v;
+        return;
+    }
+    if likely (addr >= 0xFF80 && addr <= 0xFFFE)
+    {
+        gb->hram[addr % 0x100] = v;
         return;
     }
     __gb_write_full(gb, addr, v);
