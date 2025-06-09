@@ -219,29 +219,21 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
         {
             char *save_filename = pgb_save_filename(rom_filename, false);
             gameScene->save_filename = save_filename;
-            
+
             gameScene->base_filename = pgb_basename(rom_filename, true);
 
-            // 1. Declare a variable to hold the timestamp we read from the save
-            // file.
             unsigned int last_save_time = 0;
 
-            // 2. Call the new read function. It will attempt to load SRAM, RTC
-            // registers, and the saved timestamp. It returns true only if RTC
-            // and timestamp were loaded.
             bool rtc_was_loaded =
                 read_cart_ram_file(save_filename, context->gb, &last_save_time);
 
-            // 3. Link the cart_ram pointer so it can be freed later.
             context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
 
-            // 4. Set up the host-side time references for the update loop.
             unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-            gameScene->rtc_time = now;  // For handling in-session pauses.
+            gameScene->rtc_time = now;
             gameScene->rtc_seconds_to_catch_up = 0;
 
-            // 5. Check the cartridge type to see if we need to do RTC logic.
             uint8_t actual_cartridge_type = context->gb->gb_rom[0x0147];
             if (actual_cartridge_type == 0x0F || actual_cartridge_type == 0x10)
             {
@@ -250,15 +242,11 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                     "Cartridge Type 0x%02X (MBC: %d): RTC Enabled.",
                     actual_cartridge_type, context->gb->mbc);
 
-                // 6. Decide how to handle the clock based on whether we loaded
-                // a save.
                 if (rtc_was_loaded)
                 {
-                    // RTC state was loaded successfully!
                     playdate->system->logToConsole(
                         "Loaded RTC state and timestamp from save file.");
 
-                    // Calculate the time that passed *between* sessions.
                     if (now > last_save_time)
                     {
                         gameScene->rtc_seconds_to_catch_up =
@@ -267,14 +255,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                 }
                 else
                 {
-                    // This is a first boot or the save was old/invalid.
-                    // Initialize the emulator's clock to the current system
-                    // time.
                     playdate->system->logToConsole(
                         "No valid RTC save data. Initializing clock to system "
                         "time.");
-                    time_t time_for_core = gameScene->rtc_time +
-                                           946684800;  // Adjust for Unix epoch
+                    time_t time_for_core = gameScene->rtc_time + 946684800;
                     struct tm *timeinfo = localtime(&time_for_core);
                     if (timeinfo != NULL)
                     {
@@ -284,7 +268,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             }
             else
             {
-                // This is a non-RTC cart.
                 gameScene->cartridge_has_rtc = false;
                 playdate->system->logToConsole(
                     "Cartridge Type 0x%02X (MBC: %d): RTC Disabled.",
@@ -1385,32 +1368,38 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 // returns true if successful
-__section__(".rare") static bool save_state(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") static bool save_state(PGB_GameScene *gameScene,
+                                            unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;
-    char* state_name;
-    playdate->system->formatString(&state_name, "%s/%s.%u.state", PGB_statesPath, gameScene->base_filename, slot);
+    char *state_name;
+    playdate->system->formatString(&state_name, "%s/%s.%u.state",
+                                   PGB_statesPath, gameScene->base_filename,
+                                   slot);
     bool success = false;
-    
+
     int save_size = gb_get_state_size(context->gb);
-    if (save_size <= 0) return false;
-    char* buff = malloc(save_size);
+    if (save_size <= 0)
+        return false;
+    char *buff = malloc(save_size);
     if (!buff)
     {
-        playdate->system->logToConsole("Failed to allocate buffer for save state");
+        playdate->system->logToConsole(
+            "Failed to allocate buffer for save state");
     }
     else
     {
         gb_state_save(context->gb, buff);
-        SDFile* file = playdate->file->open(state_name, kFileWrite);
+        SDFile *file = playdate->file->open(state_name, kFileWrite);
         if (!file)
         {
-            playdate->system->logToConsole("failed to open save file \"%s\"\n", state_name);
+            playdate->system->logToConsole("failed to open save file \"%s\"\n",
+                                           state_name);
         }
         else
         {
             success = true;
-            char* buffptr = buff;
+            char *buffptr = buff;
             while (save_size > 0)
             {
                 int written = playdate->file->write(file, buffptr, save_size);
@@ -1423,30 +1412,33 @@ __section__(".rare") static bool save_state(PGB_GameScene* gameScene, unsigned s
                 buffptr += written;
                 save_size -= written;
             }
-            
+
             playdate->file->close(file);
         }
         free(buff);
     }
-    
+
     free(state_name);
     return success;
 }
 
-
 // returns true if successful
-__section__(".rare") static bool load_state(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") static bool load_state(PGB_GameScene *gameScene,
+                                            unsigned slot)
 {
     PGB_GameSceneContext *context = gameScene->context;
-    char* state_name;
-    playdate->system->formatString(&state_name, "%s/%s.%u.state", PGB_statesPath, gameScene->base_filename, slot);
+    char *state_name;
+    playdate->system->formatString(&state_name, "%s/%s.%u.state",
+                                   PGB_statesPath, gameScene->base_filename,
+                                   slot);
     bool success = false;
-    
+
     int save_size = gb_get_state_size(context->gb);
-    SDFile* file = playdate->file->open(state_name, kFileReadData);
+    SDFile *file = playdate->file->open(state_name, kFileReadData);
     if (!file)
     {
-        playdate->system->logToConsole("failed to open save file \"%s\"", state_name);
+        playdate->system->logToConsole("failed to open save file \"%s\"",
+                                       state_name);
     }
     else
     {
@@ -1456,23 +1448,25 @@ __section__(".rare") static bool load_state(PGB_GameScene* gameScene, unsigned s
         {
             if (playdate->file->seek(file, 0, SEEK_SET))
             {
-                printf("Failed to seek to start of save file \"%s\"", state_name);
+                printf("Failed to seek to start of save file \"%s\"",
+                       state_name);
             }
             else
             {
                 success = true;
                 int size_remaining = save_size;
-                char* buff = malloc(save_size);
+                char *buff = malloc(save_size);
                 if (buff == NULL)
                 {
                     printf("Failed to allocate save state buffer");
                 }
                 else
                 {
-                    char* buffptr = buff;
+                    char *buffptr = buff;
                     while (size_remaining > 0)
                     {
-                        int read = playdate->file->read(file, buffptr, size_remaining);
+                        int read =
+                            playdate->file->read(file, buffptr, size_remaining);
                         if (read == 0)
                         {
                             printf("Save file too short, \"%s\"\n", state_name);
@@ -1481,24 +1475,27 @@ __section__(".rare") static bool load_state(PGB_GameScene* gameScene, unsigned s
                         }
                         if (read < 0)
                         {
-                            printf("Error reading save file \"%s\"\n", state_name);
+                            printf("Error reading save file \"%s\"\n",
+                                   state_name);
                             success = false;
                             break;
                         }
                         size_remaining -= read;
                         buffptr += read;
                     }
-                    
+
                     if (success)
                     {
-                        const char* res = gb_state_load(context->gb, buff, save_size);
+                        const char *res =
+                            gb_state_load(context->gb, buff, save_size);
                         if (res)
                         {
                             success = false;
-                            playdate->system->logToConsole("Error loading state! %s", res);
+                            playdate->system->logToConsole(
+                                "Error loading state! %s", res);
                         }
                     }
-                    
+
                     free(buff);
                 }
             }
@@ -1507,10 +1504,10 @@ __section__(".rare") static bool load_state(PGB_GameScene* gameScene, unsigned s
         {
             playdate->system->logToConsole("Failed to determine file size");
         }
-        
+
         playdate->file->close(file);
     }
-    
+
     free(state_name);
     return success;
 }
@@ -1545,25 +1542,31 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
             pgb_free(recovery_filename);
         }
         break;
-    case kEventKeyPressed: 
+    case kEventKeyPressed:
         printf("Key pressed: %x\n", (unsigned)arg);
-        
-        switch(arg)
+
+        switch (arg)
         {
-            case 0x35: // 5
-                if (save_state(gameScene, 0)) {
-                    playdate->system->logToConsole("Save state %d successful", 0);
-                } else {
-                    playdate->system->logToConsole("Save state %d failed", 0);
-                }
-                break;
-            case 0x37: // 7
-                if (load_state(gameScene, 0)) {
-                    playdate->system->logToConsole("Load state %d successful", 0);
-                } else {
-                    playdate->system->logToConsole("Load state %d failed", 0);
-                }
-                break;
+        case 0x35:  // 5
+            if (save_state(gameScene, 0))
+            {
+                playdate->system->logToConsole("Save state %d successful", 0);
+            }
+            else
+            {
+                playdate->system->logToConsole("Save state %d failed", 0);
+            }
+            break;
+        case 0x37:  // 7
+            if (load_state(gameScene, 0))
+            {
+                playdate->system->logToConsole("Load state %d successful", 0);
+            }
+            else
+            {
+                playdate->system->logToConsole("Load state %d failed", 0);
+            }
+            break;
         }
     default:
         break;
