@@ -2035,7 +2035,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     uint32_t pal = gb->gb_reg.BGP;
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
     {
-        uint16_t* p = (uint32_t*)(void*)pixels + i;
+        uint16_t* p = (uint16_t*)(void*)pixels + (2*i);
         uint16_t t0 = p[0];
         uint16_t t1 = p[1];
         uint32_t rm = 0; // FIXME: no need to assign 0, but compiler complains otherwise
