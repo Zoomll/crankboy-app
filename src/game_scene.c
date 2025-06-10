@@ -1294,11 +1294,13 @@ static void PGB_GameScene_menu(void *object)
 {
     PGB_GameScene *gameScene = object;
 
+    /* This currently crashes the app when leaving the options screen…
     if (gameScene->menuImage != NULL)
     {
         playdate->graphics->freeBitmap(gameScene->menuImage);
         gameScene->menuImage = NULL;
     }
+    */
 
     gameScene->scene->forceFullRefresh = true;
 
