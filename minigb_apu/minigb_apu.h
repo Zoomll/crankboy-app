@@ -13,7 +13,7 @@
 
 // Set to 1 for the original, high-quality synthesis (more CPU intensive).
 // Set to 0 for the faster, lower-quality accumulator synthesis (less CPU intensive).
-#define AUDIO_QUALITY_HIGH 0
+#define AUDIO_QUALITY_HIGH 1
 
 #define AUDIO_SAMPLE_RATE 44100
 

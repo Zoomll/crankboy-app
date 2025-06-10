@@ -585,8 +585,7 @@ void audio_write(const uint16_t addr, const uint8_t val)
     if (addr == 0xFF26)
     {
         audio_mem[addr - AUDIO_ADDR_COMPENSATION] = val & 0x80;
-        /* On APU power off, clear all registers apart from wave
-         * RAM. */
+        /* On APU power off, clear all registers apart from wave RAM. */
         if ((val & 0x80) == 0)
         {
             memset(audio_mem, 0x00, 0xFF26 - AUDIO_ADDR_COMPENSATION);
@@ -595,7 +594,6 @@ void audio_write(const uint16_t addr, const uint8_t val)
             chans[2].enabled = false;
             chans[3].enabled = false;
         }
-
         return;
     }
 
@@ -604,7 +602,12 @@ void audio_write(const uint16_t addr, const uint8_t val)
         return;
 
     audio_mem[addr - AUDIO_ADDR_COMPENSATION] = val;
+
+#if AUDIO_QUALITY_HIGH
     i = (addr - AUDIO_ADDR_COMPENSATION) * 0.2f;
+#else
+    i = (addr - AUDIO_ADDR_COMPENSATION) / 5;
+#endif
 
     switch (addr)
     {
@@ -634,7 +637,6 @@ void audio_write(const uint16_t addr, const uint8_t val)
             {
                 chans[i].volume = 16 - chans[i].volume;
             }
-
             chans[i].volume &= 0x0F;
             chans[i].env.step = val & 0x07;
         }
@@ -651,7 +653,10 @@ void audio_write(const uint16_t addr, const uint8_t val)
     {
         static const uint8_t duty_lookup[] = {0x10, 0x30, 0x3C, 0xCF};
         chans[i].len.load = val & 0x3f;
-        chans[i].square.duty = duty_lookup[val >> 6];
+        if (i < 2)
+        {  // Only for square channels
+            chans[i].square.duty = duty_lookup[val >> 6];
+        }
         break;
     }
 
@@ -681,7 +686,6 @@ void audio_write(const uint16_t addr, const uint8_t val)
         chans[i].len.enabled = val & 0x40 ? 1 : 0;
         if (val & 0x80)
             chan_trigger(i);
-
         break;
 
     case 0xFF22:
@@ -691,11 +695,9 @@ void audio_write(const uint16_t addr, const uint8_t val)
         break;
 
     case 0xFF24:
-    {
         vol_l = ((val >> 4) & 0x07);
         vol_r = (val & 0x07);
         break;
-    }
 
     case 0xFF25:
         for (uint_fast8_t j = 0; j < 4; j++)
