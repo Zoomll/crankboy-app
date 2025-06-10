@@ -145,7 +145,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                              .selectorIndex = 0,
                              .empty = true};
 
-    gameScene->audioEnabled = preferences_sound_enabled;
+    gameScene->audioEnabled = (preferences_sound_mode > 0);
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;

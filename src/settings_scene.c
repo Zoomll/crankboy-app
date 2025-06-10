@@ -6,11 +6,11 @@
 //
 #include "settings_scene.h"
 
-#include "revcheck.h"
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
-#include "preferences.h"
 #include "dtcm.h"
+#include "preferences.h"
+#include "revcheck.h"
 #include "userstack.h"
 
 static void PGB_SettingsScene_update(void *object, float dt);
@@ -58,7 +58,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     PDButtons pushed;
     playdate->system->getButtonState(NULL, &pushed, NULL);
-    
+
     const char *options[] = {"Sound", "30 FPS Mode", "Show FPS", "Save State",
                              "Load State"};
     if (!gameScene || !gameScene->save_states_supported)
@@ -66,14 +66,15 @@ static void PGB_SettingsScene_update(void *object, float dt)
         options[3] = "(save state)";
         options[4] = "(load state)";
     }
-    bool values[] = {preferences_sound_enabled, preferences_frame_skip,
-                     preferences_display_fps, 0, 0};
+
     bool is_option[] = {1, 1, 1, 0, 0};
-    
+
     const char *descriptions[] = {
-        "Toggles all in-game\naudio. Muting may\nimprove performance.",
+        "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
+        "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
         "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
-        "for most games.\n \nDespite appearing to be\n30 FPS, the game itself\nstill runs at full speed.",
+        "for most games.\n \nDespite appearing to be\n30 FPS, the game "
+        "itself\nstill runs at full speed.",
         "Displays the current\nframes-per-second\non screen.",
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
         "Load the previously\ncreated snapshot.",
@@ -85,26 +86,26 @@ static void PGB_SettingsScene_update(void *object, float dt)
             "CrankBoy does not\ncurrently support\ncreating save\nstates with "
             "a\nROM that has\nits own save data.";
     }
-    
-    #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+
+#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     if (!gameScene)
     {
         options[3] = "ITCM acceleration";
-        values[3] = preferences_itcm;
         is_option[3] = 1;
-        static char* itcm_description = NULL;
+        static char *itcm_description = NULL;
         if (itcm_description == NULL)
         {
             playdate->system->formatString(
                 &itcm_description,
-                "Unstable, but greatly\nimproves performance.\n\nRuns emulator core\ndirectly from the stack.\n \nWorks with Rev A.\n \n(Your device: %s)",
-                pd_rev_description
-            );
+                "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
+                "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
+                "\n(Your device: %s)",
+                pd_rev_description);
         }
         descriptions[3] = itcm_description ? itcm_description : "";
         ++menuItemCount;
     }
-    #endif
+#endif
 
     if (pushed & kButtonDown)
     {
@@ -122,15 +123,15 @@ static void PGB_SettingsScene_update(void *object, float dt)
     {
         if (settingsScene->cursorIndex == 0)
         {  // Sound
-            preferences_sound_enabled = !preferences_sound_enabled;
-            audio_enabled = preferences_sound_enabled ? 1 : 0;
+            preferences_sound_mode = (preferences_sound_mode + 1) % 3;
+            bool sound_on = (preferences_sound_mode > 0);
+            audio_enabled = sound_on ? 1 : 0;
 
             if (gameScene)
             {
-                gameScene->audioEnabled = preferences_sound_enabled;
-                gameScene->context->gb->direct.sound =
-                    preferences_sound_enabled ? 1 : 0;
-                audioGameScene = preferences_sound_enabled ? gameScene : NULL;
+                gameScene->audioEnabled = sound_on;
+                gameScene->context->gb->direct.sound = sound_on ? 1 : 0;
+                audioGameScene = sound_on ? gameScene : NULL;
             }
         }
         else if (settingsScene->cursorIndex == 1)
@@ -189,10 +190,32 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Left Pane (Options - 60%) ---
     playdate->graphics->setFont(PGB_App->bodyFont);
 
+    const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
     for (int i = 0; i < menuItemCount; i++)
     {
         int y = 50 + i * 30;
-        const char *stateText = values[i] ? "On" : "Off";
+        const char *stateText;
+
+        if (i == 0)
+        {
+            stateText = sound_mode_labels[preferences_sound_mode];
+        }
+        else if (i == 1)
+        {
+            stateText = preferences_frame_skip ? "On" : "Off";
+        }
+        else if (i == 2)
+        {
+            stateText = preferences_display_fps ? "On" : "Off";
+        }
+        else if (i == 3 && is_option[3])
+        {
+            stateText = preferences_itcm ? "On" : "Off";
+        }
+        else
+        {
+            stateText = "";
+        }
 
         // Calculate position for right-aligned state text
         int stateWidth = playdate->graphics->getTextWidth(

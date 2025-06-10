@@ -9,12 +9,6 @@
 
 #include <stdint.h>
 
-// --- Audio Quality & Performance Configuration ---
-
-// Set to 1 for the original, high-quality synthesis (more CPU intensive).
-// Set to 0 for the faster, lower-quality accumulator synthesis (less CPU intensive).
-#define AUDIO_QUALITY_HIGH 0
-
 #define AUDIO_SAMPLE_RATE 44100
 
 #define DMG_CLOCK_FREQ 4194304.0
