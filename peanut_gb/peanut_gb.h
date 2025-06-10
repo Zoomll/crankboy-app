@@ -5252,11 +5252,6 @@ done_instr:
     gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
     gb->counter.div_count %= DIV_CYCLES;
 
-    /* TODO Check behaviour of LCD during LCD power off state. */
-    /* If LCD is off, don't update LCD state. */
-    if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
-        return;
-
     /* LCD Timing */
     gb->counter.lcd_count += inst_cycles;
 
@@ -5323,7 +5318,7 @@ done_instr:
         gb->lcd_mode = LCD_TRANSFER;
 #if ENABLE_LCD
         if (gb->lcd_master_enable && !gb->lcd_blank &&
-            !gb->direct.frame_skip)
+            !gb->direct.frame_skip && (gb->gb_reg.LCDC & LCDC_ENABLE))
             __gb_draw_line(gb);
 #endif
     }

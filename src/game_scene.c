@@ -47,7 +47,11 @@ static void PGB_GameScene_event(void *object, PDSystemEvent event,
 static uint8_t *read_rom_to_ram(const char *filename,
                                 PGB_GameSceneError *sceneError);
 
-static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
+// returns 0 if no pre-existing save data;
+// returns 1 if data found and loaded, but not RTC
+// returns 2 if data and RTC loaded
+// returns -1 on error
+static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
                                unsigned int *last_save_time);
 static void write_cart_ram_file(const char *save_filename, struct gb_s *gb);
 
@@ -247,8 +251,24 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
             gameScene->last_save_time = 0;
 
-            bool rtc_was_loaded = read_cart_ram_file(
+            int ram_load_result = read_cart_ram_file(
                 save_filename, context->gb, &gameScene->last_save_time);
+            
+            switch (ram_load_result)
+            {
+            case 0:
+                playdate->system->logToConsole("No previous cartridge save data found");
+                break;
+            case 1:
+            case 2:
+                playdate->system->logToConsole("Loaded cartridge save data");
+                break;
+            default:
+                playdate->system->error("Error loading save data. To protect your data, the game will not start.");
+                free(gameScene);
+                free(context);
+                return NULL;
+            }
 
             context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
@@ -265,7 +285,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                     "Cartridge Type 0x%02X (MBC: %d): RTC Enabled.",
                     actual_cartridge_type, context->gb->mbc);
 
-                if (rtc_was_loaded)
+                if (ram_load_result == 2)
                 {
                     playdate->system->logToConsole(
                         "Loaded RTC state and timestamp from save file.");
@@ -463,7 +483,7 @@ static uint8_t *read_rom_to_ram(const char *filename,
     return rom;
 }
 
-static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
+static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
                                unsigned int *last_save_time)
 {
     *last_save_time = 0;
@@ -483,15 +503,30 @@ static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
     SDFile *f = playdate->file->open(save_filename, kFileReadData);
     if (f == NULL)
     {
-        return false;
+        const char* err = playdate->file->geterr();
+        const char* found = strstr(err, "o such file");
+        if (!found)
+        {
+            playdate->system->logToConsole("error loading file: %s", err);
+            return -1;
+        }
+        
+        // The error was that the file doesn't exist
+        return 0;
     }
 
     if (sram_len > 0)
     {
-        playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
+        int read = playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
+        if (read != sram_len)
+        {
+            playdate->system->logToConsole("Failed to read save data");
+            playdate->file->close(f);
+            return -1;
+        }
     }
 
-    bool rtc_loaded_successfully = false;
+    int code = 1;
     if (gameScene->cartridge_has_battery)
     {
         if (playdate->file->read(f, gb->cart_rtc, sizeof(gb->cart_rtc)) ==
@@ -500,13 +535,13 @@ static bool read_cart_ram_file(const char *save_filename, struct gb_s *gb,
             if (playdate->file->read(f, last_save_time, sizeof(unsigned int)) ==
                 sizeof(unsigned int))
             {
-                rtc_loaded_successfully = true;
+                code = 2;
             }
         }
     }
 
     playdate->file->close(f);
-    return rtc_loaded_successfully;
+    return code;
 }
 
 static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
