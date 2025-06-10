@@ -4,12 +4,12 @@
 #include <stdio.h>
 
 extern void *dtcm_mempool;
+extern bool is_dtcm_init;
 
 void dtcm_set_mempool(void *addr);
 void dtcm_init(void);
 void dtcm_deinit(void);
 bool dtcm_verify(const char *context);
-bool dtcm_enabled(void);  // true if dtcm_init called and DTCM_ALLOC enabled
 
 void *dtcm_alloc(size_t size);
 void *dtcm_alloc_aligned(size_t size, size_t offset);
@@ -31,3 +31,12 @@ void dtcm_restore(struct dtcm_store_t *);
 #else
 #define DTCM_VERIFY_DEBUG() 1
 #endif
+
+// true if dtcm_init called and DTCM_ALLOC enabled
+static inline bool dtcm_enabled(void)
+{
+#ifndef DTCM_ALLOC
+    return false;
+#endif
+    return is_dtcm_init;
+}

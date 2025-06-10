@@ -9,7 +9,7 @@ static uint32_t *dtcm_low_canary_addr = NULL;
 #define DTCM_CANARY 0xDE0DCA94
 #endif
 
-static bool is_dtcm_init = false;
+bool is_dtcm_init = false;
 
 // high address that's within stack region,
 // can allocate global variables from here+
@@ -153,12 +153,4 @@ void dtcm_restore(struct dtcm_store_t *buff)
     pgb_free(buff);
     playdate->system->logToConsole("Restore complete.");
 #endif
-}
-
-bool dtcm_enabled(void)
-{
-#ifndef DTCM_ALLOC
-    return false;
-#endif
-    return is_dtcm_init;
 }

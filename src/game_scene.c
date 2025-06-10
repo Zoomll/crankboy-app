@@ -911,13 +911,20 @@ __section__(".text.tick") __space
 
         PGB_ASSERT(context == context->gb->direct.priv);
 
-#ifndef DTCM_ALLOC
-        // copy gb to stack (DTCM) temporarily
-        struct gb_s gb;
         struct gb_s *tmp_gb = context->gb;
-        context->gb = &gb;
-        memcpy(&gb, tmp_gb, sizeof(struct gb_s));
-#endif
+        
+        // copy gb to stack (DTCM) temporarily only if dtcm not enabled
+        int stack_gb_size = 1;
+        if (!dtcm_enabled())
+        {
+            stack_gb_size = sizeof(struct gb_s);
+        }
+        char stack_gb_data[stack_gb_size];
+        if (!dtcm_enabled())
+        {
+            memcpy(stack_gb_data, tmp_gb, sizeof(struct gb_s));
+            context->gb = (void*)stack_gb_data;
+        }
 
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
@@ -931,10 +938,11 @@ __section__(".text.tick") __space
 #endif
         }
 
-#ifndef DTCM_ALLOC
-        memcpy(tmp_gb, &gb, sizeof(struct gb_s));
-        context->gb = tmp_gb;
-#endif
+        if (!dtcm_enabled())
+        {
+            memcpy(tmp_gb, context->gb, sizeof(struct gb_s));
+            context->gb = tmp_gb;
+        }
 
         if (gameScene->cartridge_has_battery)
         {
