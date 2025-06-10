@@ -251,7 +251,7 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
 
     len = update_len(c, len);
 
-    for (uint_fast16_t i = 0; i < len; i += AUDIO_SAMPLE_REPLICATION)
+    for (uint_fast16_t i = 0; i < len; i++)
     {
 
         update_env(c);
@@ -314,7 +314,7 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
 
     len = update_len(c, len);
 
-    for (uint_fast16_t i = 0; i < len; i += AUDIO_SAMPLE_REPLICATION)
+    for (uint_fast16_t i = 0; i < len; i++)
     {
 
         uint32_t pos = 0;
@@ -342,8 +342,8 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
 
         sample /= 4;
 
-        left[i] = sample * c->on_left * vol_l;
-        right[i] = sample * c->on_right * vol_r;
+        left[i] += sample * c->on_left * vol_l;
+        right[i] += sample * c->on_right * vol_r;
     }
 }
 
@@ -370,7 +370,7 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
     if (!c->enabled)
         return;
 
-    for (uint_fast16_t i = 0; i < len; i += AUDIO_SAMPLE_REPLICATION)
+    for (uint_fast16_t i = 0; i < len; i++)
     {
 
         update_env(c);
@@ -727,28 +727,18 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     struct chan *c3 = chans + 2;
     struct chan *c4 = chans + 3;
 
-// 256, rounded up to replication
-#define MAX_CHUNK                                                        \
-    (((256 + AUDIO_SAMPLE_REPLICATION - 1) / AUDIO_SAMPLE_REPLICATION) * \
-     AUDIO_SAMPLE_REPLICATION)
+    #define MAX_CHUNK  256
     while (len > 0)
     {
         int chunksize = len >= MAX_CHUNK ? MAX_CHUNK : len;
+
+        memset(left, 0, chunksize * sizeof(int16_t));
+        memset(right, 0, chunksize * sizeof(int16_t));
 
         update_wave(left, right, chunksize);
         update_square(left, right, 0, chunksize);
         update_square(left, right, 1, chunksize);
         update_noise(left, right, chunksize);
-
-        for (int i = 0; i < chunksize; i += AUDIO_SAMPLE_REPLICATION)
-        {
-            for (int j = i; j < i + AUDIO_SAMPLE_REPLICATION && j < chunksize;
-                 ++j)
-            {
-                left[j] = left[i];
-                right[j] = right[i];
-            }
-        }
 
         len -= chunksize;
         left += chunksize;
