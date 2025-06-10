@@ -160,11 +160,12 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                    playdate->display->getHeight());
 #endif
 
-    // we don't use the DTCM trick on REV_B, because it's untested
-    // FIXME
+    // ITCM seems to crash Rev B, so we leave this is an option
     if (preferences_itcm)
         dtcm_init();
     else
+        // TODO: an option where DTCM is not used for code, but the gameboy struct
+        // still persists there.
         dtcm_deinit();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
