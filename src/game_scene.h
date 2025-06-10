@@ -131,6 +131,8 @@ typedef struct PGB_GameScene
     lua_State *script;
 
     LCDBitmap *menuImage;
+    int button_hold_mode; // 0: Select, 1: None, 2: Start
+    int button_hold_frames_remaining;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);

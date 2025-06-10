@@ -70,6 +70,7 @@ static bool PGB_GameScene_bitmask_done = false;
 static PDMenuItem *audioMenuItem;
 static PDMenuItem *fpsMenuItem;
 static PDMenuItem *frameSkipMenuItem;
+static PDMenuItem *buttonMenuItem = NULL;
 
 #if ITCM_CORE
 void *core_itcm_reloc = NULL;
@@ -142,6 +143,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     gameScene->audioEnabled = preferences_sound_enabled;
     gameScene->audioLocked = false;
+    gameScene->button_hold_mode = 1;  // None
+    gameScene->button_hold_frames_remaining = 0;
 
     gameScene->menuImage = NULL;
 
@@ -164,8 +167,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     if (preferences_itcm)
         dtcm_init();
     else
-        // TODO: an option where DTCM is not used for code, but the gameboy struct
-        // still persists there.
+        // TODO: an option where DTCM is not used for code, but the gameboy
+        // struct still persists there.
         dtcm_deinit();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
@@ -816,6 +819,25 @@ __section__(".text.tick") __space
         context->gb->direct.crank_docked = 1;
     }
 
+    if (gameScene->button_hold_frames_remaining > 0)
+    {
+        if (gameScene->button_hold_mode == 2)  // Holding Start
+        {
+            gameScene->selector.startPressed = true;
+        }
+        else if (gameScene->button_hold_mode == 0)  // Holding Select
+        {
+            gameScene->selector.selectPressed = true;
+        }
+
+        gameScene->button_hold_frames_remaining--;
+
+        if (gameScene->button_hold_frames_remaining == 0)
+        {
+            gameScene->button_hold_mode = 1;
+        }
+    }
+
     int selectorIndex;
 
     if (gameScene->selector.startPressed && gameScene->selector.selectPressed)
@@ -913,7 +935,7 @@ __section__(".text.tick") __space
         PGB_ASSERT(context == context->gb->direct.priv);
 
         struct gb_s *tmp_gb = context->gb;
-        
+
         // copy gb to stack (DTCM) temporarily only if dtcm not enabled
         int stack_gb_size = 1;
         if (!dtcm_enabled())
@@ -924,7 +946,7 @@ __section__(".text.tick") __space
         if (!dtcm_enabled())
         {
             memcpy(stack_gb_data, tmp_gb, sizeof(struct gb_s));
-            context->gb = (void*)stack_gb_data;
+            context->gb = (void *)stack_gb_data;
         }
 
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
@@ -1251,6 +1273,23 @@ __section__(".rare") static void PGB_GameScene_showSettings(void *userdata)
     PGB_presentModal(settingsScene->scene);
 }
 
+__section__(".rare") void PGB_GameScene_buttonMenuCallback(void *userdata)
+{
+    PGB_GameScene *gameScene = userdata;
+    if (buttonMenuItem)
+    {
+        int selected_option =
+            playdate->system->getMenuItemValue(buttonMenuItem);
+
+        if (selected_option != 1)
+        {
+            gameScene->button_hold_mode = selected_option;
+            gameScene->button_hold_frames_remaining = 10;
+            playdate->system->setMenuItemValue(buttonMenuItem, 1);
+        }
+    }
+}
+
 static void PGB_GameScene_menu(void *object)
 {
     PGB_GameScene *gameScene = object;
@@ -1496,6 +1535,15 @@ static void PGB_GameScene_menu(void *object)
                                   gameScene);
     playdate->system->addMenuItem("Settings…", PGB_GameScene_showSettings,
                                   gameScene);
+    const char *options[] = {
+        "Select",
+        "None",
+        "Start",
+    };
+    buttonMenuItem = playdate->system->addOptionsMenuItem(
+        "Button", options, 3, PGB_GameScene_buttonMenuCallback, gameScene);
+    playdate->system->setMenuItemValue(buttonMenuItem,
+                                       gameScene->button_hold_mode);
 }
 
 static void PGB_GameScene_generateBitmask(void)
