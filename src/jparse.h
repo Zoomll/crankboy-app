@@ -28,6 +28,9 @@ void free_json_data(json_value);
 // opts should be kFileRead, kFileReadData, or kFileRead | kFileReadData
 int parse_json(const char* file, json_value* out, FileOptions opts);
 
+// returns 0 on failure
+int parse_json_string(const char *text, json_value *out);
+
 // returns 0 on success
 int write_json_to_disk(const char* path, json_value out);
 

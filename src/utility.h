@@ -86,6 +86,9 @@ char* pgb_find_cover_art_path(
     const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
 );
 
+// allocate-print-to-string
+char* aprintf(const char* fmt, ...);
+
 // caller-freed
 char* en_human_time(unsigned seconds);
 

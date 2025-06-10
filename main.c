@@ -35,6 +35,11 @@ __section__(".rare") static void* user_stack_test(void* p)
     return (void*)0x784;
 }
 
+void CB_updatecheck(int code, const char* text, void* ud)
+{
+    printf("UPDATE RESULT %d: %s\n", code, text);
+}
+
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 
 __section__(".text.main") DllExport
@@ -55,6 +60,7 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
+        check_for_updates(CB_updatecheck, NULL);
 
         srand(time(NULL));
 

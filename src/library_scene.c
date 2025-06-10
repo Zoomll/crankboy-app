@@ -622,10 +622,12 @@ PGB_Game* PGB_Game_new(const char* filename)
     }
     else
     {
+        /*
         playdate->system->logToConsole(
             "No cover found for '%s' (basename: '%s', clean: '%s')", game->displayName,
             basename_no_ext, cleanName_no_ext
         );
+        */
     }
 
     pgb_free(basename_no_ext);

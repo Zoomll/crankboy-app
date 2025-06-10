@@ -537,3 +537,33 @@ void pgb_free(void* ptr)
         playdate->system->realloc(ptr, 0);
     }
 }
+
+char* aprintf(const char* fmt, ...)
+{
+    if (fmt == NULL) {
+        return NULL;
+    }
+
+    va_list args1, args2;
+    va_start(args1, fmt);
+    va_copy(args2, args1);
+
+    int length = vsnprintf(NULL, 0, fmt, args1) + 1;
+    va_end(args1);
+
+    if (length <= 0) {
+        va_end(args2);
+        return NULL;
+    }
+
+    char* buffer = (char*)malloc(length * sizeof(char));
+    if (buffer == NULL) {
+        va_end(args2);
+        return NULL;
+    }
+
+    vsnprintf(buffer, length, fmt, args2);
+    va_end(args2);
+
+    return buffer;
+}
