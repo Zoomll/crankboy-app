@@ -503,15 +503,7 @@ static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
     SDFile *f = playdate->file->open(save_filename, kFileReadData);
     if (f == NULL)
     {
-        const char* err = playdate->file->geterr();
-        const char* found = strstr(err, "o such file");
-        if (!found)
-        {
-            playdate->system->logToConsole("error loading file: %s", err);
-            return -1;
-        }
-        
-        // The error was that the file doesn't exist
+        // We assume this only happens if file does not exist
         return 0;
     }
 
