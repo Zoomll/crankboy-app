@@ -1788,6 +1788,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
         ((uint32_t *)pixels)[i] = 0;
 
+// remaps 16-bit lo (t1) and hi (t2) colours to 2bbp 32-bit v
 #define BG_REMAP(pal, t1, t2, v)                          \
     do                                                    \
     {                                                     \
@@ -1816,11 +1817,10 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
         uint32_t *bgcache = (uint32_t *)(gb->bgcache + (bg_y * BGCACHE_STRIDE) +
                                          addr_mode_2 * (BGCACHE_SIZE / 2) +
                                          map2 * (BGCACHE_SIZE / 4));
-        uint8_t pal = gb->gb_reg.BGP;
         uint32_t hi = bgcache[(bg_x / 16) % 0x10];
         for (int i = 0; i < (wx + 15) / 16; ++i)
         {
-            uint32_t *out = (uint32_t *)(void *)(pixels) + i;
+            uint16_t *out = (uint16_t *)(void *)(pixels) + (i*2);
             uint32_t lo = hi;
             hi = bgcache[(bg_x / 16 + i + 1) % 0x10];
             int xm = (bg_x % 16);
@@ -1829,14 +1829,8 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             raw1 |= ((hi & 0x0000FFFF) << (16 - xm));
             raw2 |= ((hi & 0xFFFF0000) >> xm);
 
-            uint32_t rm = 0;
-#pragma GCC unroll 16
-            BG_REMAP(pal, raw1, raw2, rm);
-            *out = rm;
-
-            // calculate priority
-            uint16_t p = raw1 | raw2;
-            *((uint16_t *)line_priority + i) = p ^ 0xFFFF;
+            out[0] = raw1;
+            out[1] = raw2;
         }
         
         __builtin_prefetch(&bgcache[next_bgcache_line_stride/sizeof(uint32_t) + (bg_x / 16)], 1);
@@ -1926,7 +1920,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
         uint32_t *bgcache = (uint32_t *)(gb->bgcache + (bg_y * BGCACHE_STRIDE) +
                                          addr_mode_2 * (BGCACHE_SIZE / 2) +
                                          map2 * (BGCACHE_SIZE / 4));
-        uint8_t pal = gb->gb_reg.BGP;
         uint32_t hi = bgcache[(bg_x / 16) % 0x10];
 
         // first part of window may be obscured
@@ -1936,14 +1929,14 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
         if (obscure_x % 16 != 0)
         {
             // obscure background behind window
-            ((uint16_t *)line_priority)[wx / 16] &= (0xFFFF >> obscure_x);
-            ((uint32_t *)(void *)(pixels))[wx / 16] &=
-                0xFFFFFFFF >> (2 * obscure_x);
+            uint16_t* obscure = (uint16_t*)&((uint32_t *)(void *)(pixels))[wx / 16];
+            obscure[0] &= (0xFFFF >> obscure_x);
+            obscure[1] &= (0xFFFF >> obscure_x);
         }
 
         for (int i = wx / 16; i < (LCD_WIDTH) / 16; ++i)
         {
-            uint32_t *out = (uint32_t *)(void *)(pixels) + i;
+            uint16_t *out = (uint16_t *)(void *)(pixels) + (i*2);
             uint32_t lo = hi;
             hi = bgcache[(bg_x / 16 + i + 1) % 0x10];
             int xm = (bg_x % 16);
@@ -1952,14 +1945,8 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             raw1 |= ((hi & 0x0000FFFF) << (16 - xm));
             raw2 |= ((hi & 0xFFFF0000) >> xm);
 
-            uint32_t rm = 0;
-#pragma GCC unroll 16
-            BG_REMAP(pal, raw1, raw2, rm);
-            *out |= rm;
-
-            // calculate priority
-            uint16_t p = raw1 | raw2;
-            *((uint16_t *)line_priority + i) |= p ^ 0xFFFF;
+            out[0] |= raw1;
+            out[1] |= raw2;
         }
         
         __builtin_prefetch(&bgcache[next_bgcache_line_stride/sizeof(uint32_t) + (bg_x / 16)], 1);
@@ -2041,6 +2028,24 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
         gb->display.window_clear++;  // advance window line
 #endif
     }
+    
+    #if ENABLE_BGCACHE
+    // remap background pixel by palette,
+    // and set priority
+    uint32_t pal = gb->gb_reg.BGP;
+    for (int i = 0; i < LCD_WIDTH / 16; ++i)
+    {
+        uint16_t* p = (uint32_t*)(void*)pixels + i;
+        uint16_t t0 = p[0];
+        uint16_t t1 = p[1];
+        uint32_t rm = 0; // FIXME: no need to assign 0, but compiler complains otherwise
+        #pragma GCC unroll 16
+        BG_REMAP(pal, t0, t1, rm);
+        *(uint32_t*)p = rm;
+        
+        ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
+    }
+    #endif
 
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
