@@ -254,6 +254,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // strtok modifies the string, so we need a mutable copy
     char descriptionCopy[256];
     strncpy(descriptionCopy, selectedDescription, sizeof(descriptionCopy));
+    descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';
 
     char *line = strtok(descriptionCopy, "\n");
     int descY = 50;  // Starting Y position for description text
