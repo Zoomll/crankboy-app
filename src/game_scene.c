@@ -1284,7 +1284,7 @@ __section__(".rare") void PGB_GameScene_buttonMenuCallback(void *userdata)
         if (selected_option != 1)
         {
             gameScene->button_hold_mode = selected_option;
-            gameScene->button_hold_frames_remaining = 30;
+            gameScene->button_hold_frames_remaining = 15;
             playdate->system->setMenuItemValue(buttonMenuItem, 1);
         }
     }
