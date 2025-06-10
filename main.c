@@ -60,9 +60,11 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
+        
+        srand(time(NULL));
+        
         check_for_updates(CB_updatecheck, NULL);
 
-        srand(time(NULL));
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
