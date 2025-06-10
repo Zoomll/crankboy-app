@@ -821,11 +821,11 @@ __section__(".text.tick") __space
 
     if (gameScene->button_hold_frames_remaining > 0)
     {
-        if (gameScene->button_hold_mode == 2)  // Holding Start
+        if (gameScene->button_hold_mode == 2 || gameScene->button_hold_mode == 3)  // Holding Start
         {
             gameScene->selector.startPressed = true;
         }
-        else if (gameScene->button_hold_mode == 0)  // Holding Select
+        else if (gameScene->button_hold_mode == 0 || gameScene->button_hold_mode == 3)  // Holding Select
         {
             gameScene->selector.selectPressed = true;
         }
@@ -1541,9 +1541,10 @@ static void PGB_GameScene_menu(void *object)
         "Select",
         "None",
         "Start",
+        "Both",
     };
     buttonMenuItem = playdate->system->addOptionsMenuItem(
-        "Button", options, 3, PGB_GameScene_buttonMenuCallback, gameScene);
+        "Button", options, 4, PGB_GameScene_buttonMenuCallback, gameScene);
     playdate->system->setMenuItemValue(buttonMenuItem,
                                        gameScene->button_hold_mode);
 }
