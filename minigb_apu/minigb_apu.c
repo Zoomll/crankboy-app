@@ -801,11 +801,6 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     __builtin_prefetch(left, 1);
     __builtin_prefetch(right, 1);
 
-    struct chan *c1 = chans;
-    struct chan *c2 = chans + 1;
-    struct chan *c3 = chans + 2;
-    struct chan *c4 = chans + 3;
-
 #define MAX_CHUNK 256
     while (len > 0)
     {
