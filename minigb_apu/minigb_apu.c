@@ -188,6 +188,7 @@ __audio static int update_len(struct chan *c, int len)
     }
 }
 
+#if AUDIO_QUALITY_HIGH
 __audio static bool update_freq(struct chan *c, uint32_t *pos)
 {
     uint32_t inc = c->freq_inc - *pos;
@@ -205,6 +206,7 @@ __audio static bool update_freq(struct chan *c, uint32_t *pos)
         return false;
     }
 }
+#endif
 
 __audio static void update_sweep(struct chan *c)
 {
@@ -249,15 +251,20 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
     set_note_freq(c, freq);
     c->freq_inc *= 8;
 
+#if !AUDIO_QUALITY_HIGH
+    if (c->freq_inc == 0)
+        return;
+#endif
+
     len = update_len(c, len);
 
     for (uint_fast16_t i = 0; i < len; i++)
     {
-
         update_env(c);
         if (!ch2)
             update_sweep(c);
 
+#if AUDIO_QUALITY_HIGH
         uint32_t pos = 0;
         uint32_t prev_pos = 0;
         int32_t sample = 0;
@@ -281,6 +288,27 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
 
         left[i] += sample * c->on_left * vol_l;
         right[i] += sample * c->on_right * vol_r;
+#else
+        c->freq_counter += c->freq_inc;
+        while (c->freq_counter >= FREQ_INC_REF)
+        {
+            c->freq_counter -= FREQ_INC_REF;
+            c->square.duty_counter = (c->square.duty_counter + 1) & 7;
+            c->val = (c->square.duty & (1 << c->square.duty_counter))
+                         ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                         : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+        }
+
+        if (c->muted)
+            continue;
+
+        int32_t sample = c->val;
+        sample *= c->volume;
+        sample >>= 2;
+
+        left[i] += sample * c->on_left * vol_l;
+        right[i] += sample * c->on_right * vol_r;
+#endif
     }
 }
 
@@ -312,11 +340,16 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
     set_note_freq(c, freq);
     c->freq_inc *= 32;
 
+#if !AUDIO_QUALITY_HIGH
+    if (c->freq_inc == 0)
+        return;
+#endif
+
     len = update_len(c, len);
 
     for (uint_fast16_t i = 0; i < len; i++)
     {
-
+#if AUDIO_QUALITY_HIGH
         uint32_t pos = 0;
         uint32_t prev_pos = 0;
         int32_t sample = 0;
@@ -334,16 +367,32 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
 
         sample += ((int)c->wave.sample - 8) * (int)(INT16_MAX / 64);
 
-        if (c->volume == 0)
-            continue;
-
-        if (c->muted)
+        if (c->volume == 0 || c->muted)
             continue;
 
         sample /= 4;
 
         left[i] += sample * c->on_left * vol_l;
         right[i] += sample * c->on_right * vol_r;
+#else
+        c->freq_counter += c->freq_inc;
+        while (c->freq_counter >= FREQ_INC_REF)
+        {
+            c->freq_counter -= FREQ_INC_REF;
+            c->val = (c->val + 1) & 31;
+        }
+
+        if (c->volume == 0 || c->muted)
+            continue;
+
+        uint8_t wave_val = wave_sample(c->val, c->volume);
+        int32_t sample = ((int)wave_val - 8) * (INT16_MAX / 64);
+
+        sample >>= 2;
+
+        left[i] += sample * c->on_left * vol_l;
+        right[i] += sample * c->on_right * vol_r;
+#endif
     }
 }
 
@@ -372,9 +421,9 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
 
     for (uint_fast16_t i = 0; i < len; i++)
     {
-
         update_env(c);
 
+#if AUDIO_QUALITY_HIGH
         uint32_t pos = 0;
         uint32_t prev_pos = 0;
         int32_t sample = 0;
@@ -398,7 +447,6 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
                              ? VOL_INIT_MAX / MAX_CHAN_VOLUME
                              : VOL_INIT_MIN / MAX_CHAN_VOLUME;
             }
-
             sample += ((pos - prev_pos) / c->freq_inc) * c->val;
             prev_pos = pos;
         }
@@ -412,6 +460,35 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
 
         left[i] += sample * c->on_left * vol_l;
         right[i] += sample * c->on_right * vol_r;
+#else
+        c->freq_counter += c->freq_inc;
+        while (c->freq_counter >= FREQ_INC_REF)
+        {
+            c->freq_counter -= FREQ_INC_REF;
+
+            uint16_t old_lfsr = c->noise.lfsr_reg;
+            c->noise.lfsr_reg <<= 1;
+
+            uint8_t xor_res =
+                (c->noise.lfsr_wide)
+                    ? (((old_lfsr >> 14) & 1) ^ ((old_lfsr >> 13) & 1))
+                    : (((old_lfsr >> 6) & 1) ^ ((old_lfsr >> 5) & 1));
+
+            c->noise.lfsr_reg |= xor_res;
+            c->val = !xor_res ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                              : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+        }
+
+        if (c->muted)
+            continue;
+
+        int32_t sample = c->val;
+        sample *= c->volume;
+        sample >>= 2;
+
+        left[i] += sample * c->on_left * vol_l;
+        right[i] += sample * c->on_right * vol_r;
+#endif
     }
 }
 
@@ -727,7 +804,7 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     struct chan *c3 = chans + 2;
     struct chan *c4 = chans + 3;
 
-    #define MAX_CHUNK  256
+#define MAX_CHUNK 256
     while (len > 0)
     {
         int chunksize = len >= MAX_CHUNK ? MAX_CHUNK : len;
