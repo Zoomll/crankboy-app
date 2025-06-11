@@ -6,6 +6,8 @@
 
 void validate_user_stack(void);
 typedef void *(*user_stack_fn)(void *);
+
+// note: assembly implementation only supports up to 2 arguments for now
 void *call_with_user_stack_impl(user_stack_fn, void *arg, void *arg2);
 #define call_with_user_stack(fn) \
     call_with_user_stack_impl((user_stack_fn)fn, NULL, NULL)

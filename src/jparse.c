@@ -150,3 +150,67 @@ __section__(".rare") int parse_json(const char *path, json_value *out)
     }
     return 1;
 }
+
+__section__(".rare") void encode_json(json_encoder* e, json_value j)
+{
+    switch(j.type)
+    {
+    case kJSONNull:
+        e->writeNull(e);
+        break;
+    case kJSONFalse:
+        e->writeFalse(e);
+        break;
+    case kJSONTrue:
+        e->writeTrue(e);
+        break;
+    case kJSONInteger:
+        e->writeInt(e, j.data.intval);
+        break;
+    case kJSONFloat:
+        e->writeDouble(e, j.data.floatval);
+        break;
+    case kJSONString:
+        e->writeString(e, j.data.stringval, strlen(j.data.stringval));
+        break;
+    case kJSONTable: {
+        e->startTable(e);
+        JsonObject* obj = j.data.tableval;
+        for (size_t i = 0; i < obj->n; ++i)
+        {
+            e->addTableMember(e, obj->data[i].key, strlen(obj->data[i].key));
+            encode_json(e, obj->data[i].value);
+        }
+        e->endTable(e);
+    } break;
+    case kJSONArray:
+        e->startArray(e);
+        JsonArray* obj = j.data.tableval;
+        for (size_t i = 0; i < obj->n; ++i)
+        {
+            e->addArrayMember(e);
+            encode_json(e, obj->data[i]);
+        }
+        e->endArray(e);
+    default:
+        return;
+    }
+}
+
+__section__(".rare")
+static void writefile(void* userdata, const char* str, int len) {
+	playdate->file->write((SDFile*)userdata, str, len);
+}
+
+__section__(".rare") int write_json_to_disk(const char* path, json_value out)
+{
+    json_encoder encoder;
+    
+    SDFile* file = playdate->file->open(path, kFileWrite);
+    if (!file) return -1;
+    
+    playdate->json->initEncoder(&encoder, writefile, file, 1);
+    encode_json(&encoder, out);
+    playdate->file->close(file);
+    return 0;
+}

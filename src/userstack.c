@@ -38,33 +38,54 @@ __attribute__((naked)) __section__(".rare") void *call_with_user_stack_impl(
     __asm__ volatile (
         
         "push {lr}\n"
-            // sp <- (user stack base + size - 4)
+            // r3 <- user stasck base
+            // lr <- (user stack base + size - 4)
             "ldr r3, =user_stack\n"
             "ldr lr, =" STRINGIFY(USER_STACK_SIZE) "\n"
-            "add r3, r3, lr\n"
-            "sub r3, r3, #4\n"
-            "mov lr, sp\n"
             
+            "add lr, r3, lr\n"
+            "sub lr, lr, #4\n"
+            
+            // check that we're not already on user stack
+            "cmp sp, r3\n"
+            "blo not_on_user_stack\n"
+            "cmp sp, lr\n"
+            "bls already_on_user_stack\n"
+            
+        "not_on_user_stack:\n"
+        
+            // swap lr and sp
+            // (sp <- user stack base + size - 4)
+            "mov r3, lr\n"
+            "mov lr, sp\n"
             "mov sp, r3\n"
             
-            // save original sp and return address
+            // save original sp while invoking fn
             "push {lr}\n"
-                "mov r3, r0\n"
-                // shift arguments down
-                "mov r0, r1\n"
-                "mov r1, r2\n"
-                "blx r3\n"   // call fn(arg)
-                
-                "push {r0}\n"
-                    "bl validate_user_stack\n"
-                "pop {r0}\n"
+                "bl shift_and_invoke\n"
             "pop {lr}\n"
             
             // restore original SP
             "mov sp, lr\n"
-        "pop {lr}\n"
-        // Return
-        "bx lr\n"
+        
+        // return
+        "pop {pc}\n"
+        
+    "shift_and_invoke:\n"
+        "push {lr}\n"
+            // (fallthrough)
+        "already_on_user_stack:\n"
+            // r3 <- fn, and shift arguments down
+            "mov r3, r0\n"
+            "mov r0, r1\n"
+            "mov r1, r2\n"
+            "blx r3\n"   // call fn(args...)
+            
+            "push {r0}\n"
+                "bl validate_user_stack\n"
+                
+        // return r0
+        "pop {r0, pc}\n"
     );
 }
 

@@ -23,4 +23,9 @@ typedef struct JsonArray
 } JsonArray;
 
 void free_json_data(json_value);
+
+// returns 0 on failure
 int parse_json(const char *file, json_value *out);
+
+// returns 0 on success
+int write_json_to_disk(const char* path, json_value out);

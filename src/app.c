@@ -174,7 +174,9 @@ void PGB_dismiss(PGB_Scene *sceneToDismiss)
         PGB_App->buttons_down = 0;
         PGB_App->buttons_pressed = 0;
 
+        playdate->system->logToConsole("refresh menu");
         PGB_Scene_refreshMenu(PGB_App->scene);
+        playdate->system->logToConsole("done refresh");
     }
 }
 
@@ -196,8 +198,6 @@ __section__(".rare") void PGB_event(PDSystemEvent event, uint32_t arg)
 
 void PGB_quit(void)
 {
-    preferences_save_to_disk();
-
     if (PGB_App->scene)
     {
         void *managedObject = PGB_App->scene->managedObject;

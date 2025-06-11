@@ -9,10 +9,11 @@
 #include "preferences.h"
 
 #include "revcheck.h"
+#include "jparse.h"
 
 static const int pref_version = 1;
 
-static const char *pref_filename = "preferences.bin";
+static const char *pref_filename = "preferences.json";
 
 int preferences_sound_mode = 0;
 int preferences_crank_mode = 0;
@@ -30,11 +31,19 @@ static void preferences_write_uint32(SDFile *file, uint32_t value);
 
 void preferences_init(void)
 {
+    // default values
     preferences_sound_mode = 2;
     preferences_crank_mode = 0;
     preferences_display_fps = false;
-    preferences_frame_skip = false;
+    preferences_frame_skip = true;
     preferences_itcm = (pd_rev == PD_REV_A);
+    
+    // remove old preferences file
+    // TODO: remove this eventually
+    if (playdate->file->stat("preferences.bin", NULL) == 0)
+    {
+        playdate->file->unlink("preferences.bin", false);
+    }
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
@@ -48,49 +57,86 @@ void preferences_init(void)
 
 void preferences_read_from_disk(void)
 {
-    SDFile *file = playdate->file->open(pref_filename, kFileReadData);
-
-    if (file)
+    json_value j;
+    int success = parse_json(pref_filename, &j);
+    
+    if (!success)
     {
-        uint32_t version = preferences_read_uint32(file);
-
-        preferences_sound_mode = preferences_read_uint8(file);
-        preferences_crank_mode = preferences_read_uint8(file);
-        preferences_display_fps = preferences_read_uint8(file);
-        preferences_frame_skip = preferences_read_uint8(file);
-        preferences_itcm = preferences_read_uint8(file);
-
-        playdate->file->close(file);
+        playdate->system->logToConsole("Failed to load preferences");
+        return;
     }
-    else
+    
+    #define KEY(x) if (!strcmp(obj->data[i].key, x))
+    
+    if (j.type == kJSONTable)
     {
-        playdate->system->logToConsole(
-            "Error: Could not open preferences file for reading.");
+        JsonObject* obj = j.data.tableval;
+        for (size_t i = 0; i < obj->n; ++i)
+        {
+            json_value pref = obj->data[i].value;
+            KEY("sound") {
+                preferences_sound_mode = pref.data.intval;
+            }
+            KEY("crank") {
+                preferences_crank_mode = pref.data.intval;
+            }
+            KEY("fps") {
+                preferences_display_fps = pref.data.intval;
+            }
+            KEY("frameskip") {
+                preferences_frame_skip= pref.data.intval;
+            }
+            KEY("itcm") {
+                preferences_itcm = pref.data.intval;
+            }
+        }
     }
+    
+    #undef KEY
+    
+    free_json_data(j);
 }
 
-void preferences_save_to_disk(void)
+int preferences_save_to_disk(void)
 {
-    playdate->system->logToConsole("Saving preferences.");
-    SDFile *file = playdate->file->open(pref_filename, kFileWrite);
-
-    if (file)
-    {
-        preferences_write_uint32(file, pref_version);
-
-        preferences_write_uint8(file, preferences_sound_mode);
-        preferences_write_uint8(file, preferences_crank_mode);
-        preferences_write_uint8(file, preferences_display_fps ? 1 : 0);
-        preferences_write_uint8(file, preferences_frame_skip ? 1 : 0);
-        preferences_write_uint8(file, preferences_itcm ? 1 : 0);
-
-        playdate->file->close(file);
-    }
-    else
-    {
-        playdate->system->logToConsole(
-            "Error: Could not open preferences file for writing.");
-    }
+    playdate->system->logToConsole("Save preferences...");
+    
+    // number of prefs to save
+    size_t n = 5;
+    union {
+        JsonObject obj;
+        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair)*n];
+    } data;
+    json_value j;
+    j.type = kJSONTable;
+    j.data.tableval = &data.obj;
+    data.obj.n = n;
+    
+    data.obj.data[0].key = "sound";
+    data.obj.data[0].value.type = kJSONInteger;
+    data.obj.data[0].value.data.intval = preferences_sound_mode;
+    
+    data.obj.data[1].key = "crank";
+    data.obj.data[1].value.type = kJSONInteger;
+    data.obj.data[1].value.data.intval = preferences_crank_mode;
+    
+    data.obj.data[2].key = "fps";
+    data.obj.data[2].value.type = kJSONInteger;
+    data.obj.data[2].value.data.intval = preferences_display_fps;
+    
+    data.obj.data[3].key = "frameskip";
+    data.obj.data[3].value.type = kJSONInteger;
+    data.obj.data[3].value.data.intval = preferences_frame_skip;
+    
+    data.obj.data[4].key = "itcm";
+    data.obj.data[4].value.type = kJSONInteger;
+    data.obj.data[4].value.data.intval = preferences_itcm;
+    
+    int error = write_json_to_disk(pref_filename, j);
+    
+    playdate->system->logToConsole("Save preferences status code %d", error);
+    
+    return !error;
 }
 
 static uint8_t preferences_read_uint8(SDFile *file)

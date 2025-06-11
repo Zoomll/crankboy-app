@@ -329,6 +329,12 @@ static void PGB_SettingsScene_free(void *object)
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
-    call_with_user_stack(preferences_save_to_disk);
+    int result = (intptr_t)call_with_user_stack(preferences_save_to_disk);
+    if (!result)
+    {
+        PGB_presentModal(PGB_Modal_new(
+            "Error saving preferences.", NULL, NULL, NULL
+        )->scene);
+    }
     DTCM_VERIFY();
 }

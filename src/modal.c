@@ -9,7 +9,7 @@ void PGB_Modal_update(PGB_Modal* modal)
 {
     if (modal->exit)
     {
-        if (--modal->timer == 0)
+        if (modal->timer --== 0)
         {
             PGB_dismiss(modal->scene);
         }

@@ -22,6 +22,6 @@ extern int preferences_crank_mode;
 void preferences_init(void);
 
 void preferences_read_from_disk(void);
-void preferences_save_to_disk(void);
+int preferences_save_to_disk(void);
 
 #endif /* preferences_h */
