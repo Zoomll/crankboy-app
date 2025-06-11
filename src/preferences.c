@@ -13,7 +13,6 @@
 static const int pref_version = 1;
 
 static const char *pref_filename = "preferences.bin";
-static SDFile *pref_file;
 
 int preferences_sound_mode = 0;
 int preferences_crank_mode = 0;
@@ -24,10 +23,10 @@ bool preferences_itcm = false;
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
 
-static uint8_t preferences_read_uint8(void);
-static void preferences_write_uint8(uint8_t value);
-static uint32_t preferences_read_uint32(void);
-static void preferences_write_uint32(uint32_t value);
+static uint8_t preferences_read_uint8(SDFile *file);
+static void preferences_write_uint8(SDFile *file, uint8_t value);
+static uint32_t preferences_read_uint32(SDFile *file);
+static void preferences_write_uint32(SDFile *file, uint32_t value);
 
 void preferences_init(void)
 {
@@ -49,63 +48,76 @@ void preferences_init(void)
 
 void preferences_read_from_disk(void)
 {
-    pref_file = playdate->file->open(pref_filename, kFileReadData);
-    if (pref_file)
+    SDFile *file = playdate->file->open(pref_filename, kFileReadData);
+
+    if (file)
     {
-        // read model version
-        uint32_t version = preferences_read_uint32();
+        uint32_t version = preferences_read_uint32(file);
 
-        preferences_sound_mode = preferences_read_uint8();
-        preferences_crank_mode = preferences_read_uint8();
-        preferences_display_fps = preferences_read_uint8();
-        preferences_frame_skip = preferences_read_uint8();
-        preferences_itcm = preferences_read_uint8();
+        preferences_sound_mode = preferences_read_uint8(file);
+        preferences_crank_mode = preferences_read_uint8(file);
+        preferences_display_fps = preferences_read_uint8(file);
+        preferences_frame_skip = preferences_read_uint8(file);
+        preferences_itcm = preferences_read_uint8(file);
 
-        playdate->file->close(pref_file);
+        playdate->file->close(file);
+    }
+    else
+    {
+        playdate->system->logToConsole(
+            "Error: Could not open preferences file for reading.");
     }
 }
 
 void preferences_save_to_disk(void)
 {
     playdate->system->logToConsole("Saving preferences.");
-    pref_file = playdate->file->open(pref_filename, kFileWrite);
+    SDFile *file = playdate->file->open(pref_filename, kFileWrite);
 
-    preferences_write_uint32(pref_version);
+    if (file)
+    {
+        preferences_write_uint32(file, pref_version);
 
-    preferences_write_uint8(preferences_sound_mode);
-    preferences_write_uint8(preferences_crank_mode);
-    preferences_write_uint8(preferences_display_fps ? 1 : 0);
-    preferences_write_uint8(preferences_frame_skip ? 1 : 0);
-    preferences_write_uint8(preferences_itcm ? 1 : 0);
+        preferences_write_uint8(file, preferences_sound_mode);
+        preferences_write_uint8(file, preferences_crank_mode);
+        preferences_write_uint8(file, preferences_display_fps ? 1 : 0);
+        preferences_write_uint8(file, preferences_frame_skip ? 1 : 0);
+        preferences_write_uint8(file, preferences_itcm ? 1 : 0);
 
-    playdate->file->close(pref_file);
+        playdate->file->close(file);
+    }
+    else
+    {
+        playdate->system->logToConsole(
+            "Error: Could not open preferences file for writing.");
+    }
 }
 
-static uint8_t preferences_read_uint8(void)
+static uint8_t preferences_read_uint8(SDFile *file)
 {
     uint8_t buffer[1];
-    playdate->file->read(pref_file, buffer, sizeof(uint8_t));
+    playdate->file->read(file, buffer, sizeof(uint8_t));
     return buffer[0];
 }
 
-static void preferences_write_uint8(uint8_t value)
+static void preferences_write_uint8(SDFile *file, uint8_t value)
 {
-    playdate->file->write(pref_file, &value, sizeof(uint8_t));
+    playdate->file->write(file, &value, sizeof(uint8_t));
 }
 
-static uint32_t preferences_read_uint32(void)
+static uint32_t preferences_read_uint32(SDFile *file)
 {
     unsigned char buffer[sizeof(uint32_t)];
-    playdate->file->read(pref_file, buffer, sizeof(uint32_t));
+    playdate->file->read(file, buffer, sizeof(uint32_t));
     return buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3];
 }
 
-static void preferences_write_uint32(uint32_t value)
+static void preferences_write_uint32(SDFile *file, uint32_t value)
 {
     unsigned char buffer[sizeof(uint32_t)];
     cpu_endian_to_big_endian((unsigned char *)&value, buffer, sizeof(uint32_t),
                              1);
-    playdate->file->write(pref_file, buffer, sizeof(uint32_t));
+    playdate->file->write(file, buffer, sizeof(uint32_t));
 }
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
