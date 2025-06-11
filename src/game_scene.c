@@ -122,9 +122,9 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
         return NULL;
 
     PGB_Scene *scene = PGB_Scene_new();
-    memset(scene, 0, sizeof(*scene));
 
     PGB_GameScene *gameScene = pgb_malloc(sizeof(PGB_GameScene));
+    memset(gameScene, 0, sizeof(*gameScene));
     gameScene->scene = scene;
     scene->managedObject = gameScene;
 
@@ -1869,15 +1869,18 @@ bool save_state_(PGB_GameScene *gameScene, unsigned slot)
     return success;
 }
 
+// returns true if successful
 __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
 {
     save_test("savestate");
+    gameScene->playtime = 0;
     return (bool)call_with_main_stack_2(save_state_, gameScene, slot);
 }
 
 // returns true if successful
 __section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
 {
+    gameScene->playtime = 0;
     PGB_GameSceneContext *context = gameScene->context;
     char *state_name;
     playdate->system->formatString(&state_name, "%s/%s.%u.state",

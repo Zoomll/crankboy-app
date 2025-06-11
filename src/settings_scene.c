@@ -46,6 +46,34 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     return settingsScene;
 }
 
+static void settings_load_state(PGB_GameScene* gameScene)
+{
+    if (!load_state(gameScene, 0))
+    {
+        PGB_presentModal(PGB_Modal_new(
+            "Failed to load state.", NULL, NULL, NULL
+        )->scene);
+        playdate->system->logToConsole("Error loading state %d", 0);
+    }
+    else
+    {
+        playdate->system->logToConsole("Loaded save state %d", 0);
+        
+        // TODO: something less invasive than a modal here.
+        PGB_presentModal(PGB_Modal_new(
+            "Loaded saved successfully.", NULL, NULL, NULL
+        )->scene);
+    }
+}
+
+static void settings_confirm_load_state(PGB_GameScene* gameScene, int option)
+{
+    if (option == 1)
+    {
+        settings_load_state(gameScene);
+    }
+}
+
 static void PGB_SettingsScene_update(void *object, float dt)
 {
     PGB_SettingsScene *settingsScene = object;
@@ -190,21 +218,20 @@ static void PGB_SettingsScene_update(void *object, float dt)
         else if (settingsScene->cursorIndex == 5 && gameScene &&
                  gameScene->save_states_supported)
         {  // load state
-            if (!load_state(gameScene, 0))
+        
+            // confirmation needed if more than 2 minutes of progress made
+            if (gameScene->playtime >= 60 * 120)
             {
+                const char* options[] = {
+                    "No", "Yes", NULL
+                };
                 PGB_presentModal(PGB_Modal_new(
-                    "Failed to load state.", NULL, NULL, NULL
+                    "Really load state?", options, (void*)settings_confirm_load_state, gameScene
                 )->scene);
-                playdate->system->logToConsole("Error loading state %d", 0);
             }
             else
             {
-                playdate->system->logToConsole("Loaded save state %d", 0);
-                
-                // TODO: something less invasive than a modal here.
-                PGB_presentModal(PGB_Modal_new(
-                    "Loaded saved successfully.", NULL, NULL, NULL
-                )->scene);
+                settings_load_state(gameScene);
             }
         }
     }

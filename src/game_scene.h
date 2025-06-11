@@ -135,6 +135,8 @@ typedef struct PGB_GameScene
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;
     bool crank_turbo_b_active;
+    
+    // time since started or last save/load state
     unsigned playtime;
 
     bool isCurrentlySaving;
