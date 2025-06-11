@@ -12,6 +12,7 @@
 #include "preferences.h"
 #include "revcheck.h"
 #include "userstack.h"
+#include "modal.h"
 
 static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
@@ -162,10 +163,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
         else if (settingsScene->cursorIndex == 4 && gameScene &&
                  gameScene->save_states_supported)
         {  // save state
-            if (!save_state(gameScene, 0))
+            if (!save_state(gameScene, 0) || 1)
             {
-                // TODO: pop-up message
-                playdate->system->logToConsole("Error saving state %d", 0);
+                char* msg;
+                playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());
+                PGB_presentModal(PGB_Modal_new(
+                    msg, NULL, NULL, NULL
+                )->scene);
+                free(msg);
             }
             else
             {
@@ -178,7 +183,9 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {  // load state
             if (!load_state(gameScene, 0))
             {
-                // TODO: pop-up message
+                PGB_presentModal(PGB_Modal_new(
+                    "Failed to load state.", NULL, NULL, NULL
+                )->scene);
                 playdate->system->logToConsole("Error loading state %d", 0);
             }
             else

@@ -14,6 +14,7 @@
 #include "minigb_apu.h"
 #include "preferences.h"
 #include "settings_scene.h"
+#include "modal.h"
 
 static void PGB_LibraryScene_update(void *object, float dt);
 static void PGB_LibraryScene_free(void *object);

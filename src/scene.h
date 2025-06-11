@@ -17,9 +17,10 @@
 typedef struct PGB_Scene
 {
     void *managedObject;
+    struct PGB_Scene* parentScene;
 
     float preferredRefreshRate;
-    float refreshRateCompensation;
+    float refreshRateCompensation; // TODO: remove
 
     bool forceFullRefresh;
     bool use_user_stack;

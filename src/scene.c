@@ -16,6 +16,7 @@ static void PGB_Scene_event(void *object, PDSystemEvent event, uint32_t arg);
 PGB_Scene *PGB_Scene_new(void)
 {
     PGB_Scene *scene = pgb_malloc(sizeof(PGB_Scene));
+    memset(scene, 0, sizeof(PGB_Scene));
 
     scene->update = PGB_Scene_update;
     scene->menu = PGB_Scene_menu_callback;

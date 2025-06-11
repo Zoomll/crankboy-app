@@ -24,7 +24,6 @@ void PGB_init(void)
     PGB_App->scene = NULL;
 
     PGB_App->pendingScene = NULL;
-    PGB_App->parentScene = NULL;
     PGB_App->pendingScene = NULL;
 
     playdate->file->mkdir(PGB_gamesPath);
@@ -137,19 +136,20 @@ void PGB_present(PGB_Scene *scene)
 
 void PGB_presentModal(PGB_Scene *scene)
 {
-    PGB_App->parentScene = PGB_App->scene;
+    scene->parentScene = PGB_App->scene;
     PGB_App->scene = scene;
     PGB_Scene_refreshMenu(PGB_App->scene);
 }
 
 void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
-    if (PGB_App->parentScene)
+    PGB_ASSERT(sceneToDismiss == PGB_App->scene);
+    PGB_Scene* parent = sceneToDismiss->parentScene;
+    if (parent)
     {
-        PGB_App->parentScene->forceFullRefresh = true;
+        parent->forceFullRefresh = true;
 
-        PGB_App->scene = PGB_App->parentScene;
-        PGB_App->parentScene = NULL;
+        PGB_App->scene = parent;
 
         if (sceneToDismiss && sceneToDismiss->free)
         {

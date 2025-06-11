@@ -18,6 +18,7 @@
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
+#include "modal.h"
 
 // clang-format off
 #include "game_scene.h"
@@ -268,14 +269,16 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             case 2:
                 playdate->system->logToConsole("Loaded cartridge save data");
                 break;
-            default:
-                playdate->system->error(
-                    "Error loading save data. To protect your data, the game "
-                    "will not start.");
+            default: {
+                playdate->system->logToConsole("Error loading save data. To protect your data, the game will not start.");
+                
+                PGB_presentModal(PGB_Modal_new(
+                    "Error loading save data. To protect your data, the game will not start.", NULL, NULL, NULL
+                )->scene);
                 free(gameScene);
                 free(context);
                 return NULL;
-            }
+            }}
 
             context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
