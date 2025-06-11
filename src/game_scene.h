@@ -133,6 +133,10 @@ typedef struct PGB_GameScene
     LCDBitmap *menuImage;
     int button_hold_mode; // 0: Select, 1: None, 2: Start
     int button_hold_frames_remaining;
+
+    float crank_turbo_accumulator;
+    bool crank_turbo_a_active;
+    bool crank_turbo_b_active;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);

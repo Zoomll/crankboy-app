@@ -52,22 +52,22 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     // In the Game Scene we can show all items.
     // But in the Library Scene only Sound, 30FPS Mode & FPS
-    int menuItemCount = gameScene ? 5 : 3;
+    int menuItemCount = gameScene ? 6 : 4;
 
     PGB_Scene_update(settingsScene->scene, dt);
 
     PDButtons pushed;
     playdate->system->getButtonState(NULL, &pushed, NULL);
 
-    const char *options[] = {"Sound", "30 FPS Mode", "Show FPS", "Save State",
-                             "Load State"};
+    const char *options[] = {"Sound",      "30 FPS Mode", "Show FPS",
+                             "Crank Mode", "Save State",  "Load State"};
     if (!gameScene || !gameScene->save_states_supported)
     {
-        options[3] = "(save state)";
-        options[4] = "(load state)";
+        options[4] = "(save state)";
+        options[5] = "(load state)";
     }
 
-    bool is_option[] = {1, 1, 1, 0, 0};
+    bool is_option[] = {1, 1, 1, 1, 0, 0};
 
     const char *descriptions[] = {
         "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
@@ -76,13 +76,16 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "for most games.\n \nDespite appearing to be\n30 FPS, the game "
         "itself\nstill runs at full speed.",
         "Displays the current\nframes-per-second\non screen.",
+        "Assign a turbo function\nto the crank.\n \nDefault:\nUse crank for "
+        "Start/Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo B/A:\nCW "
+        "for B, CCW for A.",
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
         "Load the previously\ncreated snapshot.",
     };
 
     if (!gameScene || !gameScene->save_states_supported)
     {
-        descriptions[3] = descriptions[4] =
+        descriptions[4] = descriptions[5] =
             "CrankBoy does not\ncurrently support\ncreating save\nstates with "
             "a\nROM that has\nits own save data.";
     }
@@ -90,8 +93,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     if (!gameScene)
     {
-        options[3] = "ITCM acceleration";
-        is_option[3] = 1;
+        options[4] = "ITCM acceleration";
+        is_option[4] = 1;
         static char *itcm_description = NULL;
         if (itcm_description == NULL)
         {
@@ -102,7 +105,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
                 "\n(Your device: %s)",
                 pd_rev_description);
         }
-        descriptions[3] = itcm_description ? itcm_description : "";
+        descriptions[4] = itcm_description ? itcm_description : "";
         ++menuItemCount;
     }
 #endif
@@ -148,11 +151,15 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {  // Show FPS
             preferences_display_fps = !preferences_display_fps;
         }
-        else if (settingsScene->cursorIndex == 3 && is_option[3])
+        else if (settingsScene->cursorIndex == 3)
+        {  // Crank Function
+            preferences_crank_mode = (preferences_crank_mode + 1) % 3;
+        }
+        else if (settingsScene->cursorIndex == 4 && is_option[4])
         {
             preferences_itcm ^= 1;
         }
-        else if (settingsScene->cursorIndex == 3 && gameScene &&
+        else if (settingsScene->cursorIndex == 4 && gameScene &&
                  gameScene->save_states_supported)
         {  // save state
             if (!save_state(gameScene, 0))
@@ -166,7 +173,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                                0);
             }
         }
-        else if (settingsScene->cursorIndex == 4 && gameScene &&
+        else if (settingsScene->cursorIndex == 5 && gameScene &&
                  gameScene->save_states_supported)
         {  // load state
             if (!load_state(gameScene, 0))
@@ -191,6 +198,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     playdate->graphics->setFont(PGB_App->bodyFont);
 
     const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
+    const char *crank_mode_labels[] = {"Default", "Turbo A/B", "Turbo B/A"};
     for (int i = 0; i < menuItemCount; i++)
     {
         int y = 50 + i * 30;
@@ -208,7 +216,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {
             stateText = preferences_display_fps ? "On" : "Off";
         }
-        else if (i == 3 && is_option[3])
+        else if (i == 3)
+        {
+            stateText = crank_mode_labels[preferences_crank_mode];
+        }
+        else if (i == 4 && is_option[4])
         {
             stateText = preferences_itcm ? "On" : "Off";
         }

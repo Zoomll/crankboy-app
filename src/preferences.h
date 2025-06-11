@@ -17,6 +17,7 @@ extern bool preferences_display_fps;
 extern bool preferences_frame_skip;
 extern bool preferences_itcm;
 extern int preferences_sound_mode;
+extern int preferences_crank_mode;
 
 void preferences_init(void);
 

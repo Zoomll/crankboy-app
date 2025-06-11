@@ -52,7 +52,7 @@ static uint8_t *read_rom_to_ram(const char *filename,
 // returns 2 if data and RTC loaded
 // returns -1 on error
 static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
-                               unsigned int *last_save_time);
+                              unsigned int *last_save_time);
 static void write_cart_ram_file(const char *save_filename, struct gb_s *gb);
 
 static void gb_error(struct gb_s *gb, const enum gb_error_e gb_err,
@@ -149,6 +149,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
+
+    gameScene->crank_turbo_accumulator = 0.0f;
+    gameScene->crank_turbo_a_active = false;
+    gameScene->crank_turbo_b_active = false;
 
     gameScene->menuImage = NULL;
 
@@ -253,18 +257,21 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
             int ram_load_result = read_cart_ram_file(
                 save_filename, context->gb, &gameScene->last_save_time);
-            
+
             switch (ram_load_result)
             {
             case 0:
-                playdate->system->logToConsole("No previous cartridge save data found");
+                playdate->system->logToConsole(
+                    "No previous cartridge save data found");
                 break;
             case 1:
             case 2:
                 playdate->system->logToConsole("Loaded cartridge save data");
                 break;
             default:
-                playdate->system->error("Error loading save data. To protect your data, the game will not start.");
+                playdate->system->error(
+                    "Error loading save data. To protect your data, the game "
+                    "will not start.");
                 free(gameScene);
                 free(context);
                 return NULL;
@@ -397,7 +404,7 @@ static void PGB_GameScene_selector_init(PGB_GameScene *gameScene)
     int containerX = playdate->display->getWidth() - 6 - containerWidth;
     int containerY = 8;
 
-    int x = containerX + (float)(containerWidth - width) / 2;
+    int x = containerX + (float)(containerWidth - width) / 2 - 2;
     int y = containerY + labelHeight + startSpacing;
 
     int startButtonX =
@@ -484,7 +491,7 @@ static uint8_t *read_rom_to_ram(const char *filename,
 }
 
 static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
-                               unsigned int *last_save_time)
+                              unsigned int *last_save_time)
 {
     *last_save_time = 0;
 
@@ -509,7 +516,8 @@ static int read_cart_ram_file(const char *save_filename, struct gb_s *gb,
 
     if (sram_len > 0)
     {
-        int read = playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
+        int read =
+            playdate->file->read(f, gb->gb_cart_ram, (unsigned int)sram_len);
         if (read != sram_len)
         {
             playdate->system->logToConsole("Failed to read save data");
@@ -804,55 +812,106 @@ __section__(".text.tick") __space
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
 
+    gameScene->crank_turbo_a_active = false;
+    gameScene->crank_turbo_b_active = false;
+
     if (!playdate->system->isCrankDocked())
     {
-        float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
-
-        context->gb->direct.crank_docked = 0;
-        context->gb->direct.crank = (angle / 360.0f) * 0x10000;
-
-        if (angle <= (180 - gameScene->selector.deadAngle))
+        if (preferences_crank_mode == 0)  // Start/Select mode
         {
-            if (angle >= gameScene->selector.triggerAngle)
+            float angle =
+                fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
+
+            context->gb->direct.crank_docked = 0;
+            context->gb->direct.crank = (angle / 360.0f) * 0x10000;
+
+            if (angle <= (180 - gameScene->selector.deadAngle))
+            {
+                if (angle >= gameScene->selector.triggerAngle)
+                {
+                    gameScene->selector.startPressed = true;
+                }
+
+                float adjustedAngle =
+                    fminf(angle, gameScene->selector.triggerAngle);
+                progress = 0.5f - adjustedAngle /
+                                      gameScene->selector.triggerAngle * 0.5f;
+            }
+            else if (angle >= (180 + gameScene->selector.deadAngle))
+            {
+                if (angle <= (360 - gameScene->selector.triggerAngle))
+                {
+                    gameScene->selector.selectPressed = true;
+                }
+
+                float adjustedAngle =
+                    fminf(360 - angle, gameScene->selector.triggerAngle);
+                progress = 0.5f + adjustedAngle /
+                                      gameScene->selector.triggerAngle * 0.5f;
+            }
+            else
             {
                 gameScene->selector.startPressed = true;
-            }
-
-            float adjustedAngle =
-                fminf(angle, gameScene->selector.triggerAngle);
-            progress =
-                0.5f - adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
-        }
-        else if (angle >= (180 + gameScene->selector.deadAngle))
-        {
-            if (angle <= (360 - gameScene->selector.triggerAngle))
-            {
                 gameScene->selector.selectPressed = true;
             }
-
-            float adjustedAngle =
-                fminf(360 - angle, gameScene->selector.triggerAngle);
-            progress =
-                0.5f + adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
         }
-        else
+        else  // Turbo mode
         {
-            gameScene->selector.startPressed = true;
-            gameScene->selector.selectPressed = true;
+            float angle =
+                fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
+            context->gb->direct.crank_docked = 0;
+            context->gb->direct.crank = (angle / 360.0f) * 0x10000;
+
+            float crank_change = playdate->system->getCrankChange();
+            gameScene->crank_turbo_accumulator += crank_change;
+
+            // Handle clockwise rotation
+            while (gameScene->crank_turbo_accumulator >= 30.0f)
+            {
+                if (preferences_crank_mode == 1)
+                {
+                    gameScene->crank_turbo_a_active = true;
+                }
+                else
+                {
+                    gameScene->crank_turbo_b_active = true;
+                }
+                gameScene->crank_turbo_accumulator -= 30.0f;
+            }
+
+            // Handle counter-clockwise rotation
+            while (gameScene->crank_turbo_accumulator <= -30.0f)
+            {
+                if (preferences_crank_mode == 1)
+                {
+                    gameScene->crank_turbo_b_active = true;
+                }
+                else
+                {
+                    gameScene->crank_turbo_a_active = true;
+                }
+                gameScene->crank_turbo_accumulator += 30.0f;
+            }
         }
     }
     else
     {
         context->gb->direct.crank_docked = 1;
+        if (preferences_crank_mode > 0)
+        {
+            gameScene->crank_turbo_accumulator = 0.0f;
+        }
     }
 
     if (gameScene->button_hold_frames_remaining > 0)
     {
-        if (gameScene->button_hold_mode == 2 || gameScene->button_hold_mode == 3)  // Holding Start
+        if (gameScene->button_hold_mode == 2 ||
+            gameScene->button_hold_mode == 3)
         {
             gameScene->selector.startPressed = true;
         }
-        else if (gameScene->button_hold_mode == 0 || gameScene->button_hold_mode == 3)  // Holding Select
+        else if (gameScene->button_hold_mode == 0 ||
+                 gameScene->button_hold_mode == 3)
         {
             gameScene->selector.selectPressed = true;
         }
@@ -931,8 +990,10 @@ __section__(".text.tick") __space
         context->gb->direct.joypad_bits.start = gb_joypad_start_is_active_low;
         context->gb->direct.joypad_bits.select = gb_joypad_select_is_active_low;
 
-        context->gb->direct.joypad_bits.a = !(current_pd_buttons & kButtonA);
-        context->gb->direct.joypad_bits.b = !(current_pd_buttons & kButtonB);
+        context->gb->direct.joypad_bits.a = !((current_pd_buttons & kButtonA) ||
+                                              gameScene->crank_turbo_a_active);
+        context->gb->direct.joypad_bits.b = !((current_pd_buttons & kButtonB) ||
+                                              gameScene->crank_turbo_b_active);
         context->gb->direct.joypad_bits.left =
             !(current_pd_buttons & kButtonLeft);
         context->gb->direct.joypad_bits.up = !(current_pd_buttons & kButtonUp);
@@ -1132,6 +1193,43 @@ __section__(".text.tick") __space
             playdate->graphics->drawBitmap(bitmap, gameScene->selector.x,
                                            gameScene->selector.y,
                                            kBitmapUnflipped);
+        }
+
+        if (preferences_crank_mode > 0)
+        {
+            // Draw the Turbo indicator on the right panel
+            playdate->graphics->setFont(PGB_App->labelFont);
+            playdate->graphics->setDrawMode(kDrawModeFillWhite);
+
+            const char *line1 = "Turbo";
+            const char *line2 = (preferences_crank_mode == 1) ? "A/B" : "B/A";
+
+            int fontHeight =
+                playdate->graphics->getFontHeight(PGB_App->labelFont);
+            int lineSpacing = 2;
+            int paddingRight = 8;
+            int paddingBottom = 6;
+
+            int line1Width = playdate->graphics->getTextWidth(
+                PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0);
+            int line2Width = playdate->graphics->getTextWidth(
+                PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0);
+
+            int rightEdge = playdate->display->getWidth();
+            int bottomEdge = playdate->display->getHeight();
+
+            int y2 = bottomEdge - paddingBottom - fontHeight;
+            int y1 = y2 - fontHeight - lineSpacing;
+
+            int x1 = rightEdge - line1Width - paddingRight;
+            int x2 = rightEdge - line2Width - paddingRight - paddingBottom;
+
+            playdate->graphics->drawText(line1, strlen(line1), kUTF8Encoding,
+                                         x1, y1);
+            playdate->graphics->drawText(line2, strlen(line2), kUTF8Encoding,
+                                         x2, y2);
+
+            playdate->graphics->setDrawMode(kDrawModeCopy);
         }
 
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
