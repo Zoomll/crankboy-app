@@ -5251,6 +5251,9 @@ done_instr:
     gb->counter.div_count += inst_cycles;
     gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
     gb->counter.div_count %= DIV_CYCLES;
+    
+    // TODO: this is almost certainly a bad idea, since we never finish the frame.
+    if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0) return;
 
     /* LCD Timing */
     gb->counter.lcd_count += inst_cycles;
