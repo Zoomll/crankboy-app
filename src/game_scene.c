@@ -114,6 +114,7 @@ void itcm_core_init(void)
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 {
+    save_test("b");
     playdate->system->logToConsole("ROM: %s", rom_filename);
     playdate->system->setCrankSoundsDisabled(true);
 
@@ -381,6 +382,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     PGB_ASSERT(gameScene->context == context);
     PGB_ASSERT(gameScene->context->scene == gameScene);
     PGB_ASSERT(gameScene->context->gb->direct.priv == context);
+    
+    save_test("c");
 
     return gameScene;
 }

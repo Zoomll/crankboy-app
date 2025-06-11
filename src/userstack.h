@@ -17,11 +17,27 @@ void *call_with_user_stack_impl(user_stack_fn, void *arg, void *arg2);
     call_with_user_stack_impl((user_stack_fn)fn, (void *)(uintptr_t)(a), \
                               (void *)(uintptr_t)(b))
 
+// if in user stack, can invoke fn on original stack
+// (don't go further than this though!)
+// preserves dtcm region, so this could be a slow operation.
+void* call_with_main_stack_impl(user_stack_fn, void* arg, void* arg2);
+
+#define call_with_main_stack(fn) \
+    call_with_main_stack_impl(fn, NULL, NULL)
+#define call_with_main_stack_1(fn, a) \
+    call_with_main_stack_impl(fn, (void *)(uintptr_t)(a), NULL)
+#define call_with_main_stack_2(fn, a, b) \
+    call_with_main_stack_impl(fn, (void *)(uintptr_t)(a), (void *)(uintptr_t)(b))
+
 #else
 
 #define call_with_user_stack(fn) (fn())
 #define call_with_user_stack_1(fn, a) (fn(a))
 #define call_with_user_stack_2(fn, a, b) (fn(a, b))
+
+#define call_with_main_stack(fn) (fn())
+#define call_with_main_stack_1(fn, a) (fn(a))
+#define call_with_main_stack_2(fn, a, b) (fn(a, b))
 
 #endif
 

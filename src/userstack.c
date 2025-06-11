@@ -32,13 +32,68 @@ __section__(".rare") void validate_user_stack(void)
 #define STRINGIFY_(x) #x
 #define STRINGIFY(x) STRINGIFY_(x)
 
+void* user_stack_exit_sp;
+
+
+__attribute__((naked)) __section__(".rare") void *call_with_main_stack_impl(
+    user_stack_fn fn, void *arg, void *arg2)
+{
+     __asm__ volatile (
+        "push {lr}\n"
+            // r3 <- user stasck base
+            // lr <- (user stack base + size - 4)
+            "ldr r3, =user_stack\n"
+            "ldr lr, =" STRINGIFY(USER_STACK_SIZE) "\n"
+            
+            "add lr, r3, lr\n"
+            "sub lr, lr, #4\n"
+            
+            // check that we're already on user stack
+            "cmp sp, r3\n"
+            "blo shift_invoke_then_pop_pc\n"
+            "cmp sp, lr\n"
+            "bhi shift_invoke_then_pop_pc\n"
+            
+        "on_user_stack:\n"
+            // r3 <- sp
+            // sp <- user_stack_exit_sp
+            "mov r3, sp\n"
+            "ldr lr, =user_stack_exit_sp\n"
+            "ldr lr, [lr]\n"
+            "mov sp, lr\n"
+            
+            "push {r3}\n"
+                
+                // temporarily store dtcm
+                "push {r0, r1, r2}\n"
+                    "bl dtcm_store\n"
+                    "mov r3, r0\n"
+                "pop {r0, r1, r2}\n"
+                
+                //
+                "push {r3}\n"
+                    "bl shift_and_invoke\n"
+                "pop {r3}\n"
+                
+                // restore dtcm
+                "push {r0}\n"
+                    "mov r0, r3\n"
+                    "bl dtcm_restore\n"
+                "pop {r0}\n"
+                
+            "pop {r3}\n"
+            "mov sp, r3\n"
+        "pop {pc}\n"
+    );
+}
+
 __attribute__((naked)) __section__(".rare") void *call_with_user_stack_impl(
     user_stack_fn fn, void *arg, void *arg2)
 {
     __asm__ volatile (
         
         "push {lr}\n"
-            // r3 <- user stasck base
+            // r3 <- user stack base
             // lr <- (user stack base + size - 4)
             "ldr r3, =user_stack\n"
             "ldr lr, =" STRINGIFY(USER_STACK_SIZE) "\n"
@@ -50,9 +105,13 @@ __attribute__((naked)) __section__(".rare") void *call_with_user_stack_impl(
             "cmp sp, r3\n"
             "blo not_on_user_stack\n"
             "cmp sp, lr\n"
-            "bls already_on_user_stack\n"
+            "bls shift_invoke_then_pop_pc\n"
             
         "not_on_user_stack:\n"
+            
+            // user_stack_exit_sp <- sp
+            "ldr r3, =user_stack_exit_sp\n"
+            "str sp, [r3]\n"
         
             // swap lr and sp
             // (sp <- user stack base + size - 4)
@@ -74,7 +133,7 @@ __attribute__((naked)) __section__(".rare") void *call_with_user_stack_impl(
     "shift_and_invoke:\n"
         "push {lr}\n"
             // (fallthrough)
-        "already_on_user_stack:\n"
+        "shift_invoke_then_pop_pc:\n"
             // r3 <- fn, and shift arguments down
             "mov r3, r0\n"
             "mov r0, r1\n"

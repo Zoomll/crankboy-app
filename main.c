@@ -25,6 +25,32 @@
 static int update(void *userdata);
 int eventHandler_pdnewlib(PlaydateAPI *, PDSystemEvent event, uint32_t arg);
 
+void _save_test(const char* context)
+{
+    char buff[4096];
+    SDFile* f = playdate->file->open("states/0kirby_dream_land.0.state", kFileWrite);
+    
+    if (!f)
+    {
+        playdate->system->logToConsole("failed to open file %s", context);
+        return;
+    }
+    
+    int result = playdate->file->write(f, buff, sizeof(buff));
+    if (result != sizeof(buff))
+    {
+        playdate->system->logToConsole("failed to write; %d bytes; context \"%s\": %s", result, context, playdate->file->geterr());
+    }
+    
+    playdate->file->close(f);
+    playdate->system->logToConsole("successfully wrote file %s", context);
+}
+
+void save_test(const char* context)
+{
+    call_with_main_stack_1(_save_test, context);
+}
+
 __section__(".rare") static void *user_stack_test(void *p)
 {
     if (p == (void *)(uintptr_t)0x103)
@@ -56,6 +82,8 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
+        
+        save_test("main");
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
