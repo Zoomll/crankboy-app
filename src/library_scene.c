@@ -398,54 +398,120 @@ static void PGB_LibraryScene_update(void *object, float dt)
         if (needsDisplay)
         {
             static const char *title = "CrankBoy";
-            static const char *message1 = "Connect to a computer and";
-            static const char *message2 = "copy games to Data/*.crankboy/games";
+            static const char *message1 = "To add games:";
+
+            static const char *message2_num = "1.";
+            static const char *message2_text = "Connect to a computer";
+
+            static const char *message3_num = "2.";
+            static const char *message3_text1 = "Then hold ";
+            static const char *message3_text2 = "LEFT + MENU + POWER";
+
+            static const char *message4_num = "3.";
+            static const char *message4_text1 = "Copy games to ";
+            static const char *message4_text2 = "Data/*.crankboy/games";
 
             playdate->graphics->clear(kColorWhite);
 
-            int titleToMessageSpacing = 6;
+            int titleToMessageSpacing = 8;
+            int messageLineSpacing = 4;
+            int verticalOffset = 2;
+            int textPartSpacing = 5;
 
             int titleHeight =
                 playdate->graphics->getFontHeight(PGB_App->titleFont);
+            int subheadHeight =
+                playdate->graphics->getFontHeight(PGB_App->subheadFont);
             int messageHeight =
                 playdate->graphics->getFontHeight(PGB_App->bodyFont);
-            int messageLineSpacing = 2;
+            int compositeLineHeight =
+                (subheadHeight + verticalOffset > messageHeight)
+                    ? (subheadHeight + verticalOffset)
+                    : messageHeight;
 
-            int containerHeight = titleHeight + titleToMessageSpacing +
-                                  messageHeight * 2 + messageLineSpacing;
-            int titleY =
-                (float)(playdate->display->getHeight() - containerHeight) / 2;
+            int numWidth1 = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message2_num, strlen(message2_num),
+                kUTF8Encoding, 0);
+            int numWidth2 = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message3_num, strlen(message3_num),
+                kUTF8Encoding, 0);
+            int numWidth3 = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message4_num, strlen(message4_num),
+                kUTF8Encoding, 0);
+            int maxNumWidth = (numWidth1 > numWidth2) ? numWidth1 : numWidth2;
+            maxNumWidth = (numWidth3 > maxNumWidth) ? numWidth3 : maxNumWidth;
 
-            int titleX = (float)(playdate->display->getWidth() -
-                                 playdate->graphics->getTextWidth(
-                                     PGB_App->titleFont, title,
-                                     pgb_strlen(title), kUTF8Encoding, 0)) /
+            int textWidth4_part1 = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message4_text1, strlen(message4_text1),
+                kUTF8Encoding, 0);
+            int textWidth4_part2 = playdate->graphics->getTextWidth(
+                PGB_App->subheadFont, message4_text2, strlen(message4_text2),
+                kUTF8Encoding, 0);
+            int totalInstructionWidth = maxNumWidth + 4 + textWidth4_part1 +
+                                        textPartSpacing + textWidth4_part2;
+
+            int titleX = (playdate->display->getWidth() -
+                          playdate->graphics->getTextWidth(PGB_App->titleFont,
+                                                           title, strlen(title),
+                                                           kUTF8Encoding, 0)) /
                          2;
-            int message1_X =
-                (float)(playdate->display->getWidth() -
-                        playdate->graphics->getTextWidth(
-                            PGB_App->bodyFont, message1, pgb_strlen(message1),
-                            kUTF8Encoding, 0)) /
-                2;
-            int message2_X =
-                (float)(playdate->display->getWidth() -
-                        playdate->graphics->getTextWidth(
-                            PGB_App->bodyFont, message2, pgb_strlen(message2),
-                            kUTF8Encoding, 0)) /
-                2;
+            int blockAnchorX =
+                (playdate->display->getWidth() - totalInstructionWidth) / 2;
+            int numColX = blockAnchorX;
+            int textColX = blockAnchorX + maxNumWidth + 4;
+
+            int containerHeight =
+                titleHeight + titleToMessageSpacing + messageHeight +
+                messageLineSpacing + messageHeight + messageLineSpacing +
+                compositeLineHeight + messageLineSpacing + compositeLineHeight;
+            int titleY = (playdate->display->getHeight() - containerHeight) / 2;
 
             int message1_Y = titleY + titleHeight + titleToMessageSpacing;
             int message2_Y = message1_Y + messageHeight + messageLineSpacing;
+            int message3_Y = message2_Y + messageHeight + messageLineSpacing;
+            int message4_Y =
+                message3_Y + compositeLineHeight + messageLineSpacing;
 
             playdate->graphics->setFont(PGB_App->titleFont);
-            playdate->graphics->drawText(title, pgb_strlen(title),
-                                         kUTF8Encoding, titleX, titleY);
+            playdate->graphics->drawText(title, strlen(title), kUTF8Encoding,
+                                         titleX, titleY);
 
             playdate->graphics->setFont(PGB_App->bodyFont);
-            playdate->graphics->drawText(message1, pgb_strlen(message1),
-                                         kUTF8Encoding, message1_X, message1_Y);
-            playdate->graphics->drawText(message2, pgb_strlen(message2),
-                                         kUTF8Encoding, message2_X, message2_Y);
+            playdate->graphics->drawText(message1, strlen(message1),
+                                         kUTF8Encoding, blockAnchorX,
+                                         message1_Y);
+
+            playdate->graphics->drawText(message2_num, strlen(message2_num),
+                                         kUTF8Encoding, numColX, message2_Y);
+            playdate->graphics->drawText(message2_text, strlen(message2_text),
+                                         kUTF8Encoding, textColX, message2_Y);
+
+            playdate->graphics->drawText(message3_num, strlen(message3_num),
+                                         kUTF8Encoding, numColX, message3_Y);
+            playdate->graphics->drawText(message3_text1, strlen(message3_text1),
+                                         kUTF8Encoding, textColX, message3_Y);
+            playdate->graphics->setFont(PGB_App->subheadFont);
+            int message3_text1_width = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message3_text1, strlen(message3_text1),
+                kUTF8Encoding, 0);
+            playdate->graphics->drawText(
+                message3_text2, strlen(message3_text2), kUTF8Encoding,
+                textColX + message3_text1_width + textPartSpacing,
+                message3_Y + verticalOffset);
+
+            playdate->graphics->setFont(PGB_App->bodyFont);
+            playdate->graphics->drawText(message4_num, strlen(message4_num),
+                                         kUTF8Encoding, numColX, message4_Y);
+            playdate->graphics->drawText(message4_text1, strlen(message4_text1),
+                                         kUTF8Encoding, textColX, message4_Y);
+            playdate->graphics->setFont(PGB_App->subheadFont);
+            int message4_text1_width = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, message4_text1, strlen(message4_text1),
+                kUTF8Encoding, 0);
+            playdate->graphics->drawText(
+                message4_text2, strlen(message4_text2), kUTF8Encoding,
+                textColX + message4_text1_width + textPartSpacing,
+                message4_Y + verticalOffset);
         }
     }
 }
