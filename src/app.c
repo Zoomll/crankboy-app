@@ -61,8 +61,6 @@ __section__(".rare") static void switchToPendingScene(void)
 {
     if (PGB_App->scene)
     {
-        preferences_save_to_disk();
-
         void *managedObject = PGB_App->scene->managedObject;
         PGB_App->scene->free(managedObject);
     }
@@ -78,14 +76,14 @@ __section__(".text.main") void PGB_update(float dt)
     PGB_App->dt = dt;
 
     PGB_App->crankChange = playdate->system->getCrankChange();
-    
+
     playdate->system->getButtonState(
         &PGB_App->buttons_down, &PGB_App->buttons_pressed, NULL
     );
-    
+
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
     PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
-    
+
     if (PGB_App->scene)
     {
         void *managedObject = PGB_App->scene->managedObject;
@@ -141,7 +139,7 @@ void PGB_present(PGB_Scene *scene)
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
-    
+
     PGB_App->pendingScene = scene;
 }
 
@@ -150,7 +148,7 @@ void PGB_presentModal(PGB_Scene *scene)
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
-    
+
     scene->parentScene = PGB_App->scene;
     PGB_App->scene = scene;
     PGB_Scene_refreshMenu(PGB_App->scene);
@@ -171,7 +169,7 @@ void PGB_dismiss(PGB_Scene *sceneToDismiss)
         {
             sceneToDismiss->free(sceneToDismiss->managedObject);
         }
-        
+
         PGB_App->buttons_suppress |= PGB_App->buttons_down;
         PGB_App->buttons_down = 0;
         PGB_App->buttons_pressed = 0;
