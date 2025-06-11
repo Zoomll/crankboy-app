@@ -382,7 +382,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     PGB_ASSERT(gameScene->context == context);
     PGB_ASSERT(gameScene->context->scene == gameScene);
     PGB_ASSERT(gameScene->context->gb->direct.priv == context);
-    
+
     save_test("c");
 
     return gameScene;
@@ -1191,6 +1191,11 @@ __section__(".text.tick") __space
             }
         }
 
+        bool shouldDisplayStartSelectUI =
+            (!playdate->system->isCrankDocked() &&
+             preferences_crank_mode == 0) ||
+            (gameScene->button_hold_frames_remaining > 0);
+
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
         {
             // Clear the right sidebar area before redrawing any static UI.
@@ -1202,16 +1207,19 @@ __section__(".text.tick") __space
                                          playdate->display->getHeight(),
                                          kColorBlack);
 
-            playdate->graphics->setFont(PGB_App->labelFont);
-            playdate->graphics->setDrawMode(kDrawModeFillWhite);
-            playdate->graphics->drawText(
-                startButtonText, pgb_strlen(startButtonText), kUTF8Encoding,
-                gameScene->selector.startButtonX,
-                gameScene->selector.startButtonY);
-            playdate->graphics->drawText(
-                selectButtonText, pgb_strlen(selectButtonText), kUTF8Encoding,
-                gameScene->selector.selectButtonX,
-                gameScene->selector.selectButtonY);
+            if (shouldDisplayStartSelectUI)
+            {
+                playdate->graphics->setFont(PGB_App->labelFont);
+                playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                playdate->graphics->drawText(
+                    startButtonText, pgb_strlen(startButtonText), kUTF8Encoding,
+                    gameScene->selector.startButtonX,
+                    gameScene->selector.startButtonY);
+                playdate->graphics->drawText(
+                    selectButtonText, pgb_strlen(selectButtonText),
+                    kUTF8Encoding, gameScene->selector.selectButtonX,
+                    gameScene->selector.selectButtonY);
+            }
 
             if (preferences_crank_mode > 0)
             {
@@ -1255,7 +1263,7 @@ __section__(".text.tick") __space
             playdate->graphics->setDrawMode(kDrawModeCopy);
         }
 
-        if (animatedSelectorBitmapNeedsRedraw)
+        if (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
         {
             LCDBitmap *bitmap;
             // Use gameScene->selector.index, which is the most current
@@ -1274,9 +1282,19 @@ __section__(".text.tick") __space
                                            kBitmapUnflipped);
         }
 
+        static bool wasSelectorVisible = false;
+        if (shouldDisplayStartSelectUI != wasSelectorVisible)
+        {
+            gameScene->staticSelectorUIDrawn = false;
+        }
+        wasSelectorVisible = shouldDisplayStartSelectUI;
+
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
         {
-            gameScene->staticSelectorUIDrawn = true;
+            if (shouldDisplayStartSelectUI)
+            {
+                gameScene->staticSelectorUIDrawn = true;
+            }
         }
 
 #if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
@@ -1788,15 +1806,13 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 // returns true if successful
-__section__(".rare") static
-bool save_state_(PGB_GameScene *gameScene, unsigned slot)
+__section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
+                                             unsigned slot)
 {
-    playdate->system->logToConsole(
-        "save state %p", __builtin_frame_address(0)
-    );
-    
+    playdate->system->logToConsole("save state %p", __builtin_frame_address(0));
+
     save_test("savestate_inner");
-    
+
     if (gameScene->isCurrentlySaving)
     {
         playdate->system->logToConsole(
