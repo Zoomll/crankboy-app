@@ -5359,7 +5359,7 @@ struct StateHeader {
     uint8_t big_endian : 1;
     uint8_t bits : 4;
     
-    char reserved[8];
+    char reserved[24];
 };
 
 // Note: this version can be used on unswizzled structs,

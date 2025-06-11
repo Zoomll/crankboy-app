@@ -180,6 +180,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
             {
                 playdate->system->logToConsole("Saved state %d successfully",
                                                0);
+                                               
+                // TODO: something less invasive than a modal here.
+                PGB_presentModal(PGB_Modal_new(
+                    "State saved successfully.", NULL, NULL, NULL
+                )->scene);
             }
         }
         else if (settingsScene->cursorIndex == 5 && gameScene &&
@@ -195,6 +200,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
             else
             {
                 playdate->system->logToConsole("Loaded save state %d", 0);
+                
+                // TODO: something less invasive than a modal here.
+                PGB_presentModal(PGB_Modal_new(
+                    "Loaded saved successfully.", NULL, NULL, NULL
+                )->scene);
             }
         }
     }
