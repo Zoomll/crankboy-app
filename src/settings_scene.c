@@ -167,7 +167,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
         else if (settingsScene->cursorIndex == 4 && gameScene &&
                  gameScene->save_states_supported)
         {  // save state
-            if (!save_state(gameScene, 0) || 1)
+            if (!save_state(gameScene, 0))
             {
                 char* msg;
                 playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());

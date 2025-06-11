@@ -25,6 +25,8 @@
 static int update(void *userdata);
 int eventHandler_pdnewlib(PlaydateAPI *, PDSystemEvent event, uint32_t arg);
 
+// TODO: remove
+#if 0
 void _save_test(const char* context)
 {
     char buff[4096];
@@ -50,6 +52,10 @@ void save_test(const char* context)
 {
     call_with_main_stack_1(_save_test, context);
 }
+#else
+void save_test(const char* context)
+{}
+#endif
 
 __section__(".rare") static void *user_stack_test(void *p)
 {
@@ -82,8 +88,6 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
-        
-        save_test("main");
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
@@ -92,6 +96,10 @@ __section__(".text.main") DllExport
         PGB_ASSERT(result == 0x784);
         playdate->system->logToConsole("User stack validated");
 #endif
+
+        printf("Test saving\n");
+        save_test("main");
+        printf("...save test complete\n");
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
 

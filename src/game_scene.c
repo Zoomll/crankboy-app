@@ -1788,8 +1788,15 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 // returns true if successful
-__section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
+__section__(".rare") static
+bool save_state_(PGB_GameScene *gameScene, unsigned slot)
 {
+    playdate->system->logToConsole(
+        "save state %p", __builtin_frame_address(0)
+    );
+    
+    save_test("savestate_inner");
+    
     if (gameScene->isCurrentlySaving)
     {
         playdate->system->logToConsole(
@@ -1818,6 +1825,9 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
     else
     {
         gb_state_save(context->gb, buff);
+        // this function is haunted
+        // for some reason we need to do file I/O from the main stack,
+        // lest we get the mysterious filesystem error 0393
         SDFile *file = playdate->file->open(state_name, kFileWrite);
         if (!file)
         {
@@ -1838,7 +1848,7 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
                     printf("Error writing save file \"%s\" (0 bytes written)\n",
                            state_name);
                 }
-                else if (written <= 0)
+                else if (written < 0)
                 {
                     printf("Error writing save file \"%s\": %s\n", state_name,
                            playdate->file->geterr());
@@ -1857,6 +1867,12 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
     free(state_name);
     gameScene->isCurrentlySaving = false;
     return success;
+}
+
+__section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
+{
+    save_test("savestate");
+    return (bool)call_with_main_stack_2(save_state_, gameScene, slot);
 }
 
 // returns true if successful
