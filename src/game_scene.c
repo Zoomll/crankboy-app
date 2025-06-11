@@ -208,10 +208,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     context->rom = NULL;
     context->cart_ram = NULL;
 
-    PDButtons current_pd_buttons;
-    playdate->system->getButtonState(&current_pd_buttons, NULL, NULL);
-    context->buttons_held_since_start = current_pd_buttons;
-
     gameScene->context = context;
 
     PGB_GameSceneError romError;
@@ -982,15 +978,7 @@ __section__(".text.tick") __space
     {
         PGB_GameSceneContext *context = gameScene->context;
 
-        PDButtons current_pd_buttons;
-        playdate->system->getButtonState(&current_pd_buttons, NULL, NULL);
-
-        // mask out buttons that have been held down since the game started
-        context->buttons_held_since_start &= current_pd_buttons;
-
-#if 0
-        current_pd_buttons &= ~context->buttons_held_since_start;
-#endif
+        PDButtons current_pd_buttons = PGB_App->buttons_down;
 
         bool gb_joypad_start_is_active_low =
             !(gameScene->selector.startPressed);

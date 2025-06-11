@@ -136,10 +136,9 @@ static void PGB_LibraryScene_update(void *object, float dt)
 
     PGB_Scene_update(libraryScene->scene, dt);
 
-    PDButtons released;
-    playdate->system->getButtonState(NULL, NULL, &released);
+    PDButtons pressed = PGB_App->buttons_pressed;
 
-    if (released & kButtonA)
+    if (pressed & kButtonA)
     {
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 &&

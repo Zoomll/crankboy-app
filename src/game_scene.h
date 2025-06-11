@@ -77,9 +77,6 @@ typedef struct PGB_GameSceneContext
     uint8_t
         previous_lcd[LCD_HEIGHT *
                      LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
-
-    int buttons_held_since_start;  // buttons that have been down since the
-                                   // start of the game
 } PGB_GameSceneContext;
 
 typedef struct PGB_GameScene

@@ -42,6 +42,9 @@ typedef struct PGB_Application
     LCDBitmapTable *selectorBitmapTable;
     LCDBitmap *startSelectBitmap;
     SoundSource *soundSource;
+    PDButtons buttons_down;
+    PDButtons buttons_pressed;
+    PDButtons buttons_suppress; // prevent these from registering until they are released
 } PGB_Application;
 
 extern PGB_Application *PGB_App;

@@ -133,9 +133,8 @@ void PGB_ListView_reload(PGB_ListView *listView)
 
 void PGB_ListView_update(PGB_ListView *listView)
 {
-    PDButtons pushed;
-    PDButtons pressed;
-    playdate->system->getButtonState(&pressed, &pushed, NULL);
+    PDButtons pushed = PGB_App->buttons_pressed;
+    PDButtons pressed = PGB_App->buttons_down;
 
     if (pushed & kButtonDown)
     {

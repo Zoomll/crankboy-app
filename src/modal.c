@@ -19,8 +19,7 @@ void PGB_Modal_update(PGB_Modal* modal)
         if (++modal->timer > MODAL_ANIM_TIME)
             modal->timer = MODAL_ANIM_TIME;
     }
-    PDButtons pushed;
-    playdate->system->getButtonState(NULL, &pushed, NULL);
+    PDButtons pushed = PGB_App->buttons_pressed;
     
     uint8_t* lcd = playdate->graphics->getFrame();
     memcpy(lcd, modal->lcd, sizeof(modal->lcd));

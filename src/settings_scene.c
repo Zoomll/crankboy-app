@@ -57,8 +57,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     PGB_Scene_update(settingsScene->scene, dt);
 
-    PDButtons pushed;
-    playdate->system->getButtonState(NULL, &pushed, NULL);
+    PDButtons pushed = PGB_App->buttons_pressed;
 
     const char *options[] = {"Sound", "30 FPS Mode", "Show FPS",
                              "Crank", "Save State",  "Load State"};
@@ -122,6 +121,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
         settingsScene->cursorIndex--;
         if (settingsScene->cursorIndex < 0)
             settingsScene->cursorIndex = 0;
+    }
+    if (pushed & kButtonB)
+    {
+        PGB_dismiss(settingsScene->scene);
+        return;
     }
     if (pushed & kButtonA)
     {
