@@ -121,6 +121,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
         return NULL;
 
     PGB_Scene *scene = PGB_Scene_new();
+    memset(scene, 0, sizeof(*scene));
 
     PGB_GameScene *gameScene = pgb_malloc(sizeof(PGB_GameScene));
     gameScene->scene = scene;
@@ -1035,6 +1036,7 @@ __section__(".text.tick") __space
             context->gb = (void *)stack_gb_data;
         }
 
+        gameScene->playtime += 1 + preferences_frame_skip;
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
             context->gb->direct.frame_skip = preferences_frame_skip != frame;
@@ -1376,15 +1378,46 @@ __section__(".text.tick") __space static void save_check(struct gb_s *gb)
     }
 }
 
+void PGB_LibraryConfirmModal(void* userdata, int option)
+{
+    PGB_GameScene *gameScene = userdata;
+    
+    if (option == 1)
+    {
+        call_with_user_stack(PGB_goToLibrary);
+    }
+    else
+    {
+        gameScene->audioLocked = false;
+    }
+}
+
+__section__(".rare") void PGB_GameScene_didSelectLibrary_(void *userdata)
+{
+    PGB_GameScene *gameScene = userdata;
+    gameScene->audioLocked = true;
+    
+    // if playing for more than 1 minute, ask confirmation
+    if (gameScene->playtime >= 60 * 60)
+    {
+        const char* options[] = {
+            "No", "Yes", NULL
+        };
+        PGB_presentModal(PGB_Modal_new(
+            "Quit game?", &options[0], PGB_LibraryConfirmModal, gameScene
+        )->scene);
+    }
+    else
+    {
+        call_with_user_stack(PGB_goToLibrary);
+    }
+}
+
 __section__(".rare") void PGB_GameScene_didSelectLibrary(void *userdata)
 {
     DTCM_VERIFY();
 
-    PGB_GameScene *gameScene = userdata;
-
-    gameScene->audioLocked = true;
-
-    call_with_user_stack(PGB_goToLibrary);
+    call_with_user_stack_1(PGB_GameScene_didSelectLibrary_, userdata);
 
     DTCM_VERIFY();
 }

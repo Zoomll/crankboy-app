@@ -78,11 +78,11 @@ void PGB_Modal_update(PGB_Modal* modal)
         int oy = y + h - m;
         int option_height = 20;
         
-        for (int k = 0; k <= 1; ++k)
+        if (i == modal->option_selected)
         {
             playdate->graphics->drawLine(
-                ox - spacing/3, oy - k*option_height,
-                ox + spacing/3, oy - k*option_height,
+                ox - spacing/3, oy + 4,
+                ox + spacing/3, oy + 4,
                 3, kColorBlack
             );
         }

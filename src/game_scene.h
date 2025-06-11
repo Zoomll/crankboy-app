@@ -134,6 +134,7 @@ typedef struct PGB_GameScene
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;
     bool crank_turbo_b_active;
+    unsigned playtime;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
