@@ -83,9 +83,9 @@ __section__(".text.main") void PGB_update(float dt)
         &PGB_App->buttons_down, &PGB_App->buttons_pressed, NULL
     );
     
-    PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
-
+    PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
+    
     if (PGB_App->scene)
     {
         void *managedObject = PGB_App->scene->managedObject;
@@ -138,7 +138,7 @@ __section__(".text.main") void PGB_update(float dt)
 
 void PGB_present(PGB_Scene *scene)
 {
-    PGB_App->buttons_suppress = PGB_App->buttons_down;
+    PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
     
@@ -147,7 +147,7 @@ void PGB_present(PGB_Scene *scene)
 
 void PGB_presentModal(PGB_Scene *scene)
 {
-    PGB_App->buttons_suppress = PGB_App->buttons_down;
+    PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
     
@@ -158,6 +158,7 @@ void PGB_presentModal(PGB_Scene *scene)
 
 void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
+    printf("Dismiss\n");
     PGB_ASSERT(sceneToDismiss == PGB_App->scene);
     PGB_Scene* parent = sceneToDismiss->parentScene;
     if (parent)
@@ -171,7 +172,7 @@ void PGB_dismiss(PGB_Scene *sceneToDismiss)
             sceneToDismiss->free(sceneToDismiss->managedObject);
         }
         
-        PGB_App->buttons_suppress = PGB_App->buttons_down;
+        PGB_App->buttons_suppress |= PGB_App->buttons_down;
         PGB_App->buttons_down = 0;
         PGB_App->buttons_pressed = 0;
 
