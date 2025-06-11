@@ -35,7 +35,7 @@ void PGB_Modal_update(PGB_Modal* modal)
             {
                 lfsr <<= 1;
                 lfsr |= 1 & ((lfsr >> 1) ^ (lfsr >> tap2) ^ (lfsr >> 8) ^ (lfsr >> 31) ^ 1);
-                if (lfsr % MODAL_ANIM_TIME < modal->timer)
+                if ((int)(lfsr % MODAL_ANIM_TIME) < modal->timer)
                 {
                     int c = (y % 2 == 0);
                     lcd[y*LCD_ROWSIZE + (x/8)] &= ~(1 << (x%8));

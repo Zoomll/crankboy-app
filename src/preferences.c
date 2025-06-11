@@ -58,7 +58,7 @@ void preferences_init(void)
 void preferences_read_from_disk(void)
 {
     json_value j;
-    int success = parse_json(pref_filename, &j);
+    int success = parse_json(pref_filename, &j, kFileReadData);
     
     if (!success)
     {

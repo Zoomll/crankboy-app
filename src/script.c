@@ -471,7 +471,7 @@ __section__(".rare") void script_info_free(ScriptInfo *info)
 __section__(".rare") ScriptInfo *get_script_info(const char *game_name)
 {
     json_value v;
-    int ok = parse_json("scripts.json", &v);
+    int ok = parse_json("scripts.json", &v, kFileRead | kFileReadData);
 
     if (!ok)
     {

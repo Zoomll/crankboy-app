@@ -110,13 +110,13 @@ __section__(".rare") static void decodeError(struct json_decoder *decoder,
     playdate->system->logToConsole("Error decoding json: %s", error);
 }
 
-__section__(".rare") int parse_json(const char *path, json_value *out)
+__section__(".rare") int parse_json(const char *path, json_value *out, FileOptions opts)
 {
     if (!out)
         return 0;
     out->type = kJSONNull;
 
-    SDFile *file = playdate->file->open(path, kFileRead);
+    SDFile *file = playdate->file->open(path, opts);
     if (!file)
     {
         return 0;
