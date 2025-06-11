@@ -267,7 +267,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                 break;
             default: {
                 playdate->system->logToConsole("Error loading save data. To protect your data, the game will not start.");
-                
+
                 PGB_presentModal(PGB_Modal_new(
                     "Error loading save data. To protect your data, the game will not start.", NULL, NULL, NULL
                 )->scene);
@@ -1962,6 +1962,12 @@ static void PGB_GameScene_free(void *object)
     if (context->cart_ram)
     {
         pgb_free(context->cart_ram);
+    }
+
+    if (gameScene->script)
+    {
+        script_end(gameScene->script);
+        gameScene->script = NULL;
     }
 
     pgb_free(context);
