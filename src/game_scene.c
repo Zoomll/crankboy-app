@@ -1464,6 +1464,12 @@ __section__(".rare") static void PGB_GameScene_showSettings(void *userdata)
     PGB_GameScene *gameScene = userdata;
     PGB_SettingsScene *settingsScene = PGB_SettingsScene_new(gameScene);
     PGB_presentModal(settingsScene->scene);
+
+    // We need to set this here to None in case the user selected any button.
+    // The menu automatically falls back to 0 and the selected button is never
+    // pushed.
+    playdate->system->setMenuItemValue(buttonMenuItem, 1);
+    gameScene->button_hold_mode = 1;
 }
 
 __section__(".rare") void PGB_GameScene_buttonMenuCallback(void *userdata)
