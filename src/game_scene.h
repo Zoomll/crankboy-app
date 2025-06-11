@@ -39,6 +39,7 @@ typedef struct
     PGB_GameSceneState state;
     PGB_GameSceneError error;
     int selectorIndex;
+    int crank_mode;
     bool empty;
 } PGB_GameSceneModel;
 

@@ -404,23 +404,23 @@ static void PGB_GameScene_selector_init(PGB_GameScene *gameScene)
 
     int containerHeight =
         labelHeight + startSpacing + height + selectSpacing + labelHeight;
-    int containerWidth = width;
 
+    int containerWidth = width;
     containerWidth = PGB_MAX(containerWidth, startButtonWidth);
     containerWidth = PGB_MAX(containerWidth, selectButtonWidth);
 
-    int containerX = playdate->display->getWidth() - 6 - containerWidth;
-    int containerY = 8;
+    const int rightBarX = 40 + 320;
+    const int rightBarWidth = 40;
 
-    int x = containerX + (float)(containerWidth - width) / 2 - 2;
+    int containerX = rightBarX + (rightBarWidth - containerWidth) / 2 - 1;
+    int containerY = 8;
+    int x = containerX + (containerWidth - width) / 2;
     int y = containerY + labelHeight + startSpacing;
 
-    int startButtonX =
-        containerX + (float)(containerWidth - startButtonWidth) / 2;
+    int startButtonX = rightBarX + (rightBarWidth - startButtonWidth) / 2;
     int startButtonY = containerY;
 
-    int selectButtonX =
-        containerX + (float)(containerWidth - selectButtonWidth) / 2;
+    int selectButtonX = rightBarX + (rightBarWidth - selectButtonWidth) / 2;
     int selectButtonY = containerY + containerHeight - labelHeight;
 
     gameScene->selector.x = x;
@@ -991,10 +991,16 @@ __section__(".text.tick") __space
         animatedSelectorBitmapNeedsRedraw = true;
     }
 
+    if (gameScene->model.crank_mode != preferences_crank_mode)
+    {
+        gameScene->staticSelectorUIDrawn = false;
+    }
+
     gameScene->model.empty = false;
     gameScene->model.state = gameScene->state;
     gameScene->model.error = gameScene->error;
     gameScene->model.selectorIndex = gameScene->selector.index;
+    gameScene->model.crank_mode = preferences_crank_mode;
 
     if (gameScene->state == PGB_GameSceneStateLoaded)
     {
@@ -1184,6 +1190,15 @@ __section__(".text.tick") __space
 
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
         {
+            // Clear the right sidebar area before redrawing any static UI.
+            // This ensures that when we disable Turbo mode, the old text
+            // disappears.
+            const int rightBarX = 40 + 320;
+            const int rightBarWidth = 40;
+            playdate->graphics->fillRect(rightBarX, 0, rightBarWidth,
+                                         playdate->display->getHeight(),
+                                         kColorBlack);
+
             playdate->graphics->setFont(PGB_App->labelFont);
             playdate->graphics->setDrawMode(kDrawModeFillWhite);
             playdate->graphics->drawText(
@@ -1194,6 +1209,46 @@ __section__(".text.tick") __space
                 selectButtonText, pgb_strlen(selectButtonText), kUTF8Encoding,
                 gameScene->selector.selectButtonX,
                 gameScene->selector.selectButtonY);
+
+            if (preferences_crank_mode > 0)
+            {
+                // Draw the Turbo indicator on the right panel
+                playdate->graphics->setFont(PGB_App->labelFont);
+                playdate->graphics->setDrawMode(kDrawModeFillWhite);
+
+                const char *line1 = "Turbo";
+                const char *line2 =
+                    (preferences_crank_mode == 1) ? "A/B" : "B/A";
+
+                int fontHeight =
+                    playdate->graphics->getFontHeight(PGB_App->labelFont);
+                int lineSpacing = 2;
+                int paddingBottom = 6;
+
+                int line1Width = playdate->graphics->getTextWidth(
+                    PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0);
+                int line2Width = playdate->graphics->getTextWidth(
+                    PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0);
+
+                const int rightBarX = 40 + 320;
+                const int rightBarWidth = 40;
+
+                int bottomEdge = playdate->display->getHeight();
+                int y2 = bottomEdge - paddingBottom - fontHeight;
+                int y1 = y2 - fontHeight - lineSpacing;
+
+                int x1 = rightBarX + (rightBarWidth - line1Width) / 2;
+                int x2 = rightBarX + (rightBarWidth - line2Width) / 2;
+
+                // 4. Draw the text.
+                playdate->graphics->drawText(line1, strlen(line1),
+                                             kUTF8Encoding, x1, y1);
+                playdate->graphics->drawText(line2, strlen(line2),
+                                             kUTF8Encoding, x2, y2);
+
+                playdate->graphics->setDrawMode(kDrawModeCopy);
+            }
+
             playdate->graphics->setDrawMode(kDrawModeCopy);
         }
 
@@ -1214,43 +1269,6 @@ __section__(".text.tick") __space
             playdate->graphics->drawBitmap(bitmap, gameScene->selector.x,
                                            gameScene->selector.y,
                                            kBitmapUnflipped);
-        }
-
-        if (preferences_crank_mode > 0)
-        {
-            // Draw the Turbo indicator on the right panel
-            playdate->graphics->setFont(PGB_App->labelFont);
-            playdate->graphics->setDrawMode(kDrawModeFillWhite);
-
-            const char *line1 = "Turbo";
-            const char *line2 = (preferences_crank_mode == 1) ? "A/B" : "B/A";
-
-            int fontHeight =
-                playdate->graphics->getFontHeight(PGB_App->labelFont);
-            int lineSpacing = 2;
-            int paddingRight = 8;
-            int paddingBottom = 6;
-
-            int line1Width = playdate->graphics->getTextWidth(
-                PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0);
-            int line2Width = playdate->graphics->getTextWidth(
-                PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0);
-
-            int rightEdge = playdate->display->getWidth();
-            int bottomEdge = playdate->display->getHeight();
-
-            int y2 = bottomEdge - paddingBottom - fontHeight;
-            int y1 = y2 - fontHeight - lineSpacing;
-
-            int x1 = rightEdge - line1Width - paddingRight;
-            int x2 = rightEdge - line2Width - paddingRight - paddingBottom;
-
-            playdate->graphics->drawText(line1, strlen(line1), kUTF8Encoding,
-                                         x1, y1);
-            playdate->graphics->drawText(line2, strlen(line2), kUTF8Encoding,
-                                         x2, y2);
-
-            playdate->graphics->setDrawMode(kDrawModeCopy);
         }
 
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
@@ -1399,10 +1417,10 @@ __section__(".text.tick") __space static void save_check(struct gb_s *gb)
     }
 }
 
-void PGB_LibraryConfirmModal(void* userdata, int option)
+void PGB_LibraryConfirmModal(void *userdata, int option)
 {
     PGB_GameScene *gameScene = userdata;
-    
+
     if (option == 1)
     {
         call_with_user_stack(PGB_goToLibrary);
@@ -1417,16 +1435,14 @@ __section__(".rare") void PGB_GameScene_didSelectLibrary_(void *userdata)
 {
     PGB_GameScene *gameScene = userdata;
     gameScene->audioLocked = true;
-    
+
     // if playing for more than 1 minute, ask confirmation
     if (gameScene->playtime >= 60 * 60)
     {
-        const char* options[] = {
-            "No", "Yes", NULL
-        };
-        PGB_presentModal(PGB_Modal_new(
-            "Quit game?", &options[0], PGB_LibraryConfirmModal, gameScene
-        )->scene);
+        const char *options[] = {"No", "Yes", NULL};
+        PGB_presentModal(PGB_Modal_new("Quit game?", &options[0],
+                                       PGB_LibraryConfirmModal, gameScene)
+                             ->scene);
     }
     else
     {
