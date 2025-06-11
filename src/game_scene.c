@@ -12,13 +12,13 @@
 #include "../peanut_gb/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"
+#include "modal.h"
 #include "preferences.h"
 #include "revcheck.h"
 #include "script.h"
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
-#include "modal.h"
 
 // clang-format off
 #include "game_scene.h"
@@ -156,6 +156,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
+    gameScene->isCurrentlySaving = false;
+
     gameScene->menuImage = NULL;
 
     gameScene->staticSelectorUIDrawn = false;
@@ -266,16 +268,22 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             case 2:
                 playdate->system->logToConsole("Loaded cartridge save data");
                 break;
-            default: {
-                playdate->system->logToConsole("Error loading save data. To protect your data, the game will not start.");
+            default:
+            {
+                playdate->system->logToConsole(
+                    "Error loading save data. To protect your data, the game "
+                    "will not start.");
 
-                PGB_presentModal(PGB_Modal_new(
-                    "Error loading save data. To protect your data, the game will not start.", NULL, NULL, NULL
-                )->scene);
+                PGB_presentModal(
+                    PGB_Modal_new("Error loading save data. To protect your "
+                                  "data, the game will not start.",
+                                  NULL, NULL, NULL)
+                        ->scene);
                 free(gameScene);
                 free(context);
                 return NULL;
-            }}
+            }
+            }
 
             context->cart_ram = context->gb->gb_cart_ram;
             gameScene->save_data_loaded_successfully = true;
@@ -599,8 +607,19 @@ static void gb_save_to_disk(struct gb_s *gb)
     PGB_GameSceneContext *context = gb->direct.priv;
     PGB_GameScene *gameScene = context->scene;
 
-    if (!context->gb->direct.sram_dirty)
+    if (gameScene->isCurrentlySaving)
+    {
+        playdate->system->logToConsole(
+            "Save to disk skipped: another save is in progress.");
         return;
+    }
+
+    if (!context->gb->direct.sram_dirty)
+    {
+        return;
+    }
+
+    gameScene->isCurrentlySaving = true;
 
     if (gameScene->save_filename)
     {
@@ -613,6 +632,8 @@ static void gb_save_to_disk(struct gb_s *gb)
     }
 
     context->gb->direct.sram_dirty = false;
+
+    gameScene->isCurrentlySaving = false;
 
     DTCM_VERIFY_DEBUG();
 }
@@ -1744,6 +1765,15 @@ static void PGB_GameScene_generateBitmask(void)
 // returns true if successful
 __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
 {
+    if (gameScene->isCurrentlySaving)
+    {
+        playdate->system->logToConsole(
+            "Save state failed: another save is in progress.");
+        return false;
+    }
+
+    gameScene->isCurrentlySaving = true;
+
     PGB_GameSceneContext *context = gameScene->context;
     char *state_name;
     playdate->system->formatString(&state_name, "%s/%s.%u.state",
@@ -1800,6 +1830,7 @@ __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
     }
 
     free(state_name);
+    gameScene->isCurrentlySaving = false;
     return success;
 }
 
