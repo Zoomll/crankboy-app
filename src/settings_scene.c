@@ -59,8 +59,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
     PDButtons pushed;
     playdate->system->getButtonState(NULL, &pushed, NULL);
 
-    const char *options[] = {"Sound",      "30 FPS Mode", "Show FPS",
-                             "Crank Mode", "Save State",  "Load State"};
+    const char *options[] = {"Sound", "30 FPS Mode", "Show FPS",
+                             "Crank", "Save State",  "Load State"};
     if (!gameScene || !gameScene->save_states_supported)
     {
         options[4] = "(save state)";
@@ -76,9 +76,9 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "for most games.\n \nDespite appearing to be\n30 FPS, the game "
         "itself\nstill runs at full speed.",
         "Displays the current\nframes-per-second\non screen.",
-        "Assign a turbo function\nto the crank.\n \nDefault:\nUse crank for "
-        "Start/Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo B/A:\nCW "
-        "for B, CCW for A.",
+        "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
+        "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
+        "B/A:\nCW for B, CCW for A.",
         "Create a snapshot of\nthis moment, which\ncan be resumed later.",
         "Load the previously\ncreated snapshot.",
     };
@@ -198,7 +198,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
     playdate->graphics->setFont(PGB_App->bodyFont);
 
     const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
-    const char *crank_mode_labels[] = {"Default", "Turbo A/B", "Turbo B/A"};
+    const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
+                                       "Turbo B/A"};
     for (int i = 0; i < menuItemCount; i++)
     {
         int y = 50 + i * 30;
