@@ -908,14 +908,21 @@ __section__(".text.tick") __space
 
     if (gameScene->button_hold_frames_remaining > 0)
     {
-        if (gameScene->button_hold_mode == 2 ||
-            gameScene->button_hold_mode == 3)
+        if (gameScene->button_hold_mode == 2)
         {
             gameScene->selector.startPressed = true;
+            gameScene->selector.selectPressed = false;
+            progress = 0.0f;
         }
-        else if (gameScene->button_hold_mode == 0 ||
-                 gameScene->button_hold_mode == 3)
+        else if (gameScene->button_hold_mode == 0)
         {
+            gameScene->selector.startPressed = false;
+            gameScene->selector.selectPressed = true;
+            progress = 1.0f;
+        }
+        else if (gameScene->button_hold_mode == 3)
+        {
+            gameScene->selector.startPressed = true;
             gameScene->selector.selectPressed = true;
         }
 
