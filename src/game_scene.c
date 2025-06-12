@@ -1523,7 +1523,6 @@ static void PGB_GameScene_menu(void *object)
         gameScene->menuImage = NULL;
     }
 
-
     gameScene->scene->forceFullRefresh = true;
 
     playdate->system->removeAllMenuItems();
@@ -1596,26 +1595,29 @@ static void PGB_GameScene_menu(void *object)
                 }
                 else if (show_save_time)
                 {
-                    // Draw a 50% gray checkerboard pattern line-by-line.
-                    static const uint8_t pattern_even[] = {
-                        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
-                    static const uint8_t pattern_odd[] = {
-                        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55};
-                    LCDColor color_even = (LCDColor)pattern_even;
-                    LCDColor color_odd = (LCDColor)pattern_odd;
-
-                    for (int y = 0; y < 240; ++y)
+                    LCDBitmap *ditherOverlay =
+                        playdate->graphics->newBitmap(400, 240, kColorWhite);
+                    if (ditherOverlay)
                     {
-                        if (y % 2 == 0)
+                        int width, height, rowbytes;
+                        uint8_t *overlayData;
+                        playdate->graphics->getBitmapData(ditherOverlay, &width,
+                                                          &height, &rowbytes,
+                                                          NULL, &overlayData);
+
+                        for (int y = 0; y < height; ++y)
                         {
-                            playdate->graphics->fillRect(0, y, 400, 1,
-                                                         color_even);
+                            uint8_t pattern_byte = (y % 2 == 0) ? 0xAA : 0x55;
+                            uint8_t *row = overlayData + y * rowbytes;
+                            memset(row, pattern_byte, rowbytes);
                         }
-                        else
-                        {
-                            playdate->graphics->fillRect(0, y, 400, 1,
-                                                         color_odd);
-                        }
+
+                        playdate->graphics->setDrawMode(
+                            kDrawModeWhiteTransparent);
+                        playdate->graphics->drawBitmap(ditherOverlay, 0, 0,
+                                                       kBitmapUnflipped);
+                        playdate->graphics->setDrawMode(kDrawModeCopy);
+                        playdate->graphics->freeBitmap(ditherOverlay);
                     }
                 }
 
@@ -1707,7 +1709,7 @@ static void PGB_GameScene_menu(void *object)
                     {
                         int padding_x = 10;
                         int padding_y = 8;
-                        int border_size = 1;
+                        int border_size = 2;
 
                         int box_width =
                             PGB_MAX(line1_width, line2_width) + (padding_x * 2);
