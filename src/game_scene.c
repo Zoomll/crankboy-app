@@ -903,7 +903,7 @@ __section__(".text.tick") __space
             gameScene->crank_turbo_accumulator += crank_change;
 
             // Handle clockwise rotation
-            while (gameScene->crank_turbo_accumulator >= 30.0f)
+            while (gameScene->crank_turbo_accumulator >= 45.0f)
             {
                 if (preferences_crank_mode == 1)
                 {
@@ -913,11 +913,11 @@ __section__(".text.tick") __space
                 {
                     gameScene->crank_turbo_b_active = true;
                 }
-                gameScene->crank_turbo_accumulator -= 30.0f;
+                gameScene->crank_turbo_accumulator -= 45.0f;
             }
 
             // Handle counter-clockwise rotation
-            while (gameScene->crank_turbo_accumulator <= -30.0f)
+            while (gameScene->crank_turbo_accumulator <= -45.0f)
             {
                 if (preferences_crank_mode == 1)
                 {
@@ -927,7 +927,7 @@ __section__(".text.tick") __space
                 {
                     gameScene->crank_turbo_a_active = true;
                 }
-                gameScene->crank_turbo_accumulator += 30.0f;
+                gameScene->crank_turbo_accumulator += 45.0f;
             }
         }
     }
