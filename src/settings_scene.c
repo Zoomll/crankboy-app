@@ -9,10 +9,10 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "dtcm.h"
+#include "modal.h"
 #include "preferences.h"
 #include "revcheck.h"
 #include "userstack.h"
-#include "modal.h"
 
 static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
@@ -46,27 +46,26 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     return settingsScene;
 }
 
-static void settings_load_state(PGB_GameScene* gameScene)
+static void settings_load_state(PGB_GameScene *gameScene)
 {
     if (!load_state(gameScene, 0))
     {
-        PGB_presentModal(PGB_Modal_new(
-            "Failed to load state.", NULL, NULL, NULL
-        )->scene);
+        PGB_presentModal(
+            PGB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene);
         playdate->system->logToConsole("Error loading state %d", 0);
     }
     else
     {
         playdate->system->logToConsole("Loaded save state %d", 0);
-        
+
         // TODO: something less invasive than a modal here.
-        PGB_presentModal(PGB_Modal_new(
-            "Loaded saved successfully.", NULL, NULL, NULL
-        )->scene);
+        PGB_presentModal(
+            PGB_Modal_new("Loaded saved successfully.", NULL, NULL, NULL)
+                ->scene);
     }
 }
 
-static void settings_confirm_load_state(PGB_GameScene* gameScene, int option)
+static void settings_confirm_load_state(PGB_GameScene *gameScene, int option)
 {
     if (option == 1)
     {
@@ -78,6 +77,11 @@ static void PGB_SettingsScene_update(void *object, float dt)
 {
     PGB_SettingsScene *settingsScene = object;
     PGB_GameScene *gameScene = settingsScene->gameScene;
+
+    const int kScreenHeight = 240;
+    const int kDividerX = 240;
+    const int kLeftPanePadding = 20;
+    const int kRightPanePadding = 10;
 
     // In the Game Scene we can show all items.
     // But in the Library Scene only Sound, 30FPS Mode & FPS
@@ -197,37 +201,36 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {  // save state
             if (!save_state(gameScene, 0))
             {
-                char* msg;
-                playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());
-                PGB_presentModal(PGB_Modal_new(
-                    msg, NULL, NULL, NULL
-                )->scene);
+                char *msg;
+                playdate->system->formatString(&msg, "Error saving state:\n%s",
+                                               playdate->file->geterr());
+                PGB_presentModal(PGB_Modal_new(msg, NULL, NULL, NULL)->scene);
                 free(msg);
             }
             else
             {
                 playdate->system->logToConsole("Saved state %d successfully",
                                                0);
-                                               
+
                 // TODO: something less invasive than a modal here.
-                PGB_presentModal(PGB_Modal_new(
-                    "State saved successfully.", NULL, NULL, NULL
-                )->scene);
+                PGB_presentModal(
+                    PGB_Modal_new("State saved successfully.", NULL, NULL, NULL)
+                        ->scene);
             }
         }
         else if (settingsScene->cursorIndex == 5 && gameScene &&
                  gameScene->save_states_supported)
         {  // load state
-        
+
             // confirmation needed if more than 2 minutes of progress made
             if (gameScene->playtime >= 60 * 120)
             {
-                const char* options[] = {
-                    "No", "Yes", NULL
-                };
-                PGB_presentModal(PGB_Modal_new(
-                    "Really load state?", options, (void*)settings_confirm_load_state, gameScene
-                )->scene);
+                const char *options[] = {"No", "Yes", NULL};
+                PGB_presentModal(
+                    PGB_Modal_new("Really load state?", options,
+                                  (void *)settings_confirm_load_state,
+                                  gameScene)
+                        ->scene);
             }
             else
             {
@@ -239,18 +242,25 @@ static void PGB_SettingsScene_update(void *object, float dt)
     playdate->graphics->clear(kColorWhite);
 
     // Draw the 60/40 vertical divider line
-    int dividerX = 240;
-    playdate->graphics->drawLine(dividerX, 0, dividerX, 240, 1, kColorBlack);
+    playdate->graphics->drawLine(kDividerX, 0, kDividerX, kScreenHeight, 1,
+                                 kColorBlack);
+
+    playdate->graphics->setFont(PGB_App->bodyFont);
+    int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+    int rowSpacing = 10;
+    int rowHeight = fontHeight + rowSpacing;
+    int totalMenuHeight = (menuItemCount * rowHeight) - rowSpacing;
+
+    int initialY = (kScreenHeight - totalMenuHeight) / 2;
 
     // --- Left Pane (Options - 60%) ---
-    playdate->graphics->setFont(PGB_App->bodyFont);
-
     const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
     const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                        "Turbo B/A"};
     for (int i = 0; i < menuItemCount; i++)
     {
-        int y = 50 + i * 30;
+        // Calculate the y position for this specific row
+        int y = initialY + i * rowHeight;
         const char *stateText;
 
         if (i == 0)
@@ -278,16 +288,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
             stateText = "";
         }
 
-        // Calculate position for right-aligned state text
         int stateWidth = playdate->graphics->getTextWidth(
             PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0);
-        int stateX =
-            dividerX - stateWidth - 20;  // 20px padding from the divider
+        int stateX = kDividerX - stateWidth - kLeftPanePadding;
 
         if (i == settingsScene->cursorIndex)
         {
-            // Highlight selection
-            playdate->graphics->fillRect(0, y - 2, dividerX, 24, kColorBlack);
+            playdate->graphics->fillRect(0, y - (rowSpacing / 2), kDividerX,
+                                         rowHeight, kColorBlack);
             playdate->graphics->setDrawMode(kDrawModeFillWhite);
         }
         else
@@ -297,7 +305,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
         // Draw the option name (left-aligned)
         playdate->graphics->drawText(options[i], strlen(options[i]),
-                                     kUTF8Encoding, 20, y);
+                                     kUTF8Encoding, kLeftPanePadding, y);
         if (is_option[i])
         {
             // Draw the state (right-aligned)
@@ -318,15 +326,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
     descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';
 
     char *line = strtok(descriptionCopy, "\n");
-    int descY = 50;  // Starting Y position for description text
-    int lineHeight = playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
+
+    int descY = initialY;
+    int descLineHeight =
+        playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
 
     while (line != NULL)
     {
         // Draw text in the right pane, with 10px padding from divider
         playdate->graphics->drawText(line, strlen(line), kUTF8Encoding,
-                                     dividerX + 10, descY);
-        descY += lineHeight;
+                                     kDividerX + kRightPanePadding, descY);
+        descY += descLineHeight;
         line = strtok(NULL, "\n");
     }
 }
@@ -369,9 +379,9 @@ static void PGB_SettingsScene_free(void *object)
     int result = (intptr_t)call_with_user_stack(preferences_save_to_disk);
     if (!result)
     {
-        PGB_presentModal(PGB_Modal_new(
-            "Error saving preferences.", NULL, NULL, NULL
-        )->scene);
+        PGB_presentModal(
+            PGB_Modal_new("Error saving preferences.", NULL, NULL, NULL)
+                ->scene);
     }
     DTCM_VERIFY();
 }
