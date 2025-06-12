@@ -1709,39 +1709,53 @@ static void PGB_GameScene_menu(void *object)
                     {
                         int padding_x = 10;
                         int padding_y = 8;
-                        int border_size = 2;
+                        int black_border_size = 2;
+                        int white_border_size = 1;
 
                         int box_width =
                             PGB_MAX(line1_width, line2_width) + (padding_x * 2);
                         int box_height = text_block_height + (padding_y * 2);
 
-                        // Center the box within the visible Game Boy screen
-                        int box_x = PGB_LCD_X + (LCD_WIDTH - box_width) / 2;
-                        int box_y =
-                            content_top + (content_height - box_height) / 2;
+                        int total_border_size =
+                            black_border_size + white_border_size;
+                        int total_width = box_width + (total_border_size * 2);
+                        int total_height = box_height + (total_border_size * 2);
+
+                        int final_box_x = (200 - total_width + 1) / 2;
+                        int final_box_y =
+                            content_top + (content_height - total_height) / 2;
+
+                        playdate->graphics->fillRect(final_box_x, final_box_y,
+                                                     total_width, total_height,
+                                                     kColorWhite);
 
                         playdate->graphics->fillRect(
-                            box_x - border_size, box_y - border_size,
-                            box_width + (border_size * 2),
-                            box_height + (border_size * 2), kColorBlack);
+                            final_box_x + white_border_size,
+                            final_box_y + white_border_size,
+                            box_width + (black_border_size * 2),
+                            box_height + (black_border_size * 2), kColorBlack);
 
-                        playdate->graphics->fillRect(box_x, box_y, box_width,
-                                                     box_height, kColorWhite);
+                        playdate->graphics->fillRect(
+                            final_box_x + total_border_size,
+                            final_box_y + total_border_size, box_width,
+                            box_height, kColorWhite);
 
                         playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
-                        int text_y = content_top +
-                                     (content_height - text_block_height) / 2;
+                        int text_y =
+                            final_box_y + total_border_size + padding_y;
                         playdate->graphics->drawText(
                             line1, strlen(line1), kUTF8Encoding,
-                            PGB_LCD_X + (LCD_WIDTH - line1_width) / 2, text_y);
+                            final_box_x + total_border_size +
+                                (box_width - line1_width) / 2,
+                            text_y);
                         playdate->graphics->drawText(
                             line2, strlen(line2), kUTF8Encoding,
-                            PGB_LCD_X + (LCD_WIDTH - line2_width) / 2,
+                            final_box_x + total_border_size +
+                                (box_width - line2_width) / 2,
                             text_y + font_height + text_spacing);
                     }
                 }
-
                 playdate->graphics->popContext();
             }
         }
