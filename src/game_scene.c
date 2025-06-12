@@ -1451,7 +1451,6 @@ void PGB_LibraryConfirmModal(void *userdata, int option)
     }
     else
     {
-        playdate->system->setMenuItemValue(buttonMenuItem, 1);
         gameScene->button_hold_frames_remaining = 0;
         gameScene->button_hold_mode = 1;
         gameScene->audioLocked = false;
