@@ -1099,7 +1099,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
     {
     case 0x0:
     case 0x1:
-        if (gb->mbc == 2 && addr & 0x10)
+        if (gb->mbc == 2 && (addr & 0x100))
             return;
         else if (gb->mbc > 0 && gb->cart_ram) {
             gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
@@ -1130,7 +1130,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
             if ((gb->selected_rom_bank & 0x1F) == 0x00)
                 gb->selected_rom_bank++;
         }
-        else if (gb->mbc == 2 && addr & 0x10)
+        else if (gb->mbc == 2 && (addr & 0x100))
         {
             gb->selected_rom_bank = val & 0x0F;
 
@@ -5345,6 +5345,9 @@ __core void gb_run_frame(struct gb_s *gb)
     while (!gb->gb_frame)
     {
         __gb_step_cpu(gb);
+    #ifdef TRACE_LOG
+        printf("%x:%04x %02x\n", gb->selected_rom_bank, gb->cpu_reg.pc, gb->cpu_reg.a);
+    #endif
     }
 }
 
