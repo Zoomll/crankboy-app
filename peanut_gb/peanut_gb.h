@@ -883,8 +883,7 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
             return gb->gb_reg.LCDC;
 
         case 0x41:
-            return (gb->gb_reg.STAT & STAT_USER_BITS) |
-                   (gb->gb_reg.LCDC & LCDC_ENABLE ? gb->lcd_mode : LCD_VBLANK);
+            return gb->gb_reg.STAT | 0x80;
 
         case 0x42:
             return gb->gb_reg.SCY;
@@ -5288,73 +5287,123 @@ done_instr:
     /* LCD Timing */
     gb->counter.lcd_count += inst_cycles;
 
-    /* New Scanline */
-    if (gb->counter.lcd_count > LCD_LINE_CYCLES)
+    switch (gb->lcd_mode)
     {
-        gb->counter.lcd_count -= LCD_LINE_CYCLES;
-
-        /* LYC Update */
-        if (gb->gb_reg.LY == gb->gb_reg.LYC)
+    // Mode 2: OAM Search
+    case LCD_SEARCH_OAM:
+        if (gb->counter.lcd_count >= 80)
         {
-            gb->gb_reg.STAT |= STAT_LYC_COINC;
-
-            if (gb->gb_reg.STAT & STAT_LYC_INTR)
-                gb->gb_reg.IF |= LCDC_INTR;
+            gb->counter.lcd_count -= 80;
+            gb->lcd_mode = LCD_TRANSFER;
         }
-        else
-            gb->gb_reg.STAT &= 0xFB;
+        break;
 
-        /* Next line */
-        uint16_t LY_1 = gb->gb_reg.LY + 1;
-        gb->gb_reg.LY = (LY_1 >= LCD_VERT_LINES) ? LY_1 - LCD_VERT_LINES : LY_1;
-
-        /* VBLANK Start */
-        if (gb->gb_reg.LY == LCD_HEIGHT)
+    // Mode 3: Drawing pixels
+    case LCD_TRANSFER:
+        if (gb->counter.lcd_count >= 172)
         {
-            gb->lcd_mode = LCD_VBLANK;
-            gb->gb_frame = 1;
-            gb->gb_reg.IF |= VBLANK_INTR;
-            gb->lcd_blank = 0;
-
-            if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
-                gb->gb_reg.IF |= LCDC_INTR;
-        }
-        /* Normal Line */
-        else if (gb->gb_reg.LY < LCD_HEIGHT)
-        {
-            if (gb->gb_reg.LY == 0)
-            {
-                /* Clear Screen */
-                gb->display.WY = gb->gb_reg.WY;
-                gb->display.window_clear = 0;
-            }
-
+            gb->counter.lcd_count -= 172;
             gb->lcd_mode = LCD_HBLANK;
 
+            // H-Blank Interrupt fires here, at the END of the drawing phase.
             if (gb->gb_reg.STAT & STAT_MODE_0_INTR)
                 gb->gb_reg.IF |= LCDC_INTR;
-        }
-    }
-    /* OAM access */
-    else if (gb->lcd_mode == LCD_HBLANK &&
-             gb->counter.lcd_count >= LCD_MODE_2_CYCLES)
-    {
-        gb->lcd_mode = LCD_SEARCH_OAM;
 
-        if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
-            gb->gb_reg.IF |= LCDC_INTR;
-    }
-    /* Update LCD */
-    else if (gb->lcd_mode == LCD_SEARCH_OAM &&
-             gb->counter.lcd_count >= LCD_MODE_3_CYCLES)
-    {
-        gb->lcd_mode = LCD_TRANSFER;
 #if ENABLE_LCD
-        if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip &&
-            (gb->gb_reg.LCDC & LCDC_ENABLE))
-            __gb_draw_line(gb);
+            if (gb->lcd_master_enable && !gb->lcd_blank &&
+                !gb->direct.frame_skip && (gb->gb_reg.LCDC & LCDC_ENABLE))
+                __gb_draw_line(gb);
 #endif
+        }
+        break;
+
+    // Mode 0: H-Blank
+    case LCD_HBLANK:
+        if (gb->counter.lcd_count >= 204)
+        {
+            gb->counter.lcd_count -= 204;
+
+            // End of H-Blank, advance to the next line
+            gb->gb_reg.LY++;
+
+            // Check for LY=LYC coincidence
+            if (gb->gb_reg.LY == gb->gb_reg.LYC)
+            {
+                gb->gb_reg.STAT |= STAT_LYC_COINC;
+                if (gb->gb_reg.STAT & STAT_LYC_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+            }
+            else
+            {
+                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+            }
+
+            // Check if we are entering V-Blank
+            if (gb->gb_reg.LY == 144)
+            {
+                gb->lcd_mode = LCD_VBLANK;
+                gb->gb_frame = 1;
+                gb->gb_reg.IF |= VBLANK_INTR;
+                gb->lcd_blank = 0;
+
+                if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+            }
+            else
+            {
+                // Start the next scanline in Mode 2
+                gb->lcd_mode = LCD_SEARCH_OAM;
+                if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+            }
+        }
+        break;
+
+    // Mode 1: V-Blank
+    case LCD_VBLANK:
+        if (gb->counter.lcd_count >= 456)
+        {
+            gb->counter.lcd_count -= 456;
+            gb->gb_reg.LY++;
+
+            if (gb->gb_reg.LY > 153)
+            {
+                // End of V-Blank, start a new frame
+                gb->gb_reg.LY = 0;
+                gb->lcd_mode = LCD_SEARCH_OAM;
+
+                if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+
+                gb->display.window_clear = 0;
+                gb->display.WY = gb->gb_reg.WY;
+            }
+
+            // Check for LY=LYC coincidence during V-Blank
+            if (gb->gb_reg.LY == gb->gb_reg.LYC)
+            {
+                gb->gb_reg.STAT |= STAT_LYC_COINC;
+                if (gb->gb_reg.STAT & STAT_LYC_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+            }
+            else
+            {
+                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+            }
+        }
+        break;
     }
+    // Update the STAT register's mode bits
+    gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
+
+    // Handle LCD disable
+    if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
+    {
+        gb->counter.lcd_count = 0;
+        gb->gb_reg.LY = 0;
+        gb->lcd_mode = LCD_HBLANK;
+        return;
+    };
 }
 }
 
