@@ -76,8 +76,9 @@ __section__(".text.main") void PGB_update(float dt)
 
     PGB_App->crankChange = playdate->system->getCrankChange();
 
-    playdate->system->getButtonState(&PGB_App->buttons_down,
-                                     &PGB_App->buttons_pressed, NULL);
+    playdate->system->getButtonState(
+        &PGB_App->buttons_down, &PGB_App->buttons_pressed, NULL
+    );
 
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
     PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
@@ -88,11 +89,8 @@ __section__(".text.main") void PGB_update(float dt)
         DTCM_VERIFY_DEBUG();
         if (PGB_App->scene->use_user_stack)
         {
-            uint32_t dt_bits;
-            memcpy(&dt_bits, &dt, sizeof(dt_bits));
-
             call_with_user_stack_2(PGB_App->scene->update, managedObject,
-                                   dt_bits);
+                                   *(uint32_t *)&dt);
         }
         else
         {
@@ -159,7 +157,7 @@ void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
     printf("Dismiss\n");
     PGB_ASSERT(sceneToDismiss == PGB_App->scene);
-    PGB_Scene *parent = sceneToDismiss->parentScene;
+    PGB_Scene* parent = sceneToDismiss->parentScene;
     if (parent)
     {
         parent->forceFullRefresh = true;
