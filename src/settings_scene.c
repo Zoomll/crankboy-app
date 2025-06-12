@@ -169,7 +169,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // Crank
     float crank_change = playdate->system->getCrankChange();
     settingsScene->crankAccumulator += crank_change;
-    const float crank_threshold = 30.0f;
+    const float crank_threshold = 45.0f;
 
     while (settingsScene->crankAccumulator >= crank_threshold)
     {
