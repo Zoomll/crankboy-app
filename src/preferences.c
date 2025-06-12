@@ -8,8 +8,8 @@
 
 #include "preferences.h"
 
-#include "revcheck.h"
 #include "jparse.h"
+#include "revcheck.h"
 
 static const int pref_version = 1;
 
@@ -37,7 +37,7 @@ void preferences_init(void)
     preferences_display_fps = false;
     preferences_frame_skip = true;
     preferences_itcm = (pd_rev == PD_REV_A);
-    
+
     // remove old preferences file
     // TODO: remove this eventually
     if (playdate->file->stat("preferences.bin", NULL) == 0)
@@ -59,83 +59,90 @@ void preferences_read_from_disk(void)
 {
     json_value j;
     int success = parse_json(pref_filename, &j, kFileReadData);
-    
+
     if (!success)
     {
         playdate->system->logToConsole("Failed to load preferences");
         return;
     }
-    
-    #define KEY(x) if (!strcmp(obj->data[i].key, x))
-    
+
+#define KEY(x) if (!strcmp(obj->data[i].key, x))
+
     if (j.type == kJSONTable)
     {
-        JsonObject* obj = j.data.tableval;
+        JsonObject *obj = j.data.tableval;
         for (size_t i = 0; i < obj->n; ++i)
         {
             json_value pref = obj->data[i].value;
-            KEY("sound") {
+            KEY("sound")
+            {
                 preferences_sound_mode = pref.data.intval;
             }
-            KEY("crank") {
+            KEY("crank")
+            {
                 preferences_crank_mode = pref.data.intval;
             }
-            KEY("fps") {
+            KEY("fps")
+            {
                 preferences_display_fps = pref.data.intval;
             }
-            KEY("frameskip") {
-                preferences_frame_skip= pref.data.intval;
+            KEY("frameskip")
+            {
+                preferences_frame_skip = pref.data.intval;
             }
-            KEY("itcm") {
+            KEY("itcm")
+            {
                 preferences_itcm = pref.data.intval;
             }
         }
     }
-    
-    #undef KEY
-    
+
+#undef KEY
+
     free_json_data(j);
 }
 
 int preferences_save_to_disk(void)
 {
     playdate->system->logToConsole("Save preferences...");
-    
-    // number of prefs to save
-    size_t n = 5;
-    union {
+
+// number of prefs to save
+#define NUM_PREFS 5
+
+    union
+    {
         JsonObject obj;
-        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair)*n];
+        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * NUM_PREFS];
     } data;
     json_value j;
     j.type = kJSONTable;
     j.data.tableval = &data.obj;
-    data.obj.n = n;
-    
+    data.obj.n = NUM_PREFS;
+
     data.obj.data[0].key = "sound";
     data.obj.data[0].value.type = kJSONInteger;
     data.obj.data[0].value.data.intval = preferences_sound_mode;
-    
+
     data.obj.data[1].key = "crank";
     data.obj.data[1].value.type = kJSONInteger;
     data.obj.data[1].value.data.intval = preferences_crank_mode;
-    
+
     data.obj.data[2].key = "fps";
     data.obj.data[2].value.type = kJSONInteger;
     data.obj.data[2].value.data.intval = preferences_display_fps;
-    
+
     data.obj.data[3].key = "frameskip";
     data.obj.data[3].value.type = kJSONInteger;
     data.obj.data[3].value.data.intval = preferences_frame_skip;
-    
+
     data.obj.data[4].key = "itcm";
     data.obj.data[4].value.type = kJSONInteger;
     data.obj.data[4].value.data.intval = preferences_itcm;
-    
+
     int error = write_json_to_disk(pref_filename, j);
-    
+
     playdate->system->logToConsole("Save preferences status code %d", error);
-    
+
     return !error;
 }
 
