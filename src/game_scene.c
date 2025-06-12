@@ -280,6 +280,16 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                                   "data, the game will not start.",
                                   NULL, NULL, NULL)
                         ->scene);
+
+                audioGameScene = NULL;
+
+                if (context->gb && context->gb->gb_cart_ram)
+                {
+                    pgb_free(context->gb->gb_cart_ram);
+                    context->gb->gb_cart_ram = NULL;
+                }
+
+                // Now, free the scene and context.
                 free(gameScene);
                 free(context);
                 return NULL;
