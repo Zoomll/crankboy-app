@@ -73,6 +73,21 @@ static void settings_confirm_load_state(PGB_GameScene *gameScene, int option)
     }
 }
 
+static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene)
+{
+    int result = (intptr_t)call_with_user_stack(preferences_save_to_disk);
+    if (!result)
+    {
+        PGB_presentModal(
+            PGB_Modal_new("Error saving preferences.", NULL, NULL, NULL)
+                ->scene);
+    }
+    else
+    {
+        PGB_dismiss(settingsScene->scene);
+    }
+}
+
 static void PGB_SettingsScene_update(void *object, float dt)
 {
     PGB_SettingsScene *settingsScene = object;
@@ -167,7 +182,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     }
     if (pushed & kButtonB)
     {
-        PGB_dismiss(settingsScene->scene);
+        PGB_SettingsScene_attemptDismiss(settingsScene);
         return;
     }
     if (pushed & kButtonA)
@@ -371,7 +386,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
 static void PGB_SettingsScene_didSelectBack(void *userdata)
 {
     PGB_SettingsScene *settingsScene = userdata;
-    PGB_dismiss(settingsScene->scene);
+    PGB_SettingsScene_attemptDismiss(settingsScene);
 }
 
 static void PGB_SettingsScene_menu(void *object)
@@ -403,12 +418,5 @@ static void PGB_SettingsScene_free(void *object)
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
-    int result = (intptr_t)call_with_user_stack(preferences_save_to_disk);
-    if (!result)
-    {
-        PGB_presentModal(
-            PGB_Modal_new("Error saving preferences.", NULL, NULL, NULL)
-                ->scene);
-    }
     DTCM_VERIFY();
 }

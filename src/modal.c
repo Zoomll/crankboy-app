@@ -166,7 +166,7 @@ void PGB_Modal_free(PGB_Modal *modal)
 PGB_Modal *PGB_Modal_new(char *text, char const *const *options,
                          PGB_ModalCallback callback, void *ud)
 {
-    PGB_Modal *modal = malloc(sizeof(PGB_Modal));
+    PGB_Modal *modal = pgb_malloc(sizeof(PGB_Modal));
     memset(modal, 0, sizeof(*modal));
 
     modal->options_count = 0;
