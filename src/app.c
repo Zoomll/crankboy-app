@@ -76,9 +76,8 @@ __section__(".text.main") void PGB_update(float dt)
 
     PGB_App->crankChange = playdate->system->getCrankChange();
 
-    playdate->system->getButtonState(
-        &PGB_App->buttons_down, &PGB_App->buttons_pressed, NULL
-    );
+    playdate->system->getButtonState(&PGB_App->buttons_down,
+                                     &PGB_App->buttons_pressed, NULL);
 
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
     PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
@@ -155,27 +154,13 @@ void PGB_presentModal(PGB_Scene *scene)
 
 void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
-    printf("Dismiss\n");
+    printf("Dismiss\\n");
     PGB_ASSERT(sceneToDismiss == PGB_App->scene);
-    PGB_Scene* parent = sceneToDismiss->parentScene;
+    PGB_Scene *parent = sceneToDismiss->parentScene;
     if (parent)
     {
         parent->forceFullRefresh = true;
-
-        PGB_App->scene = parent;
-
-        if (sceneToDismiss && sceneToDismiss->free)
-        {
-            sceneToDismiss->free(sceneToDismiss->managedObject);
-        }
-
-        PGB_App->buttons_suppress |= PGB_App->buttons_down;
-        PGB_App->buttons_down = 0;
-        PGB_App->buttons_pressed = 0;
-
-        playdate->system->logToConsole("refresh menu");
-        PGB_Scene_refreshMenu(PGB_App->scene);
-        playdate->system->logToConsole("done refresh");
+        PGB_present(parent);
     }
 }
 
