@@ -2106,11 +2106,13 @@ static void PGB_GameScene_free(void *object)
         pgb_free(context->cart_ram);
     }
 
+#ifndef NOLUA
     if (gameScene->script)
     {
         script_end(gameScene->script);
         gameScene->script = NULL;
     }
+#endif
 
     pgb_free(context);
     pgb_free(gameScene);
@@ -2128,6 +2130,8 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s *gb,
     PGB_ASSERT(gameScene->context->gb->direct.priv == context);
     PGB_ASSERT(gameScene->context->gb == gb);
 
+#ifndef NOLUA
     call_with_user_stack_2(script_on_breakpoint, gameScene->script,
                            breakpoint_number);
+#endif
 }
