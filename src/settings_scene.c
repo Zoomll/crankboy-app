@@ -28,6 +28,7 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     settingsScene->gameScene = gameScene;
     settingsScene->cursorIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
+    settingsScene->shouldDismiss = false;
 
     if (gameScene)
     {
@@ -92,6 +93,13 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene)
 static void PGB_SettingsScene_update(void *object, float dt)
 {
     PGB_SettingsScene *settingsScene = object;
+
+    if (settingsScene->shouldDismiss)
+    {
+        PGB_SettingsScene_attemptDismiss(settingsScene);
+        return;
+    }
+
     PGB_GameScene *gameScene = settingsScene->gameScene;
 
     const int kScreenHeight = 240;
@@ -436,7 +444,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
 static void PGB_SettingsScene_didSelectBack(void *userdata)
 {
     PGB_SettingsScene *settingsScene = userdata;
-    PGB_SettingsScene_attemptDismiss(settingsScene);
+    settingsScene->shouldDismiss = true;
 }
 
 static void PGB_SettingsScene_menu(void *object)

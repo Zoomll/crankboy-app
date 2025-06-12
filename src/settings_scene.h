@@ -20,6 +20,7 @@ typedef struct PGB_SettingsScene
 
     int cursorIndex;
     float crankAccumulator;
+    bool shouldDismiss;
 
 } PGB_SettingsScene;
 
