@@ -366,15 +366,18 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     }
 
 #ifndef NOLUA
-    char name[17];
-    gb_get_rom_name(context->gb, name);
-    playdate->system->logToConsole("ROM name: \"%s\"", name);
-    gameScene->script = script_begin(name, gameScene);
-    gameScene->prev_dt = 0;
-    if (!gameScene->script)
+    if (preferences_lua_support)
     {
-        playdate->system->logToConsole(
-            "Associated script failed to load or not found.");
+        char name[17];
+        gb_get_rom_name(context->gb, name);
+        playdate->system->logToConsole("ROM name: \"%s\"", name);
+        gameScene->script = script_begin(name, gameScene);
+        gameScene->prev_dt = 0;
+        if (!gameScene->script)
+        {
+            playdate->system->logToConsole(
+                "Associated script failed to load or not found.");
+        }
     }
 #endif
     DTCM_VERIFY();
@@ -1043,7 +1046,7 @@ __section__(".text.tick") __space
         context->gb->direct.sram_updated = 0;
 
 #ifndef NOLUA
-        if (context->scene->script)
+        if (preferences_lua_support && context->scene->script)
         {
             script_tick(context->scene->script);
         }
@@ -2107,7 +2110,7 @@ static void PGB_GameScene_free(void *object)
     }
 
 #ifndef NOLUA
-    if (gameScene->script)
+    if (preferences_lua_support && gameScene->script)
     {
         script_end(gameScene->script);
         gameScene->script = NULL;
@@ -2131,7 +2134,10 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s *gb,
     PGB_ASSERT(gameScene->context->gb == gb);
 
 #ifndef NOLUA
-    call_with_user_stack_2(script_on_breakpoint, gameScene->script,
-                           breakpoint_number);
+    if (preferences_lua_support && gameScene->script)
+    {
+        call_with_user_stack_2(script_on_breakpoint, gameScene->script,
+                               breakpoint_number);
+    }
 #endif
 }

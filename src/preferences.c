@@ -20,6 +20,7 @@ int preferences_crank_mode = 0;
 bool preferences_display_fps = false;
 bool preferences_frame_skip = false;
 bool preferences_itcm = false;
+bool preferences_lua_support = false;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -37,6 +38,7 @@ void preferences_init(void)
     preferences_display_fps = false;
     preferences_frame_skip = true;
     preferences_itcm = (pd_rev == PD_REV_A);
+    preferences_lua_support = false;
 
     // remove old preferences file
     // TODO: remove this eventually
@@ -94,6 +96,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_itcm = pref.data.intval;
             }
+            KEY("lua")
+            {
+                preferences_lua_support = pref.data.intval;
+            }
         }
     }
 
@@ -107,7 +113,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 5
+#define NUM_PREFS 6
 
     union
     {
@@ -138,6 +144,10 @@ int preferences_save_to_disk(void)
     data.obj.data[4].key = "itcm";
     data.obj.data[4].value.type = kJSONInteger;
     data.obj.data[4].value.data.intval = preferences_itcm;
+
+    data.obj.data[5].key = "lua";
+    data.obj.data[5].value.type = kJSONInteger;
+    data.obj.data[5].value.data.intval = preferences_lua_support;
 
     int error = write_json_to_disk(pref_filename, j);
 

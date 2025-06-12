@@ -83,25 +83,12 @@ static void PGB_SettingsScene_update(void *object, float dt)
     const int kLeftPanePadding = 20;
     const int kRightPanePadding = 10;
 
-    // In the Game Scene we can show all items.
-    // But in the Library Scene only Sound, 30FPS Mode & FPS
-    int menuItemCount = gameScene ? 6 : 4;
-
-    PGB_Scene_update(settingsScene->scene, dt);
-
-    PDButtons pushed = PGB_App->buttons_pressed;
-
-    const char *options[] = {"Sound", "30 FPS Mode", "Show FPS",
-                             "Crank", "Save State",  "Load State"};
-    if (!gameScene || !gameScene->save_states_supported)
-    {
-        options[4] = "(save state)";
-        options[5] = "(load state)";
-    }
-
-    bool is_option[] = {1, 1, 1, 1, 0, 0};
-
-    const char *descriptions[] = {
+    // Start with base menu items. We'll add more dynamically for the library.
+    // NOTE: Max 6 options: Sound, FPS Mode, Show FPS, Crank, ITCM, Lua
+    const char *options[6] = {"Sound", "30 FPS Mode", "Show FPS",
+                              "Crank", "Save State",  "Load State"};
+    bool is_option[6] = {1, 1, 1, 1, 0, 0};
+    const char *descriptions[6] = {
         "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
         "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
         "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
@@ -115,18 +102,29 @@ static void PGB_SettingsScene_update(void *object, float dt)
         "Load the previously\ncreated snapshot.",
     };
 
-    if (!gameScene || !gameScene->save_states_supported)
+    int menuItemCount;
+
+    if (gameScene)
     {
-        descriptions[4] = descriptions[5] =
-            "CrankBoy does not\ncurrently support\ncreating save\nstates with "
-            "a\nROM that has\nits own save data.";
+        menuItemCount = 6;
+        if (!gameScene->save_states_supported)
+        {
+            options[4] = "(save state)";
+            options[5] = "(load state)";
+            descriptions[4] = descriptions[5] =
+                "CrankBoy does not\ncurrently support\ncreating save\nstates "
+                "with "
+                "a\nROM that has\nits own save data.";
+        }
     }
+    else
+    {
+        // Library scene has a dynamic menu
+        menuItemCount = 4;  // Start with the basic 4 options
 
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
-    if (!gameScene)
-    {
-        options[4] = "ITCM acceleration";
-        is_option[4] = 1;
+        options[menuItemCount] = "ITCM acceleration";
+        is_option[menuItemCount] = 1;
         static char *itcm_description = NULL;
         if (itcm_description == NULL)
         {
@@ -137,10 +135,23 @@ static void PGB_SettingsScene_update(void *object, float dt)
                 "\n(Your device: %s)",
                 pd_rev_description);
         }
-        descriptions[4] = itcm_description ? itcm_description : "";
-        ++menuItemCount;
-    }
+        descriptions[menuItemCount] = itcm_description ? itcm_description : "";
+        menuItemCount++;
 #endif
+
+#ifndef NOLUA
+        options[menuItemCount] = "Lua Support";
+        is_option[menuItemCount] = 1;
+        descriptions[menuItemCount] =
+            "Enable or disable Lua\nscripting support.\n \nEnabling this "
+            "may impact\nperformance.";
+        menuItemCount++;
+#endif
+    }
+
+    PGB_Scene_update(settingsScene->scene, dt);
+
+    PDButtons pushed = PGB_App->buttons_pressed;
 
     if (pushed & kButtonDown)
     {
@@ -192,9 +203,15 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {  // Crank Function
             preferences_crank_mode = (preferences_crank_mode + 1) % 3;
         }
-        else if (settingsScene->cursorIndex == 4 && is_option[4])
+        else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
+                                      "ITCM acceleration") == 0)
         {
             preferences_itcm ^= 1;
+        }
+        else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
+                                      "Lua Support") == 0)
+        {
+            preferences_lua_support = !preferences_lua_support;
         }
         else if (settingsScene->cursorIndex == 4 && gameScene &&
                  gameScene->save_states_supported)
@@ -225,9 +242,9 @@ static void PGB_SettingsScene_update(void *object, float dt)
             // confirmation needed if more than 2 minutes of progress made
             if (gameScene->playtime >= 60 * 120)
             {
-                const char *options[] = {"No", "Yes", NULL};
+                const char *confirm_options[] = {"No", "Yes", NULL};
                 PGB_presentModal(
-                    PGB_Modal_new("Really load state?", options,
+                    PGB_Modal_new("Really load state?", confirm_options,
                                   (void *)settings_confirm_load_state,
                                   gameScene)
                         ->scene);
@@ -259,7 +276,6 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                        "Turbo B/A"};
     for (int i = 0; i < menuItemCount; i++)
     {
-        // Calculate the y position for this specific row
         int y = initialY + i * rowHeight;
         const char *stateText;
 
@@ -279,11 +295,22 @@ static void PGB_SettingsScene_update(void *object, float dt)
         {
             stateText = crank_mode_labels[preferences_crank_mode];
         }
-        else if (i == 4 && is_option[4])
+        else if (!gameScene && i >= 4)  // Dynamic options in library
         {
-            stateText = preferences_itcm ? "On" : "Off";
+            if (strcmp(options[i], "ITCM acceleration") == 0)
+            {
+                stateText = preferences_itcm ? "On" : "Off";
+            }
+            else if (strcmp(options[i], "Lua Support") == 0)
+            {
+                stateText = preferences_lua_support ? "On" : "Off";
+            }
+            else
+            {
+                stateText = "";
+            }
         }
-        else
+        else  // Game scene save/load state options are not toggles
         {
             stateText = "";
         }
