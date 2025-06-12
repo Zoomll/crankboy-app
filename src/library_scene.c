@@ -12,9 +12,9 @@
 #include "dtcm.h"
 #include "game_scene.h"
 #include "minigb_apu.h"
+#include "modal.h"
 #include "preferences.h"
 #include "settings_scene.h"
-#include "modal.h"
 
 static void PGB_LibraryScene_update(void *object, float dt);
 static void PGB_LibraryScene_free(void *object);
@@ -156,7 +156,7 @@ static void PGB_LibraryScene_update(void *object, float dt)
             {
                 PGB_present(gameScene->scene);
             }
-            
+
             playdate->system->logToConsole("Present gameScene");
         }
     }
@@ -545,18 +545,17 @@ static void PGB_LibraryScene_free(void *object)
 
     PGB_Scene_free(libraryScene->scene);
 
-    for (int i = 0; i < libraryScene->games->length; i++)
-    {
-        PGB_Game *game = libraryScene->games->items[i];
-        PGB_Game_free(game);
-    }
-
     PGB_Array *items = libraryScene->listView->items;
-
     for (int i = 0; i < items->length; i++)
     {
         PGB_ListItem *item = items->items[i];
         PGB_ListItem_free(item);
+    }
+
+    for (int i = 0; i < libraryScene->games->length; i++)
+    {
+        PGB_Game *game = libraryScene->games->items[i];
+        PGB_Game_free(game);
     }
 
     PGB_ListView_free(libraryScene->listView);

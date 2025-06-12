@@ -24,7 +24,6 @@ void PGB_init(void)
     PGB_App->scene = NULL;
 
     PGB_App->pendingScene = NULL;
-    PGB_App->pendingScene = NULL;
 
     playdate->file->mkdir(PGB_gamesPath);
     playdate->file->mkdir(PGB_coversPath);
