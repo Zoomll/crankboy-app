@@ -19,6 +19,7 @@ typedef struct PGB_SettingsScene
     PGB_GameScene *gameScene;
 
     int cursorIndex;
+    float crankAccumulator;
 
 } PGB_SettingsScene;
 

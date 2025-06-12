@@ -27,6 +27,7 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     PGB_SettingsScene *settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
     settingsScene->gameScene = gameScene;
     settingsScene->cursorIndex = 0;
+    settingsScene->crankAccumulator = 0.0f;
 
     if (gameScene)
     {
@@ -165,6 +166,32 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
     PGB_Scene_update(settingsScene->scene, dt);
 
+    // Crank
+    float crank_change = playdate->system->getCrankChange();
+    settingsScene->crankAccumulator += crank_change;
+    const float crank_threshold = 30.0f;
+
+    while (settingsScene->crankAccumulator >= crank_threshold)
+    {
+        settingsScene->cursorIndex++;
+        if (settingsScene->cursorIndex >= menuItemCount)
+        {
+            settingsScene->cursorIndex = menuItemCount - 1;
+        }
+        settingsScene->crankAccumulator -= crank_threshold;
+    }
+
+    while (settingsScene->crankAccumulator <= -crank_threshold)
+    {
+        settingsScene->cursorIndex--;
+        if (settingsScene->cursorIndex < 0)
+        {
+            settingsScene->cursorIndex = 0;
+        }
+        settingsScene->crankAccumulator += crank_threshold;
+    }
+
+    // Buttons
     PDButtons pushed = PGB_App->buttons_pressed;
 
     if (pushed & kButtonDown)
