@@ -25,27 +25,41 @@ void PGB_Modal_update(PGB_Modal *modal)
     uint8_t *lcd = playdate->graphics->getFrame();
     memcpy(lcd, modal->lcd, sizeof(modal->lcd));
 
-    // fuzzy grey
-    uint32_t lfsr = 0;
-    int tap2 = 5 + modal->exit;
-    for (size_t y = 0; y < LCD_ROWS; ++y)
+    if (modal->dissolveMask)
     {
-        for (size_t x = 0; x < LCD_COLUMNS; ++x)
+        playdate->graphics->clearBitmap(modal->dissolveMask, kColorWhite);
+
+        int width, height, rowbytes;
+        uint8_t *maskData;
+        playdate->graphics->getBitmapData(modal->dissolveMask, &width, &height,
+                                          &rowbytes, NULL, &maskData);
+
+        uint32_t lfsr = 0;
+        int tap2 = 5 + modal->exit;
+        for (size_t y = 0; y < height; ++y)
         {
-            if ((x % 2) == (y % 2))
+            for (size_t x = 0; x < width; ++x)
             {
                 lfsr <<= 1;
                 lfsr |= 1 & ((lfsr >> 1) ^ (lfsr >> tap2) ^ (lfsr >> 8) ^
                              (lfsr >> 31) ^ 1);
                 if ((int)(lfsr % MODAL_ANIM_TIME) < modal->timer)
                 {
-                    int c = (y % 2 == 0);
-                    lcd[y * LCD_ROWSIZE + (x / 8)] &= ~(1 << (x % 8));
-                    lcd[y * LCD_ROWSIZE + (x / 8)] |= (c << (x % 8));
+                    if (((x % 2) == (y % 2)))
+                    {
+                        maskData[y * rowbytes + (x / 8)] &=
+                            ~(1 << (7 - (x % 8)));
+                    }
                 }
             }
         }
+
+        playdate->graphics->setDrawMode(kDrawModeWhiteTransparent);
+        playdate->graphics->drawBitmap(modal->dissolveMask, 0, 0,
+                                       kBitmapUnflipped);
+        playdate->graphics->setDrawMode(kDrawModeCopy);
     }
+
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
 
     int w = 250;
@@ -75,7 +89,6 @@ void PGB_Modal_update(PGB_Modal *modal)
         // Apply a 2px vertical offset only for text-only modals
         // to achieve visual centering.
         int y_offset = (modal->options_count == 0) ? 2 : 0;
-
         playdate->graphics->drawTextInRect(
             modal->text, strlen(modal->text), kASCIIEncoding, x + m,
             y + m + y_offset, w - 2 * m, h - 2 * m, kWrapWord,
@@ -134,6 +147,11 @@ void PGB_Modal_free(PGB_Modal *modal)
     if (modal->callback)
         modal->callback(modal->ud, modal->result);
 
+    if (modal->dissolveMask)
+    {
+        playdate->graphics->freeBitmap(modal->dissolveMask);
+    }
+
     for (size_t i = 0; i < MODAL_MAX_OPTIONS; ++i)
     {
         if (modal->options[i])
@@ -175,6 +193,9 @@ PGB_Modal *PGB_Modal_new(char *text, char const *const *options,
 
     uint8_t *src = playdate->graphics->getFrame();
     memcpy(modal->lcd, src, sizeof(modal->lcd));
+
+    modal->dissolveMask =
+        playdate->graphics->newBitmap(LCD_COLUMNS, LCD_ROWS, kColorWhite);
 
     return modal;
 }
