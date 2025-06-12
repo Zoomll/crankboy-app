@@ -128,8 +128,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
             options[5] = "(load state)";
             descriptions[4] = descriptions[5] =
                 "CrankBoy does not\ncurrently support\ncreating save\nstates "
-                "with "
-                "a\nROM that has\nits own save data.";
+                "with a\nROM that has\nits own save data.";
         }
     }
     else
@@ -185,11 +184,25 @@ static void PGB_SettingsScene_update(void *object, float dt)
         PGB_SettingsScene_attemptDismiss(settingsScene);
         return;
     }
-    if (pushed & kButtonA)
+
+    bool a_pressed = (pushed & kButtonA);
+    bool left_pressed = (pushed & kButtonLeft);
+    bool right_pressed = (pushed & kButtonRight);
+
+    if ((a_pressed || left_pressed || right_pressed) &&
+        is_option[settingsScene->cursorIndex])
     {
-        if (settingsScene->cursorIndex == 0)
-        {  // Sound
-            preferences_sound_mode = (preferences_sound_mode + 1) % 3;
+        switch (settingsScene->cursorIndex)
+        {
+        case 0:  // Sound
+            if (left_pressed)
+            {
+                preferences_sound_mode = (preferences_sound_mode - 1 + 3) % 3;
+            }
+            else
+            {
+                preferences_sound_mode = (preferences_sound_mode + 1) % 3;
+            }
             bool sound_on = (preferences_sound_mode > 0);
             audio_enabled = sound_on ? 1 : 0;
 
@@ -199,9 +212,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
                 gameScene->context->gb->direct.sound = sound_on ? 1 : 0;
                 audioGameScene = sound_on ? gameScene : NULL;
             }
-        }
-        else if (settingsScene->cursorIndex == 1)
-        {  // 30FPS Mode
+            break;
+        case 1:  // 30FPS Mode
             preferences_frame_skip = !preferences_frame_skip;
 
             if (gameScene)
@@ -209,27 +221,38 @@ static void PGB_SettingsScene_update(void *object, float dt)
                 gameScene->context->gb->direct.frame_skip =
                     preferences_frame_skip ? 1 : 0;
             }
-        }
-        else if (settingsScene->cursorIndex == 2)
-        {  // Show FPS
+            break;
+        case 2:  // Show FPS
             preferences_display_fps = !preferences_display_fps;
+            break;
+        case 3:  // Crank Function
+            if (left_pressed)
+            {
+                preferences_crank_mode = (preferences_crank_mode - 1 + 3) % 3;
+            }
+            else
+            {
+                preferences_crank_mode = (preferences_crank_mode + 1) % 3;
+            }
+            break;
+        default:
+            if (!gameScene && strcmp(options[settingsScene->cursorIndex],
+                                     "ITCM acceleration") == 0)
+            {
+                preferences_itcm = !preferences_itcm;
+            }
+            else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
+                                          "Lua Support") == 0)
+            {
+                preferences_lua_support = !preferences_lua_support;
+            }
+            break;
         }
-        else if (settingsScene->cursorIndex == 3)
-        {  // Crank Function
-            preferences_crank_mode = (preferences_crank_mode + 1) % 3;
-        }
-        else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
-                                      "ITCM acceleration") == 0)
-        {
-            preferences_itcm ^= 1;
-        }
-        else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
-                                      "Lua Support") == 0)
-        {
-            preferences_lua_support = !preferences_lua_support;
-        }
-        else if (settingsScene->cursorIndex == 4 && gameScene &&
-                 gameScene->save_states_supported)
+    }
+    else if (a_pressed)
+    {
+        if (settingsScene->cursorIndex == 4 && gameScene &&
+            gameScene->save_states_supported)
         {  // save state
             if (!save_state(gameScene, 0))
             {
