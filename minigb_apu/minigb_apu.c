@@ -122,8 +122,8 @@ struct chan
     };
 };
 
+// TODO: dtcm accel these?
 struct chan chans[4];
-
 static int32_t vol_l, vol_r;
 
 __audio static void set_note_freq(struct chan *c, const uint32_t freq)
@@ -836,4 +836,32 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     DTCM_VERIFY_DEBUG();
 
     return 1;
+}
+
+__section__(".rare")
+unsigned audio_get_state_size(void)
+{
+    return
+        sizeof(int32_t) * 2 // vol
+        + sizeof(chans);
+}
+
+__section__(".rare")
+void audio_state_save(void* buff)
+{
+    memcpy(buff, chans, sizeof(chans));
+    buff += sizeof(chans);
+    int32_t* i = (void*)buff;
+    i[0] = vol_l;
+    i[1] = vol_r;
+}
+
+__section__(".rare")
+void audio_state_load(const void* buff)
+{
+    memcpy(chans, buff, sizeof(chans));
+    buff += sizeof(chans);
+    int32_t* i = (void*)buff;
+    vol_l = i[0];
+    vol_r = i[1];
 }

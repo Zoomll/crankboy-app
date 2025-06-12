@@ -39,3 +39,7 @@ void audio_init(uint8_t *audio_mem);
  * Playdate audio callback function.
  */
 int audio_callback(void *context, int16_t *left, int16_t *right, int len);
+
+unsigned audio_get_state_size(void);
+void audio_state_save(void* buff);
+void audio_state_load(const void* buff);

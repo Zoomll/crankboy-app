@@ -5373,12 +5373,11 @@ uint32_t gb_get_state_size(struct gb_s *gb)
         + WRAM_SIZE
         + VRAM_SIZE
         + sizeof(xram)
+        + audio_get_state_size()
         + gb->gb_cart_ram_size
         + MAX_BREAKPOINTS*sizeof(gb_breakpoint);
     
     // skipped: lcd; bgcache; rom
-    
-    // TODO: audio
 }
 
 __section__(".rare")
@@ -5418,6 +5417,10 @@ void gb_state_save(struct gb_s *gb, char* out)
     // xram
     memcpy(out, xram, sizeof(xram));
     out += sizeof(xram);
+    
+    // audio
+    audio_state_save(out);
+    out += audio_get_state_size();
     
     // cart ram
     if (gb->gb_cart_ram_size > 0)
@@ -5534,6 +5537,10 @@ const char* gb_state_load(struct gb_s *gb, const char* in, size_t size)
     // xram
     memcpy(xram, in, sizeof(xram));
     in += sizeof(xram);
+    
+    // audio
+    audio_state_load(in);
+    in += audio_get_state_size();
     
     // cartridge ram
     if (gb->gb_cart_ram_size > 0)
