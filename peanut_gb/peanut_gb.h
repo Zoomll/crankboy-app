@@ -1744,7 +1744,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
         next_bgcache_line_stride *= 2;
 #endif
     
-#if ENABLE_BGCACHE_DEFERRED
+#if ENABLE_BGCACHE && ENABLE_BGCACHE_DEFERRED
     if unlikely (gb->dirty_tile_data_master)
         __gb_process_deferred_tile_data_update(gb);
     if unlikely (gb->dirty_tile_rows)
