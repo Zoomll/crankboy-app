@@ -60,7 +60,7 @@ static void settings_load_state(PGB_GameScene *gameScene)
 
         // TODO: something less invasive than a modal here.
         PGB_presentModal(
-            PGB_Modal_new("Loaded saved successfully.", NULL, NULL, NULL)
+            PGB_Modal_new("Loaded saved state successfully.", NULL, NULL, NULL)
                 ->scene);
     }
 }
