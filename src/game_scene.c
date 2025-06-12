@@ -1409,7 +1409,7 @@ __section__(".text.tick") __space static void save_check(struct gb_s *gb)
     // save SRAM under some conditions
     // TODO: also save if menu opens, playdate goes to sleep, app closes, or
     // powers down
-    +frames_since_last_save;
+    frames_since_last_save++;
     gb->direct.sram_dirty |= gb->direct.sram_updated;
     if (gb->cart_battery && gb->direct.sram_dirty)
     {
