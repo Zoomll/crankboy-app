@@ -1,9 +1,5 @@
 require "common"
 
-if true then
-    return
-end
-
 -- enable xram [0xFEA0-FEFF]
 pgb.ram_poke(0xFF57, 2)
 
@@ -54,6 +50,7 @@ XRAM_crank_delta_lo = 0xFEA3
 XRAM_crank_delta_hi = 0xFEA4
 XRAM_crank_delta_smooth_lo = 0xFEA5
 XRAM_crank_delta_smooth_hi = 0xFEA6
+XRAM_thrust = 0xFEA7
 
 local patch = {
 "read_crank",
@@ -87,22 +84,69 @@ local patch = {
             OP_LD_A_L,
             OP_LD_a16_A, word(XRAM_crank_prev_lo),
             
-            
             -- HL <- IO_PD_CRANK - XRAM_crank_prev
             OP_ADD_HL_BC,
             OP_INC_HL,
             
             -- TODO: hysteresis
             
+            -- write delta and smoothed delta
             OP_LD_A_L,
             OP_LD_a16_A, word(XRAM_crank_delta_lo),
-            OP_LD_a16_A, word(XRAM_crank_delta_smooth_lo),
-            
-            -- TODO: smoothed crank delta
+        
             OP_LD_A_H,
             OP_LD_a16_A, word(XRAM_crank_delta_hi),
-            OP_LD_a16_A, word(XRAM_crank_delta_smooth_hi),
+            
+            -- HL <- XRAM_crank_delta_smooth
+            OP_LD_HL_d16, word(XRAM_crank_delta_smooth_lo),
+            OP_LD_A_iHL,
+            OP_LD_H_xHL,
+            OP_LD_L_A,
         
+            -- BC <- HL
+            OP_LD_B_H,
+            OP_LD_C_L,
+            
+            -- hl <- hl/8
+            OP_SRA_H,
+            OP_RR_L,
+            OP_SRA_H,
+            OP_RR_L,
+            OP_SRA_H,
+            OP_RR_L,
+        "bp5",
+            
+            -- hl <- bc - hl
+            OP_LD_A_C,
+            OP_SUB_L,
+            OP_LD_L_A,
+            OP_LD_A_B,
+            OP_SBC_H,
+            OP_LD_H_A,
+        "bp6",
+            
+            -- BC <- XRAM_crank_delta
+            OP_LD_A_a16, word(XRAM_crank_delta_lo),
+            OP_LD_B_A,
+            OP_LD_A_a16, word(XRAM_crank_delta_hi),
+            OP_LD_C_A,
+            
+            -- BC /= 8
+            OP_SRA_B,
+            OP_RR_C,
+            OP_SRA_B,
+            OP_RR_C,
+            OP_SRA_B,
+            OP_RR_C,
+            
+            -- HL += BC
+            OP_ADD_HL_BC,
+            
+        "bp7",
+            OP_LD_A_L,
+            OP_LD_a16_A, word(XRAM_crank_delta_smooth_lo),
+            OP_LD_A_H,
+            OP_LD_a16_A, word(XRAM_crank_delta_smooth_hi),
             OP_JR, r8"write_prev",
             
         "docked",
@@ -131,7 +175,7 @@ local patch = {
     OP_JR_ge, r8("org"),
 "check_lo",
     OP_LD_A_a16, word(XRAM_crank_delta_smooth_lo),
-    OP_CP_d8, math.floor(MIN_RATE_CRANK_FLAP / 360.0 * 0x10000),
+    OP_CP_d8, math.floor(MIN_RATE_CRANK_BEGIN_FLAP / 360.0 * 0x10000),
 "bp",
     OP_JR_ge, r8"input_up",
     
@@ -152,23 +196,104 @@ local patch = {
     0xF0, 0x8B,
     OP_BIT6_A,
     OP_JR_nz, r8"door_up_check.org",
-    --OP_RET,
+    OP_RET, -- ignore door
 
 "door_up_check.org",
     -- original
     OP_LD_B_A,
     0x2A, 0xB8,
     OP_RET,
+    
+"continue_flying",
+    OP_LD_A_a16, word(XRAM_crank_delta_smooth_hi),
+    OP_OR_A,
+    OP_JR_z, r8"_check_lo",
+    OP_CP_d8, 0x80,
+    OP_JR_ge, r8"continue_flying.org",
+
+"cf_math",
+    OP_PUSH_HL,
+        OP_LD_HL_d16, word(XRAM_crank_delta_smooth_lo),
+        
+        OP_LD_A_iHL,
+        OP_LD_H_xHL,
+        OP_LD_L_A,
+        
+        -- skip if HL < 0
+        OP_BIT7_H,
+        OP_JR_nz, r8("pophl_continue_flying.org"),
+        
+        -- hl <- hl/32
+        OP_SRA_H,
+        OP_RR_L,
+        OP_SRA_H,
+        OP_RR_L,
+        OP_SRA_H,
+        OP_RR_L,
+        OP_SRA_H,
+        OP_RR_L,
+        OP_SRA_H,
+        OP_RR_L,
+        
+        OP_LD_A_H,
+        OP_OR_A,
+        OP_JR_z, r8("ld_a_l"),
+        
+        OP_LD_A_d8, 0xFF,
+        OP_LD_L_A,
+    "ld_a_l",
+        OP_LD_A_L,
+        
+        -- A in range [0, 0x80)
+        OP_SRL_A,
+        OP_SUB_d8, 0x20,
+        OP_JR_lt, r8"flap_negative",
+        OP_JR, r8"set_thrust",
+        
+    "flap_negative",
+        OP_LD_A_d8, 0x20,
+        OP_LD_a16_A, word(XRAM_thrust),
+        OP_JR, r8"pophl_continue_flying.org",
+        
+    "set_thrust",
+        OP_LD_a16_A, word(XRAM_thrust),
+        
+    OP_POP_HL,
+    -- fallthrough
+
+"input_up_swap",
+    0xF0, 0x8B,
+    OP_OR_d8, PAD_UP,
+    OP_SWAP_A,
+    OP_RET,
+    
+"_check_lo",
+    OP_LD_A_a16, word(XRAM_crank_delta_smooth_lo),
+    OP_CP_d8, math.floor(MIN_RATE_CRANK_FLAP / 360.0 * 0x10000),
+    OP_JR_ge, r8"cf_math",
+    OP_LD_A_d8, -- skip next instr
+
+"pophl_continue_flying.org",
+    OP_POP_HL,
+
+"continue_flying.org",
+    0xF0, 0x8B,
+    OP_SWAP_A,
+    OP_RET,
 }
 
 patch_res = apply_patch(patch, cave_1_addr, 0x4000 | (cave_1_addr % 0x4000), cave_1_size)
 
 -- only go through door if holding 'up'
---[[
 poke_verify(0, 0x49A, OP_LD_B_A, OP_CALL)
 poke_verify(0, 0x49B, 0x2A, patch_res.labels.door_up_check & 0xFF)
 poke_verify(0, 0x49C, 0xB8, patch_res.labels.door_up_check >> 8)
---]]
+
+-- continue flying if cranking
+poke_verify(1, 0x467C, 0xF0, OP_CALL)
+poke_verify(1, 0x467D, 0x8B, patch_res.labels.continue_flying & 0xFF)
+poke_verify(1, 0x467E, 0xCB, patch_res.labels.continue_flying >> 8)
+poke_verify(1, 0x467F, 0x37, OP_NOP)
 
 -- custom crank reading
 poke_verify(1, 0x4492, 0xF0, OP_CALL)
