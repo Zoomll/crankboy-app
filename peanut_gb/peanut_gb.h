@@ -282,12 +282,19 @@ struct count_s
 
 struct gb_registers_s
 {
-    /* TODO: Sort variables in address order. */
-    uint16_t tac_cycles;
-    uint8_t tac_cycles_shift;
+    /* Registers sorted by memory address. */
 
-    /* Timing */
-    uint8_t TIMA, TMA, DIV;
+    /* Joypad info (0xFF00) */
+    uint8_t P1;
+
+    /* Serial data (0xFF01 - 0xFF02) */
+    uint8_t SB;
+    uint8_t SC;
+
+    /* Timer Registers (0xFF04 - 0xFF07) */
+    uint8_t DIV;
+    uint8_t TIMA;
+    uint8_t TMA;
     union
     {
         struct
@@ -299,7 +306,10 @@ struct gb_registers_s
         uint8_t TAC;
     };
 
-    /* LCD */
+    /* Interrupt Flag (0xFF0F) */
+    uint8_t IF;
+
+    /* LCD Registers (0xFF40 - 0xFF4B) */
     uint8_t LCDC;
     uint8_t STAT;
     uint8_t SCY;
@@ -313,18 +323,12 @@ struct gb_registers_s
     uint8_t WY;
     uint8_t WX;
 
-    /* Joypad info. */
-    uint8_t P1;
-
-    /* Serial data. */
-    uint8_t SB;
-    uint8_t SC;
-
-    /* Interrupt flag. */
-    uint8_t IF;
-
-    /* Interrupt enable. */
+    /* Interrupt Enable (0xFFFF) */
     uint8_t IE;
+
+    /* Internal emulator state for timer implementation. */
+    uint16_t tac_cycles;
+    uint8_t tac_cycles_shift;
 };
 
 #if ENABLE_LCD
