@@ -1151,25 +1151,17 @@ __section__(".text.tick") __space
 
         // --- Conditional Screen Update (Drawing) Logic ---
         uint8_t *current_lcd = context->gb->lcd;
+        uint8_t *previous_lcd = context->previous_lcd;
         uint16_t line_has_changed[LCD_HEIGHT / 16];
         memset(line_has_changed, 0, sizeof(line_has_changed));
 
-        const int line_stride_bytes = LCD_WIDTH_PACKED;
-        const int line_stride_u64 = line_stride_bytes / sizeof(uint64_t);
-
-        uint64_t *curr_lcd_u64 = (uint64_t *)current_lcd;
-        uint64_t *prev_lcd_u64 = (uint64_t *)context->previous_lcd;
-
         for (int y = 0; y < LCD_HEIGHT; y++)
         {
-            for (int i = 0; i < line_stride_u64; i++)
+            if (memcmp(&current_lcd[y * LCD_WIDTH_PACKED],
+                       &previous_lcd[y * LCD_WIDTH_PACKED],
+                       LCD_WIDTH_PACKED) != 0)
             {
-                if (curr_lcd_u64[y * line_stride_u64 + i] !=
-                    prev_lcd_u64[y * line_stride_u64 + i])
-                {
-                    line_has_changed[y / 16] |= (1 << (y % 16));
-                    break;
-                }
+                line_has_changed[y / 16] |= (1 << (y % 16));
             }
         }
 
