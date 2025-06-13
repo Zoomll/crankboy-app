@@ -1,6 +1,6 @@
 name=CrankBoy
 author=CrankBoy Dev Team
-description=A Game Boy emulator based on Peanut-GB
+description=A Game Boy emulator based on PlayGB, based on Peanut-GB
 bundleID=app.crankboy
 version=0.9.9
 buildNumber=1
