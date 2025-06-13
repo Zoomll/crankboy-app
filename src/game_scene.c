@@ -1036,26 +1036,32 @@ __section__(".text.tick") __space
         gameScene->scene->forceFullRefresh = false;
     }
 
-    bool animatedSelectorBitmapNeedsRedraw = false;
-    if (gbScreenRequiresFullRefresh || !gameScene->staticSelectorUIDrawn ||
-        gameScene->model.selectorIndex != gameScene->selector.index)
-    {
-        animatedSelectorBitmapNeedsRedraw = true;
-    }
-
     if (gameScene->model.crank_mode != preferences_crank_mode)
     {
         gameScene->staticSelectorUIDrawn = false;
     }
 
-    gameScene->model.empty = false;
-    gameScene->model.state = gameScene->state;
-    gameScene->model.error = gameScene->error;
-    gameScene->model.selectorIndex = gameScene->selector.index;
-    gameScene->model.crank_mode = preferences_crank_mode;
-
     if (gameScene->state == PGB_GameSceneStateLoaded)
     {
+        bool shouldDisplayStartSelectUI =
+            (!playdate->system->isCrankDocked() &&
+             preferences_crank_mode == 0) ||
+            (gameScene->button_hold_frames_remaining > 0);
+
+        static bool wasSelectorVisible = false;
+        if (shouldDisplayStartSelectUI != wasSelectorVisible)
+        {
+            gameScene->staticSelectorUIDrawn = false;
+        }
+        wasSelectorVisible = shouldDisplayStartSelectUI;
+
+        bool animatedSelectorBitmapNeedsRedraw = false;
+        if (gbScreenRequiresFullRefresh || !gameScene->staticSelectorUIDrawn ||
+            gameScene->model.selectorIndex != gameScene->selector.index)
+        {
+            animatedSelectorBitmapNeedsRedraw = true;
+        }
+
         PGB_GameSceneContext *context = gameScene->context;
 
         PDButtons current_pd_buttons = PGB_App->buttons_down;
@@ -1284,11 +1290,6 @@ __section__(".text.tick") __space
             }
         }
 
-        bool shouldDisplayStartSelectUI =
-            (!playdate->system->isCrankDocked() &&
-             preferences_crank_mode == 0) ||
-            (gameScene->button_hold_frames_remaining > 0);
-
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
         {
             // Clear the right sidebar area before redrawing any static UI.
@@ -1356,6 +1357,8 @@ __section__(".text.tick") __space
             playdate->graphics->setDrawMode(kDrawModeCopy);
         }
 
+        gameScene->staticSelectorUIDrawn = true;
+
         if (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
         {
             LCDBitmap *bitmap;
@@ -1373,21 +1376,6 @@ __section__(".text.tick") __space
             playdate->graphics->drawBitmap(bitmap, gameScene->selector.x,
                                            gameScene->selector.y,
                                            kBitmapUnflipped);
-        }
-
-        static bool wasSelectorVisible = false;
-        if (shouldDisplayStartSelectUI != wasSelectorVisible)
-        {
-            gameScene->staticSelectorUIDrawn = false;
-        }
-        wasSelectorVisible = shouldDisplayStartSelectUI;
-
-        if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
-        {
-            if (shouldDisplayStartSelectUI)
-            {
-                gameScene->staticSelectorUIDrawn = true;
-            }
         }
 
 #if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
@@ -1493,6 +1481,11 @@ __section__(".text.tick") __space
             gameScene->staticSelectorUIDrawn = false;
         }
     }
+    gameScene->model.empty = false;
+    gameScene->model.state = gameScene->state;
+    gameScene->model.error = gameScene->error;
+    gameScene->model.selectorIndex = gameScene->selector.index;
+    gameScene->model.crank_mode = preferences_crank_mode;
 }
 
 __section__(".text.tick") __space static void save_check(struct gb_s *gb)
