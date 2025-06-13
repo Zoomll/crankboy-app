@@ -135,7 +135,7 @@ typedef struct PGB_GameScene
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;
     bool crank_turbo_b_active;
-    
+
     // time since started or last save/load state
     unsigned playtime;
 
@@ -143,5 +143,6 @@ typedef struct PGB_GameScene
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
+void PGB_GameScene_apply_settings(PGB_GameScene *gameScene);
 
 #endif /* game_scene_h */

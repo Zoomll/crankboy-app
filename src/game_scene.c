@@ -405,6 +405,38 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     return gameScene;
 }
 
+void PGB_GameScene_apply_settings(PGB_GameScene *gameScene)
+{
+    PGB_GameSceneContext *context = gameScene->context;
+    bool desiredAudioEnabled = (preferences_sound_mode > 0);
+
+    if (gameScene->audioEnabled == desiredAudioEnabled)
+    {
+        return;
+    }
+
+    const char *mode_labels[] = {"Off", "Fast", "Accurate"};
+    playdate->system->logToConsole("Audio setting changed to: %s",
+                                   mode_labels[preferences_sound_mode]);
+
+    gameScene->audioEnabled = desiredAudioEnabled;
+
+    if (desiredAudioEnabled)
+    {
+        playdate->sound->channel->setVolume(
+            playdate->sound->getDefaultChannel(), 0.2f);
+        context->gb->direct.sound = 1;
+        audioGameScene = gameScene;
+    }
+    else
+    {
+        playdate->sound->channel->setVolume(
+            playdate->sound->getDefaultChannel(), 0.0f);
+        context->gb->direct.sound = 0;
+        audioGameScene = NULL;
+    }
+}
+
 static void PGB_GameScene_selector_init(PGB_GameScene *gameScene)
 {
     int startButtonWidth = playdate->graphics->getTextWidth(
