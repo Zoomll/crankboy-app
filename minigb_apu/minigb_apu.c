@@ -178,13 +178,13 @@ __audio static int update_len(struct chan *c, int len)
 
     if (tr > len)
     {
-        c->len.counter = 0;
-        chan_enable(c - chans, 0);
+        c->len.counter += len * c->len.inc;
         return len;
     }
     else
     {
-        c->len.counter -= len * c->len.inc;
+        c->len.counter = 0;
+        chan_enable(c - chans, 0);
         return tr;
     }
 }
@@ -838,30 +838,26 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     return 1;
 }
 
-__section__(".rare")
-unsigned audio_get_state_size(void)
+__section__(".rare") unsigned audio_get_state_size(void)
 {
-    return
-        sizeof(int32_t) * 2 // vol
-        + sizeof(chans);
+    return sizeof(int32_t) * 2  // vol
+           + sizeof(chans);
 }
 
-__section__(".rare")
-void audio_state_save(void* buff)
+__section__(".rare") void audio_state_save(void *buff)
 {
     memcpy(buff, chans, sizeof(chans));
     buff += sizeof(chans);
-    int32_t* i = (void*)buff;
+    int32_t *i = (void *)buff;
     i[0] = vol_l;
     i[1] = vol_r;
 }
 
-__section__(".rare")
-void audio_state_load(const void* buff)
+__section__(".rare") void audio_state_load(const void *buff)
 {
     memcpy(chans, buff, sizeof(chans));
     buff += sizeof(chans);
-    int32_t* i = (void*)buff;
+    int32_t *i = (void *)buff;
     vol_l = i[0];
     vol_r = i[1];
 }
