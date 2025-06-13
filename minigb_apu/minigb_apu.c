@@ -414,8 +414,9 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
         uint32_t freq = precomputed_noise_freqs[c->noise.lfsr_div][c->freq];
         set_note_freq(c, freq);
 
-        // This prevents a crash, unsure why.
-        if (c->freq_inc < 1000)
+        // A frequency of 0 would cause a division by zero in accurate sound
+        // mode.
+        if (c->freq_inc == 0)
             return;
     }
 
