@@ -48,6 +48,7 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
 
     if (gameScene)
     {
+        settingsScene->wasAudioLocked = gameScene->audioLocked;
         gameScene->audioLocked = true;
     }
 
@@ -299,8 +300,8 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             entries[++i] = (OptionsMenuEntry){
                 .name = "Load state",
                 .values = NULL,
-                .description =
-                    "Restore the previously\n-created snapshot."
+                .description = 
+                    "Restore the previously-\ncreated snapshot."
                 ,
                 .pref_var = NULL,
                 .max_value = 0,
@@ -523,7 +524,7 @@ static void PGB_SettingsScene_free(void *object)
     if (settingsScene->gameScene)
     {
         PGB_GameScene_apply_settings(settingsScene->gameScene);
-        settingsScene->gameScene->audioLocked = false;
+        settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
 
     if (settingsScene->entries)

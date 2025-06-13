@@ -10,11 +10,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 
 #include "../src/game_scene.h"
 #include "app.h"
 #include "dtcm.h"
 #include "preferences.h"
+#include "../peanut_gb/peanut_gb.h"
+
+#define audio_mem(audio) ((uint8_t*)((void*)audio - offsetof(struct gb_s, audio) + offsetof(struct gb_s, hram) + 0x10))
 
 #define DMG_CLOCK_FREQ_U ((unsigned)DMG_CLOCK_FREQ)
 #define AUDIO_NSAMPLES (AUDIO_SAMPLES * 2u)
@@ -52,79 +56,7 @@
 /**
  * Memory holding audio registers between 0xFF10 and 0xFF3F inclusive.
  */
-static uint8_t *audio_mem = NULL;
 static uint32_t precomputed_noise_freqs[8][16];
-
-struct chan_len_ctr
-{
-    uint8_t load;
-    unsigned enabled : 1;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan_vol_env
-{
-    uint8_t step;
-    unsigned up : 1;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan_freq_sweep
-{
-    uint16_t freq;
-    uint8_t rate;
-    uint8_t shift;
-    unsigned up : 1;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan
-{
-    unsigned enabled : 1;
-    unsigned powered : 1;
-    unsigned on_left : 1;
-    unsigned on_right : 1;
-    unsigned muted : 1;
-
-    uint8_t volume;
-    uint8_t volume_init;
-
-    uint16_t freq;
-    uint32_t freq_counter;
-    uint32_t freq_inc;
-
-    int_fast16_t val;
-
-    struct chan_len_ctr len;
-    struct chan_vol_env env;
-    struct chan_freq_sweep sweep;
-
-    union
-    {
-        struct
-        {
-            uint8_t duty;
-            uint8_t duty_counter;
-        } square;
-        struct
-        {
-            uint16_t lfsr_reg;
-            uint8_t lfsr_wide;
-            uint8_t lfsr_div;
-        } noise;
-        struct
-        {
-            uint8_t sample;
-        } wave;
-    };
-};
-
-// TODO: dtcm accel these?
-struct chan chans[4];
-static int32_t vol_l, vol_r;
 
 __audio static void set_note_freq(struct chan *c, const uint32_t freq)
 {
@@ -132,16 +64,16 @@ __audio static void set_note_freq(struct chan *c, const uint32_t freq)
     c->freq_inc = freq * (uint32_t)(FREQ_INC_REF / AUDIO_SAMPLE_RATE);
 }
 
-static void chan_enable(const uint_fast8_t i, const bool enable)
+static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enable)
 {
     uint8_t val;
-
+    struct chan* chans = audio->chans;
     chans[i].enabled = enable;
-    val = (audio_mem[0xFF26 - AUDIO_ADDR_COMPENSATION] & 0x80) |
+    val = (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] & 0x80) |
           (chans[3].enabled << 3) | (chans[2].enabled << 2) |
           (chans[1].enabled << 1) | (chans[0].enabled << 0);
 
-    audio_mem[0xFF26 - AUDIO_ADDR_COMPENSATION] = val;
+    audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] = val;
     // audio_mem[0xFF26 - AUDIO_ADDR_COMPENSATION] |= 0x80 | ((uint8_t)enable)
     // << i;
 }
@@ -166,7 +98,7 @@ __audio static void update_env(struct chan *c)
 }
 
 // returns sample index at which to stop outputting in channel
-__audio static int update_len(struct chan *c, int len)
+__audio static int update_len(audio_data* restrict audio, struct chan *c, int len)
 {
     if (!c->enabled)
         return 0;
@@ -184,7 +116,7 @@ __audio static int update_len(struct chan *c, int len)
     else
     {
         c->len.counter = 0;
-        chan_enable(c - chans, 0);
+        chan_enable(audio, c - audio->chans, 0);
         return tr;
     }
 }
@@ -239,10 +171,10 @@ __audio static void update_sweep(struct chan *c)
     }
 }
 
-__audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
+__audio static void update_square(audio_data* restrict audio, int16_t *left, int16_t *right, const bool ch2,
                                   int len)
 {
-    struct chan *c = chans + ch2;
+    struct chan *c = audio->chans + ch2;
 
     if (!c->powered || !c->enabled)
         return;
@@ -257,7 +189,7 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
             return;
     }
 
-    len = update_len(c, len);
+    len = update_len(audio, c, len);
 
     for (uint_fast16_t i = 0; i < len; i++)
     {
@@ -288,8 +220,8 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
             sample *= c->volume;
             sample /= 4;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
         else
         {
@@ -310,18 +242,18 @@ __audio static void update_square(int16_t *left, int16_t *right, const bool ch2,
             sample *= c->volume;
             sample >>= 2;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
     }
 }
 
-__audio static uint8_t wave_sample(const unsigned int pos,
+__audio static uint8_t wave_sample(audio_data* audio, const unsigned int pos,
                                    const unsigned int volume)
 {
     uint8_t sample;
 
-    sample = audio_mem[(0xFF30 + pos / 2) - AUDIO_ADDR_COMPENSATION];
+    sample = audio_mem(audio)[(0xFF30 + pos / 2) - AUDIO_ADDR_COMPENSATION];
     if (pos & 1)
     {
         sample &= 0xF;
@@ -333,8 +265,9 @@ __audio static uint8_t wave_sample(const unsigned int pos,
     return volume ? (sample >> (volume - 1)) : 0;
 }
 
-__audio static void update_wave(int16_t *left, int16_t *right, int len)
+__audio static void update_wave(audio_data* restrict audio, int16_t *left, int16_t *right, int len)
 {
+    struct chan* chans = audio->chans;
     struct chan *c = chans + 2;
 
     if (!c->powered || !c->enabled)
@@ -350,7 +283,7 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
             return;
     }
 
-    len = update_len(c, len);
+    len = update_len(audio, c, len);
 
     for (uint_fast16_t i = 0; i < len; i++)
     {
@@ -360,14 +293,14 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
             uint32_t prev_pos = 0;
             int32_t sample = 0;
 
-            c->wave.sample = wave_sample(c->val, c->volume);
+            c->wave.sample = wave_sample(audio, c->val, c->volume);
 
             while (update_freq(c, &pos))
             {
                 c->val = (c->val + 1) & 31;
                 sample += ((pos - prev_pos) / c->freq_inc) *
                           ((int)c->wave.sample - 8) * (INT16_MAX / 64);
-                c->wave.sample = wave_sample(c->val, c->volume);
+                c->wave.sample = wave_sample(audio, c->val, c->volume);
                 prev_pos = pos;
             }
 
@@ -378,8 +311,8 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
 
             sample /= 4;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
         else
         {
@@ -393,20 +326,20 @@ __audio static void update_wave(int16_t *left, int16_t *right, int len)
             if (c->volume == 0 || c->muted)
                 continue;
 
-            uint8_t wave_val = wave_sample(c->val, c->volume);
+            uint8_t wave_val = wave_sample(audio, c->val, c->volume);
             int32_t sample = ((int)wave_val - 8) * (INT16_MAX / 64);
 
             sample >>= 2;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
     }
 }
 
-__audio static void update_noise(int16_t *left, int16_t *right, int len)
+__audio static void update_noise(audio_data* restrict audio, int16_t *left, int16_t *right, int len)
 {
-    struct chan *c = chans + 3;
+    struct chan *c = audio->chans + 3;
 
     if (!c->powered)
         return;
@@ -423,7 +356,7 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
     if (c->freq >= 14)
         c->enabled = 0;
 
-    len = update_len(c, len);
+    len = update_len(audio, c, len);
 
     if (!c->enabled)
         return;
@@ -468,8 +401,8 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
             sample *= c->volume;
             sample /= 4;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
         else
         {
@@ -498,22 +431,23 @@ __audio static void update_noise(int16_t *left, int16_t *right, int len)
             sample *= c->volume;
             sample >>= 2;
 
-            left[i] += sample * c->on_left * vol_l;
-            right[i] += sample * c->on_right * vol_r;
+            left[i] += sample * c->on_left * audio->vol_l;
+            right[i] += sample * c->on_right * audio->vol_r;
         }
     }
 }
 
-static void chan_trigger(uint_fast8_t i)
+static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 {
+    struct chan *chans = audio->chans;
     struct chan *c = chans + i;
 
-    chan_enable(i, 1);
+    chan_enable(audio, i, 1);
     c->volume = c->volume_init;
 
     // volume envelope
     {
-        uint8_t val = audio_mem[(0xFF12 + (i * 5)) - AUDIO_ADDR_COMPENSATION];
+        uint8_t val = audio_mem(audio)[(0xFF12 + (i * 5)) - AUDIO_ADDR_COMPENSATION];
 
         c->env.step = val & 0x07;
         c->env.up = val & 0x08 ? 1 : 0;
@@ -527,7 +461,7 @@ static void chan_trigger(uint_fast8_t i)
     // freq sweep
     if (i == 0)
     {
-        uint8_t val = audio_mem[0xFF10 - AUDIO_ADDR_COMPENSATION];
+        uint8_t val = audio_mem(audio)[0xFF10 - AUDIO_ADDR_COMPENSATION];
 
         c->sweep.freq = c->freq;
         c->sweep.rate = (val >> 4) & 0x07;
@@ -564,7 +498,7 @@ static void chan_trigger(uint_fast8_t i)
  *              This is not checked in this function.
  * \return      Byte at address.
  */
-uint8_t audio_read(const uint16_t addr)
+uint8_t audio_read(audio_data* audio, const uint16_t addr)
 { /* clang-format off */
     static const uint8_t ortab[] =
     {
@@ -579,7 +513,7 @@ uint8_t audio_read(const uint16_t addr)
     };
     /* clang-format on */
 
-    return audio_mem[addr - AUDIO_ADDR_COMPENSATION] |
+    return audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] |
            ortab[addr - AUDIO_ADDR_COMPENSATION];
 }
 
@@ -589,18 +523,19 @@ uint8_t audio_read(const uint16_t addr)
  *              This is not checked in this function.
  * \param val   Byte to write at address.
  */
-void audio_write(const uint16_t addr, const uint8_t val)
+void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t val)
 {
     /* Find sound channel corresponding to register address. */
     uint_fast8_t i;
+    struct chan* chans = audio->chans;
 
     if (addr == 0xFF26)
     {
-        audio_mem[addr - AUDIO_ADDR_COMPENSATION] = val & 0x80;
+        audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val & 0x80;
         /* On APU power off, clear all registers apart from wave RAM. */
         if ((val & 0x80) == 0)
         {
-            memset(audio_mem, 0x00, 0xFF26 - AUDIO_ADDR_COMPENSATION);
+            memset(audio_mem(audio), 0x00, 0xFF26 - AUDIO_ADDR_COMPENSATION);
             chans[0].enabled = false;
             chans[1].enabled = false;
             chans[2].enabled = false;
@@ -610,10 +545,10 @@ void audio_write(const uint16_t addr, const uint8_t val)
     }
 
     /* Ignore register writes if APU powered off. */
-    if (audio_mem[0xFF26 - AUDIO_ADDR_COMPENSATION] == 0x00)
+    if (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] == 0x00)
         return;
 
-    audio_mem[addr - AUDIO_ADDR_COMPENSATION] = val;
+    audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
 
     if (preferences_sound_mode == 2)
     {
@@ -688,7 +623,7 @@ void audio_write(const uint16_t addr, const uint8_t val)
 
     case 0xFF1A:
         chans[i].powered = (val & 0x80) != 0;
-        chan_enable(i, val & 0x80);
+        chan_enable(audio, i, val & 0x80);
         break;
 
     case 0xFF14:
@@ -700,7 +635,7 @@ void audio_write(const uint16_t addr, const uint8_t val)
     case 0xFF23:
         chans[i].len.enabled = val & 0x40 ? 1 : 0;
         if (val & 0x80)
-            chan_trigger(i);
+            chan_trigger(audio, i);
         break;
 
     case 0xFF22:
@@ -710,8 +645,8 @@ void audio_write(const uint16_t addr, const uint8_t val)
         break;
 
     case 0xFF24:
-        vol_l = ((val >> 4) & 0x07);
-        vol_r = (val & 0x07);
+        audio->vol_l = ((val >> 4) & 0x07);
+        audio->vol_r = (val & 0x07);
         break;
 
     case 0xFF25:
@@ -724,9 +659,9 @@ void audio_write(const uint16_t addr, const uint8_t val)
     }
 }
 
-void audio_init(uint8_t *_audio_mem)
+void audio_init(audio_data* audio)
 {
-    audio_mem = _audio_mem;
+    struct chan* chans = audio->chans;
 
     /* Initialise channels and samples. */
     memset(chans, 0, 4 * sizeof(struct chan));
@@ -744,7 +679,7 @@ void audio_init(uint8_t *_audio_mem)
         /* clang-format on */
 
         for (uint_fast8_t i = 0; i < sizeof(regs_init); ++i)
-            audio_write(0xFF10 + i, regs_init[i]);
+            audio_write(audio, 0xFF10 + i, regs_init[i]);
     }
 
     /* Initialise Wave Pattern RAM. */
@@ -758,7 +693,7 @@ void audio_init(uint8_t *_audio_mem)
         /* clang-format on */
 
         for (uint_fast8_t i = 0; i < sizeof(wave_init); ++i)
-            audio_write(0xFF30 + i, wave_init[i]);
+            audio_write(audio, 0xFF30 + i, wave_init[i]);
     }
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8;
@@ -812,6 +747,12 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
     {
         return 0;
     }
+    
+    #ifdef TARGET_SIMULATOR
+    pthread_mutex_lock(&audio_mutex);
+    #endif
+    
+    audio_data* audio = &gameScene->context->gb->audio;
 
     __builtin_prefetch(left, 1);
     __builtin_prefetch(right, 1);
@@ -824,41 +765,21 @@ __audio int audio_callback(void *context, int16_t *left, int16_t *right,
         memset(left, 0, chunksize * sizeof(int16_t));
         memset(right, 0, chunksize * sizeof(int16_t));
 
-        update_wave(left, right, chunksize);
-        update_square(left, right, 0, chunksize);
-        update_square(left, right, 1, chunksize);
-        update_noise(left, right, chunksize);
+        update_wave(audio, left, right, chunksize);
+        update_square(audio, left, right, 0, chunksize);
+        update_square(audio, left, right, 1, chunksize);
+        update_noise(audio, left, right, chunksize);
 
         len -= chunksize;
         left += chunksize;
         right += chunksize;
     }
+    
+    #ifdef TARGET_SIMULATOR
+    pthread_mutex_unlock(&audio_mutex);
+    #endif
 
     DTCM_VERIFY_DEBUG();
 
     return 1;
-}
-
-__section__(".rare") unsigned audio_get_state_size(void)
-{
-    return sizeof(int32_t) * 2  // vol
-           + sizeof(chans);
-}
-
-__section__(".rare") void audio_state_save(void *buff)
-{
-    memcpy(buff, chans, sizeof(chans));
-    buff += sizeof(chans);
-    int32_t *i = (void *)buff;
-    i[0] = vol_l;
-    i[1] = vol_r;
-}
-
-__section__(".rare") void audio_state_load(const void *buff)
-{
-    memcpy(chans, buff, sizeof(chans));
-    buff += sizeof(chans);
-    int32_t *i = (void *)buff;
-    vol_l = i[0];
-    vol_r = i[1];
 }

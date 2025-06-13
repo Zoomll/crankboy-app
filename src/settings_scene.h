@@ -22,7 +22,8 @@ typedef struct PGB_SettingsScene
 
     int cursorIndex;
     float crankAccumulator;
-    bool shouldDismiss;
+    bool shouldDismiss : 1;
+    bool wasAudioLocked : 1;
 
     struct OptionsMenuEntry* entries;
 } PGB_SettingsScene;

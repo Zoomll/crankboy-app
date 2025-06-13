@@ -108,6 +108,7 @@ void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt *art_result);
     if (!(x))         \
         playdate->system->error("ASSERTION FAILED: %s", #x);
 #else
+#define CPU_VALIDATE 0
 #define PGB_ASSERT(x)
 #endif
 

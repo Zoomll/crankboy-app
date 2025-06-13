@@ -348,7 +348,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             }
 
             playdate->system->logToConsole("Initializing audio...");
-            audio_init(gb->hram + 0x10);
+            audio_init(&gb->audio);
             if (gameScene->audioEnabled)
             {
                 playdate->sound->channel->setVolume(
@@ -1107,6 +1107,10 @@ __section__(".text.tick") __space
         PGB_ASSERT(context == context->gb->direct.priv);
 
         struct gb_s *tmp_gb = context->gb;
+        
+        #ifdef TARGET_SIMULATOR
+        pthread_mutex_lock(&audio_mutex);
+        #endif
 
         // copy gb to stack (DTCM) temporarily only if dtcm not enabled
         int stack_gb_size = 1;
@@ -1117,8 +1121,10 @@ __section__(".text.tick") __space
         char stack_gb_data[stack_gb_size];
         if (!dtcm_enabled())
         {
+            gameScene->audioLocked = 1;
             memcpy(stack_gb_data, tmp_gb, sizeof(struct gb_s));
             context->gb = (void *)stack_gb_data;
+            gameScene->audioLocked = 0;
         }
 
         gameScene->playtime += 1 + preferences_frame_skip;
@@ -1136,9 +1142,15 @@ __section__(".text.tick") __space
 
         if (!dtcm_enabled())
         {
+            gameScene->audioLocked = 1;
             memcpy(tmp_gb, context->gb, sizeof(struct gb_s));
             context->gb = tmp_gb;
+            gameScene->audioLocked = 0;
         }
+        
+        #ifdef TARGET_SIMULATOR
+        pthread_mutex_unlock(&audio_mutex);
+        #endif
 
         if (gameScene->cartridge_has_battery)
         {
@@ -2150,7 +2162,7 @@ static void PGB_GameScene_free(void *object)
 {
     audio_enabled = 0;
 
-    DTCM_VERIFY_DEBUG();
+    DTCM_VERIFY();
     PGB_GameScene *gameScene = object;
     PGB_GameSceneContext *context = gameScene->context;
 
@@ -2193,7 +2205,7 @@ static void PGB_GameScene_free(void *object)
 
     pgb_free(context);
     pgb_free(gameScene);
-    DTCM_VERIFY_DEBUG();
+    DTCM_VERIFY();
 }
 
 __section__(".rare") void __gb_on_breakpoint(struct gb_s *gb,

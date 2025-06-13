@@ -22,6 +22,11 @@
 #define TARGET_DEVICE 1
 #endif
 
+#if defined(TARGET_SIMULATOR)
+#include <pthread.h>
+extern pthread_mutex_t audio_mutex;
+#endif
+
 #if !defined(TARGET_DEVICE) && defined(DTCM_ALLOC)
 #undef DTCM_ALLOC
 #endif

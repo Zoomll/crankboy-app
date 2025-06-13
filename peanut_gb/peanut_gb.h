@@ -36,10 +36,12 @@
 #include <stdlib.h> /* Required for qsort */
 #include <string.h> /* Required for memset */
 #include <time.h>   /* Required for tm struct */
+#include <stddef.h> /* Required for offsetof */
 
 #include "../src/app.h"
 #include "../src/utility.h"
 #include "version.all" /* Version information */
+#include "../minigb_apu/minigb_apu.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -583,6 +585,10 @@ struct gb_s
     uint32_t dirty_tiles[64];
 #endif
 #endif
+
+    // NOTE: this MUST be the last member of gb_s.
+    // sometimes we perform memory operations on the whole gb struct except for audio.
+    audio_data audio;
 };
 
 #ifdef PGB_IMPL
@@ -833,7 +839,7 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
         {
             if (gb->direct.sound)
             {
-                return audio_read(addr);
+                return audio_read(&gb->audio, addr);
             }
             else
             { /* clang-format off */
@@ -1278,7 +1284,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
         {
             if (gb->direct.sound)
             {
-                audio_write(addr, val);
+                audio_write(&gb->audio, addr, val);
             }
             else
             {
@@ -5119,7 +5125,7 @@ __core void __gb_step_cpu(struct gb_s *gb)
         goto done_instr;
     }
 
-#ifndef CPU_VALIDATE
+#if CPU_VALIDATE == 0
 
     inst_cycles = __gb_run_instruction_micro(gb);
 #else
@@ -5220,7 +5226,10 @@ __core void __gb_step_cpu(struct gb_s *gb)
             }
             goto printregs;
         }
-        else if (memcmp(gb, &_gb[1], sizeof(struct gb_s)))
+        
+        // assert audio data is final member of gb_s
+        PGB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
+        if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
         {
             gb->gb_frame = 1;
             playdate->system->error("difference in gb struct on opcode %x",
@@ -5502,10 +5511,10 @@ struct StateHeader
 // i.e. no pointers should be followed
 __section__(".rare") uint32_t gb_get_state_size(struct gb_s *gb)
 {
-    return sizeof(struct StateHeader) + sizeof(struct gb_s) +
-           ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE + VRAM_SIZE + sizeof(xram) + audio_get_state_size() +
-           gb->gb_cart_ram_size + MAX_BREAKPOINTS * sizeof(gb_breakpoint);
+    return sizeof(struct StateHeader) + sizeof(struct gb_s)
+           + ROM_HEADER_SIZE  // for safe-keeping
+           + WRAM_SIZE + VRAM_SIZE + sizeof(xram)
+           + gb->gb_cart_ram_size + MAX_BREAKPOINTS * sizeof(gb_breakpoint);
 
     // skipped: lcd; bgcache; rom
 }
@@ -5546,10 +5555,6 @@ __section__(".rare") void gb_state_save(struct gb_s *gb, char *out)
     // xram
     memcpy(out, xram, sizeof(xram));
     out += sizeof(xram);
-
-    // audio
-    audio_state_save(out);
-    out += audio_get_state_size();
 
     // cart ram
     if (gb->gb_cart_ram_size > 0)
@@ -5669,10 +5674,6 @@ __section__(".rare") const
     // xram
     memcpy(xram, in, sizeof(xram));
     in += sizeof(xram);
-
-    // audio
-    audio_state_load(in);
-    in += audio_get_state_size();
 
     // cartridge ram
     if (gb->gb_cart_ram_size > 0)

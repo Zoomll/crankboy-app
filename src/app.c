@@ -17,6 +17,10 @@
 
 PGB_Application *PGB_App;
 
+#if defined(TARGET_SIMULATOR)
+pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 void PGB_init(void)
 {
     PGB_App = pgb_malloc(sizeof(PGB_Application));
