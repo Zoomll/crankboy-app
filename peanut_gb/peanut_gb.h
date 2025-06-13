@@ -32,16 +32,16 @@
 #ifndef PEANUT_GB_H
 #define PEANUT_GB_H
 
+#include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
 #include <stdlib.h> /* Required for qsort */
 #include <string.h> /* Required for memset */
 #include <time.h>   /* Required for tm struct */
-#include <stddef.h> /* Required for offsetof */
 
+#include "../minigb_apu/minigb_apu.h"
 #include "../src/app.h"
 #include "../src/utility.h"
 #include "version.all" /* Version information */
-#include "../minigb_apu/minigb_apu.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -587,7 +587,8 @@ struct gb_s
 #endif
 
     // NOTE: this MUST be the last member of gb_s.
-    // sometimes we perform memory operations on the whole gb struct except for audio.
+    // sometimes we perform memory operations on the whole gb struct except for
+    // audio.
     audio_data audio;
 };
 
@@ -1977,47 +1978,56 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     if (wx < LCD_WIDTH)
     {
 #if ENABLE_BGCACHE
-        uint8_t bg_x =
-            256 - wx;  // CHECKME -- does window scroll? Should this be 0?
-        uint8_t bg_y = gb->gb_reg.LY - gb->display.WY;
+        uint8_t wx_reg = gb->gb_reg.WX;
+
+        // Determine the starting pixel on the screen and the starting pixel
+        // to read from within the window's own data. This handles the
+        // special hardware case where WX is between 0 and 6, which clips
+        // the left side of the window.
+        int screen_x_start = (wx_reg >= 7) ? (wx_reg - 7) : 0;
+        int win_x_start = (wx_reg >= 7) ? 0 : (7 - wx_reg);
+
+        uint8_t win_y = gb->display.window_clear;
+
         int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
         int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
-        uint32_t *bgcache = (uint32_t *)(gb->bgcache + (bg_y * BGCACHE_STRIDE) +
-                                         addr_mode_2 * (BGCACHE_SIZE / 2) +
-                                         map2 * (BGCACHE_SIZE / 4));
-        uint32_t hi = bgcache[(bg_x / 16) % 0x10];
+        uint32_t *win_cache_line =
+            (uint32_t *)(gb->bgcache + (win_y * BGCACHE_STRIDE) +
+                         addr_mode_2 * (BGCACHE_SIZE / 2) +
+                         map2 * (BGCACHE_SIZE / 4));
 
-        // first part of window may be obscured
-        const int obscure_x = bg_x % 16;
-        hi &= 0xFFFF0000 | (0x0000FFFF << obscure_x);
-        hi &= 0x0000FFFF | (0xFFFF0000 << obscure_x);
-        if (obscure_x % 16 != 0)
+        uint16_t *line_pixels = (uint16_t *)(void *)pixels;
+
+        int win_x = win_x_start;
+        for (int screen_x = screen_x_start; screen_x < LCD_WIDTH;
+             ++screen_x, ++win_x)
         {
-            // obscure background behind window
-            uint16_t *obscure =
-                (uint16_t *)&((uint32_t *)(void *)(pixels))[wx / 16];
-            obscure[0] &= (0xFFFF >> obscure_x);
-            obscure[1] &= (0xFFFF >> obscure_x);
+            uint32_t src_chunk_data = win_cache_line[win_x / 16];
+            int bit_in_chunk = win_x % 16;
+
+            uint16_t src_low_bit = (src_chunk_data >> bit_in_chunk) & 1;
+            uint16_t src_high_bit = (src_chunk_data >> (bit_in_chunk + 16)) & 1;
+
+            if (src_low_bit == 0 && src_high_bit == 0)
+            {
+                continue;
+            }
+
+            int dest_chunk_idx = screen_x / 16;
+            int dest_bit_in_chunk = screen_x % 16;
+
+            uint16_t bit_mask = (1 << dest_bit_in_chunk);
+
+            uint16_t *dest_low_plane = &line_pixels[dest_chunk_idx * 2];
+            uint16_t *dest_high_plane = &line_pixels[dest_chunk_idx * 2 + 1];
+
+            *dest_low_plane = (*dest_low_plane & ~bit_mask) |
+                              (src_low_bit << dest_bit_in_chunk);
+            *dest_high_plane = (*dest_high_plane & ~bit_mask) |
+                               (src_high_bit << dest_bit_in_chunk);
         }
 
-        for (int i = wx / 16; i < (LCD_WIDTH) / 16; ++i)
-        {
-            uint16_t *out = (uint16_t *)(void *)(pixels) + (i * 2);
-            uint32_t lo = hi;
-            hi = bgcache[(bg_x / 16 + i + 1) % 0x10];
-            int xm = (bg_x % 16);
-            uint16_t raw1 = ((lo & 0x0000FFFF) >> xm);
-            uint16_t raw2 = ((lo & 0xFFFF0000) >> (16 + xm));
-            raw1 |= ((hi & 0x0000FFFF) << (16 - xm));
-            raw2 |= ((hi & 0xFFFF0000) >> xm);
-
-            out[0] |= raw1;
-            out[1] |= raw2;
-        }
-
-        __builtin_prefetch(
-            &bgcache[next_bgcache_line_stride / sizeof(uint32_t) + (bg_x / 16)],
-            1);
+        gb->display.window_clear++;
 #else
         /* Calculate Window Map Address. */
         uint16_t win_line =
@@ -5202,9 +5212,10 @@ __core void __gb_step_cpu(struct gb_s *gb)
             }
             goto printregs;
         }
-        
+
         // assert audio data is final member of gb_s
-        PGB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
+        PGB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) ==
+                   offsetof(struct gb_s, audio));
         if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
         {
             gb->gb_frame = 1;
@@ -5487,10 +5498,10 @@ struct StateHeader
 // i.e. no pointers should be followed
 __section__(".rare") uint32_t gb_get_state_size(struct gb_s *gb)
 {
-    return sizeof(struct StateHeader) + sizeof(struct gb_s)
-           + ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE + VRAM_SIZE + sizeof(xram)
-           + gb->gb_cart_ram_size + MAX_BREAKPOINTS * sizeof(gb_breakpoint);
+    return sizeof(struct StateHeader) + sizeof(struct gb_s) +
+           ROM_HEADER_SIZE  // for safe-keeping
+           + WRAM_SIZE + VRAM_SIZE + sizeof(xram) + gb->gb_cart_ram_size +
+           MAX_BREAKPOINTS * sizeof(gb_breakpoint);
 
     // skipped: lcd; bgcache; rom
 }
