@@ -57,27 +57,33 @@ jobs:
       - name: Build Project
         run: make
 
-      # Step 6: Package and Name the Artifact (SIMPLIFIED)
-      - name: Package Artifact
-        id: package
-        run: |
-          # Read the full version string (e.g., "0.9.9.20250608") from the pdxinfo file.
-          APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
-          echo "Using full version for filename: $APP_VERSION"
+      # Step 6: Package and Name the Artifact (CORRECTED)
+        - name: Package Artifact
+          id: package
+          run: |
+            # Read the full version string (e.g., "0.9.9.20250608") from pdxinfo.
+            APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
 
-          # Construct the simplified zip filename, as the date is already in the version.
-          ZIP_FILENAME="CrankBoy-${APP_VERSION}-nightly.zip"
-          echo "Packaging artifact as: $ZIP_FILENAME"
+            # Define the base name for the artifact, without extension.
+            ARTIFACT_NAME="CrankBoy-${APP_VERSION}-nightly"
+            echo "Artifact base name: $ARTIFACT_NAME"
 
-          # Create the zip archive.
-          zip -r "$ZIP_FILENAME" CrankBoy.pdx
+            # Define the full zip filename, with extension.
+            ZIP_FILENAME="${ARTIFACT_NAME}.zip"
+            echo "Packaging artifact as: $ZIP_FILENAME"
 
-          # Set the filename as a step output.
-          echo "zip_path=$ZIP_FILENAME" >> $GITHUB_OUTPUT
+            # Create the zip archive.
+            zip -r "$ZIP_FILENAME" CrankBoy.pdx
 
-      # Step 7: Upload the Zipped Artifact
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.package.outputs.zip_path }}
-          path: ${{ steps.package.outputs.zip_path }}
+            # Set both names as step outputs.
+            echo "zip_path=$ZIP_FILENAME" >> $GITHUB_OUTPUT
+            echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+        # Step 7: Upload the Zipped Artifact (CORRECTED)
+        - name: Upload Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            # Use the name WITHOUT .zip for the artifact name.
+            name: ${{ steps.package.outputs.artifact_name }}
+            # Use the name WITH .zip for the path to the file.
+            path: ${{ steps.package.outputs.zip_path }}
