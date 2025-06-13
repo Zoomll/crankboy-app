@@ -35,6 +35,10 @@
 // let's try to render a frame at least this fast
 #define TARGET_FRAME_TIME_S 0.0167f
 
+// Enables console logging for the dirty line update mechanism.
+// WARNING: Performance-intensive. Use for debugging only.
+#define LOG_DIRTY_LINES 0
+
 PGB_GameScene *audioGameScene = NULL;
 
 static void PGB_GameScene_selector_init(PGB_GameScene *gameScene);
@@ -1109,25 +1113,69 @@ __section__(".text.tick") __space
 
         // --- Conditional Screen Update (Drawing) Logic ---
         uint8_t *current_lcd = context->gb->lcd;
-        int line_changed_count = 0;
         uint16_t line_has_changed[LCD_HEIGHT / 16];
-        for (int y = 0; y < LCD_HEIGHT / 16; y++)
+        memset(line_has_changed, 0, sizeof(line_has_changed));
+
+        const int line_stride_bytes = LCD_WIDTH_PACKED;
+        const int line_stride_u64 = line_stride_bytes / sizeof(uint64_t);
+
+        uint64_t *curr_lcd_u64 = (uint64_t *)current_lcd;
+        uint64_t *prev_lcd_u64 = (uint64_t *)context->previous_lcd;
+
+        for (int y = 0; y < LCD_HEIGHT; y++)
         {
-            uint16_t changed = 0;
-            for (int y2 = 0; y2 < 16; ++y2)
+            for (int i = 0; i < line_stride_u64; i++)
             {
-                changed >>= 1;
-                uint8_t sy = (y * 16) | y2;
-                if (memcmp(&current_lcd[sy * LCD_WIDTH_PACKED],
-                           &context->previous_lcd[sy * LCD_WIDTH_PACKED],
-                           LCD_WIDTH_PACKED) != 0)
+                if (curr_lcd_u64[y * line_stride_u64 + i] !=
+                    prev_lcd_u64[y * line_stride_u64 + i])
                 {
-                    changed |= 0x8000;
+                    line_has_changed[y / 16] |= (1 << (y % 16));
+                    break;
                 }
             }
-
-            line_has_changed[y] = changed;
         }
+
+#if LOG_DIRTY_LINES
+        playdate->system->logToConsole("--- Frame Update ---");
+        int range_start = 0;
+        bool is_dirty_range = (line_has_changed[0] & 1);
+
+        for (int y = 1; y < LCD_HEIGHT; y++)
+        {
+            bool is_dirty_current = (line_has_changed[y / 16] >> (y % 16)) & 1;
+
+            if (is_dirty_current != is_dirty_range)
+            {
+                if (range_start == y - 1)
+                {
+                    playdate->system->logToConsole(
+                        "Line %d: %s", range_start,
+                        is_dirty_range ? "Updated" : "Omitted");
+                }
+                else
+                {
+                    playdate->system->logToConsole(
+                        "Lines %d-%d: %s", range_start, y - 1,
+                        is_dirty_range ? "Updated" : "Omitted");
+                }
+                range_start = y;
+                is_dirty_range = is_dirty_current;
+            }
+        }
+
+        if (range_start == LCD_HEIGHT - 1)
+        {
+            playdate->system->logToConsole(
+                "Line %d: %s", range_start,
+                is_dirty_range ? "Updated" : "Omitted");
+        }
+        else
+        {
+            playdate->system->logToConsole(
+                "Lines %d-%d: %s", range_start, LCD_HEIGHT - 1,
+                is_dirty_range ? "Updated" : "Omitted");
+        }
+#endif
 
         // Determine if drawing is actually needed based on changes or
         // forced display
