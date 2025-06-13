@@ -284,11 +284,12 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
                 .pref_var = NULL,
                 .max_value = 0,
                 .on_press = settings_action_save_state,
+                .ud = gameScene,
             };
             
             // load state
             entries[++i] = (OptionsMenuEntry){
-                .name = "Save state",
+                .name = "Load state",
                 .values = NULL,
                 .description = 
                     "Restore the previously\n-created snapshot."
@@ -296,6 +297,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
                 .pref_var = NULL,
                 .max_value = 0,
                 .on_press = settings_action_load_state,
+                .ud = gameScene,
             };
         }
     }
@@ -388,7 +390,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
             + direction + settingsScene->entries[settingsScene->cursorIndex].max_value
         ) % settingsScene->entries[settingsScene->cursorIndex].max_value;
     }
-    else if (settingsScene->entries[settingsScene->cursorIndex].on_press)
+    else if (settingsScene->entries[settingsScene->cursorIndex].on_press && a_pressed)
     {
         settingsScene->entries[settingsScene->cursorIndex].on_press(
             &settingsScene->entries[settingsScene->cursorIndex]
