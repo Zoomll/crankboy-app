@@ -5071,16 +5071,6 @@ __shell static uint16_t __gb_calc_halt_cycles(struct gb_s *gb)
     return cycles;
 }
 
-__core static unsigned __gb_tima_overflow(struct gb_s *gb, unsigned tima)
-{
-    gb->gb_reg.IF |= TIMER_INTR;
-    tima -= 0x100;
-    unsigned div = 0x100 - (unsigned)gb->gb_reg.TMA;
-    tima %= div;
-    tima += (unsigned)gb->gb_reg.TMA;
-    return tima;
-}
-
 /**
  * Internal function used to step the CPU.
  */
@@ -5291,18 +5281,20 @@ done_instr:
 #endif
 
     /* TIMA register timing */
-    /* TODO: Change tac_enable to struct of TAC timer control bits. */
     if (gb->gb_reg.tac_enable)
     {
         gb->counter.tima_count += inst_cycles;
-        unsigned tima = (unsigned)gb->gb_reg.TIMA +
-                        (gb->counter.tima_count >> gb->gb_reg.tac_cycles_shift);
-        gb->counter.tima_count &= gb->gb_reg.tac_cycles;
-        if (tima >= 0x100)
+        while (gb->counter.tima_count >= gb->gb_reg.tac_cycles)
         {
-            tima = __gb_tima_overflow(gb, tima);
+            gb->counter.tima_count -= gb->gb_reg.tac_cycles;
+            gb->gb_reg.TIMA++;
+
+            if (gb->gb_reg.TIMA == 0x00)  // Overflow detected
+            {
+                gb->gb_reg.IF |= TIMER_INTR;
+                gb->gb_reg.TIMA = gb->gb_reg.TMA;
+            }
         }
-        gb->gb_reg.TIMA = tima;
     }
 
     /* DIV register timing */
