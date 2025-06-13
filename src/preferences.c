@@ -17,10 +17,10 @@ static const char *pref_filename = "preferences.json";
 
 int preferences_sound_mode = 0;
 int preferences_crank_mode = 0;
-bool preferences_display_fps = false;
-bool preferences_frame_skip = false;
-bool preferences_itcm = false;
-bool preferences_lua_support = false;
+int preferences_display_fps = false;
+int preferences_frame_skip = false;
+int preferences_itcm = false;
+int preferences_lua_support = false;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);

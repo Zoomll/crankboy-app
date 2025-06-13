@@ -13,6 +13,8 @@
 #include "game_scene.h"
 #include "scene.h"
 
+struct OptionsMenuEntry;
+
 typedef struct PGB_SettingsScene
 {
     PGB_Scene *scene;
@@ -22,6 +24,7 @@ typedef struct PGB_SettingsScene
     float crankAccumulator;
     bool shouldDismiss;
 
+    struct OptionsMenuEntry* entries;
 } PGB_SettingsScene;
 
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene);

@@ -13,10 +13,10 @@
 
 #include "utility.h"
 
-extern bool preferences_display_fps;
-extern bool preferences_frame_skip;
-extern bool preferences_itcm;
-extern bool preferences_lua_support;
+extern int preferences_display_fps;
+extern int preferences_frame_skip;
+extern int preferences_itcm;
+extern int preferences_lua_support;
 extern int preferences_sound_mode;
 extern int preferences_crank_mode;
 

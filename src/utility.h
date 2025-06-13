@@ -124,4 +124,6 @@ static inline unsigned next_pow2(unsigned v)
     return ++v;
 }
 
+#define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ^_RESULT_TYPE_ _fn_ _ARGS_ _BODY_
+
 #endif /* utility_h */

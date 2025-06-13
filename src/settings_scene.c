@@ -13,6 +13,7 @@
 #include "preferences.h"
 #include "revcheck.h"
 #include "userstack.h"
+#include "utility.h"
 
 static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
@@ -22,13 +23,27 @@ static void PGB_SettingsScene_didSelectBack(void *userdata);
 bool save_state(PGB_GameScene *gameScene, unsigned slot);
 bool load_state(PGB_GameScene *gameScene, unsigned slot);
 
+typedef struct OptionsMenuEntry {
+    const char* name;
+    const char** values;
+    const char* description;
+    int* pref_var;
+    unsigned max_value;
+    void (*on_press)(struct OptionsMenuEntry*);
+    void* ud;
+} OptionsMenuEntry;
+
+OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
+
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
 {
     PGB_SettingsScene *settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
+    memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
     settingsScene->cursorIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
+    settingsScene->entries = getOptionsEntries(gameScene);
 
     if (gameScene)
     {
@@ -90,6 +105,206 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene)
     }
 }
 
+#define ROTATE(var, dir, max) {var = (var + dir + max) % max;}
+#define STRFMT_LAMBDA(...) LAMBDA(char*, (struct OptionsMenuEntry* e), { char* _RET; playdate->system->formatString(&_RET, __VA_ARGS__); return _RET; })
+
+static const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
+static const char *off_on_labels[] = {"Off", "On"};
+const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A"};
+
+static void settings_action_save_state(OptionsMenuEntry* e)
+{
+    PGB_GameScene* gameScene = e->ud;
+    // TODO: confirmation if overwriting a state which is >= 10 minutes old
+    if (!save_state(gameScene, 0))
+    {
+        char *msg;
+        playdate->system->formatString(&msg, "Error saving state:\n%s",
+                                        playdate->file->geterr());
+        PGB_presentModal(PGB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        free(msg);
+    }
+    else
+    {
+        playdate->system->logToConsole("Saved state %d successfully",
+                                        0);
+
+        // TODO: something less invasive than a modal here.
+        PGB_presentModal(
+            PGB_Modal_new("State saved successfully.", NULL, NULL, NULL)
+                ->scene);
+    }
+}
+
+static void settings_action_load_state(OptionsMenuEntry* e)
+{
+    PGB_GameScene* gameScene = e->ud;
+    // confirmation needed if more than 2 minutes of progress made
+    if (gameScene->playtime >= 60 * 120)
+    {
+        const char *confirm_options[] = {"No", "Yes", NULL};
+        PGB_presentModal(
+            PGB_Modal_new("Really load state?", confirm_options,
+                            (void *)settings_confirm_load_state,
+                            gameScene)
+                ->scene);
+    }
+    else
+    {
+        settings_load_state(gameScene);
+    }
+}
+
+OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
+{
+    int max_entries = 15; // we can overshoot, it's ok
+    OptionsMenuEntry* entries = malloc(sizeof(OptionsMenuEntry) * max_entries);
+    if (!entries) return NULL;
+    memset(entries, 0, sizeof(OptionsMenuEntry)*max_entries);
+    
+    /* clang-format off */
+    
+    // sound
+    int i = -1;
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Sound",
+            .values = sound_mode_labels,
+            .description =
+                "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
+                "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
+            .pref_var = &preferences_sound_mode,
+            .max_value = 3,
+            .on_press = NULL,
+        };
+    }
+    
+    // frame skip
+    entries[++i] = (OptionsMenuEntry){
+        .name = "30 FPS mode",
+        .values = off_on_labels,
+        .description =
+            "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
+            "for most games.\n \nDespite appearing to be\n30 FPS, the game "
+            "itself\nstill runs at full speed.",
+        .pref_var = &preferences_frame_skip,
+        .max_value = 2,
+        .on_press = NULL,
+    };
+    
+    // show fps
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Show FPS",
+        .values = off_on_labels,
+        .description = 
+            "Displays the current\nframes-per-second\non screen."
+        ,
+        .pref_var = &preferences_display_fps,
+        .max_value = 2,
+        .on_press = NULL
+    };
+    
+    // crank mode
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Crank",
+        .values = crank_mode_labels,
+        .description =
+            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
+            "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
+            "B/A:\nCW for B, CCW for A."
+        ,
+        .pref_var = &preferences_crank_mode,
+        .max_value = 3,
+        .on_press = NULL
+    };
+    
+    if (!gameScene)
+    {
+        #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+        // itcm accel
+        
+        static char* itcm_description = NULL;
+        if (itcm_description == NULL) playdate->system->formatString(
+            &itcm_description,
+            "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
+            "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
+            "\n(Your device: %s)",
+            pd_rev_description
+        );
+        entries[++i] = (OptionsMenuEntry){
+            .name = "ITCM acceleration",
+            .values = off_on_labels,
+            .description = itcm_description,
+            .pref_var = &preferences_itcm,
+            .max_value = 2,
+            .on_press = NULL
+        };
+        #endif
+    
+        #ifndef NOLUA
+        // lua scripts
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Game scripts",
+            .values = off_on_labels,
+            .description = 
+                "Enable or disable Lua\nscripting support.\n \nEnabling this "
+                "may impact\nperformance."
+            ,
+            .pref_var = &preferences_lua_support,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+        #endif
+    }
+    
+    if (gameScene)
+    {
+        if (!gameScene->save_states_supported)
+        {
+            entries[++i] = (OptionsMenuEntry){
+                .name = "(save state)",
+                .values = NULL,
+                .description =
+                    "CrankBoy does not\ncurrently support\ncreating save\nstates "
+                    "with a\nROM that has\nits own save data.",
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = NULL
+            };
+        }
+        else
+        {
+            // save state
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Save state",
+                .values = NULL,
+                .description = 
+                    "Create a snapshot of\nthis moment, which\ncan be resumed later."
+                ,
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = settings_action_save_state,
+            };
+            
+            // load state
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Save state",
+                .values = NULL,
+                .description = 
+                    "Restore the previously\n-created snapshot."
+                ,
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = settings_action_load_state,
+            };
+        }
+    }
+    
+    /* clang-format on */
+    
+    return entries;
+};
+
 static void PGB_SettingsScene_update(void *object, float dt)
 {
     PGB_SettingsScene *settingsScene = object;
@@ -107,71 +322,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
     const int kLeftPanePadding = 20;
     const int kRightPanePadding = 10;
 
-    // Start with base menu items. We'll add more dynamically for the library.
-    // NOTE: Max 6 options: Sound, FPS Mode, Show FPS, Crank, ITCM, Lua
-    const char *options[6] = {"Sound", "30 FPS Mode", "Show FPS",
-                              "Crank", "Save State",  "Load State"};
-    bool is_option[6] = {1, 1, 1, 1, 0, 0};
-    const char *descriptions[6] = {
-        "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
-        "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
-        "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
-        "for most games.\n \nDespite appearing to be\n30 FPS, the game "
-        "itself\nstill runs at full speed.",
-        "Displays the current\nframes-per-second\non screen.",
-        "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
-        "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
-        "B/A:\nCW for B, CCW for A.",
-        "Create a snapshot of\nthis moment, which\ncan be resumed later.",
-        "Load the previously\ncreated snapshot.",
-    };
-
     int menuItemCount;
-
-    if (gameScene)
-    {
-        menuItemCount = 6;
-        if (!gameScene->save_states_supported)
-        {
-            options[4] = "(save state)";
-            options[5] = "(load state)";
-            descriptions[4] = descriptions[5] =
-                "CrankBoy does not\ncurrently support\ncreating save\nstates "
-                "with a\nROM that has\nits own save data.";
-        }
-    }
-    else
-    {
-        // Library scene has a dynamic menu
-        menuItemCount = 4;  // Start with the basic 4 options
-
-#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
-        options[menuItemCount] = "ITCM acceleration";
-        is_option[menuItemCount] = 1;
-        static char *itcm_description = NULL;
-        if (itcm_description == NULL)
-        {
-            playdate->system->formatString(
-                &itcm_description,
-                "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
-                "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
-                "\n(Your device: %s)",
-                pd_rev_description);
-        }
-        descriptions[menuItemCount] = itcm_description ? itcm_description : "";
-        menuItemCount++;
-#endif
-
-#ifndef NOLUA
-        options[menuItemCount] = "Lua Support";
-        is_option[menuItemCount] = 1;
-        descriptions[menuItemCount] =
-            "Enable or disable Lua\nscripting support.\n \nEnabling this "
-            "may impact\nperformance.";
-        menuItemCount++;
-#endif
-    }
-
+    for (menuItemCount = 0; settingsScene->entries && settingsScene->entries[menuItemCount].name; ++menuItemCount)
+        ;
+    
     PGB_Scene_update(settingsScene->scene, dt);
 
     // Crank
@@ -202,14 +356,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // Buttons
     PDButtons pushed = PGB_App->buttons_pressed;
 
+    bool cursorMoved = false;
     if (pushed & kButtonDown)
     {
+        cursorMoved = true;
         settingsScene->cursorIndex++;
         if (settingsScene->cursorIndex >= menuItemCount)
             settingsScene->cursorIndex = menuItemCount - 1;
     }
     if (pushed & kButtonUp)
     {
+        cursorMoved = true;
         settingsScene->cursorIndex--;
         if (settingsScene->cursorIndex < 0)
             settingsScene->cursorIndex = 0;
@@ -221,114 +378,23 @@ static void PGB_SettingsScene_update(void *object, float dt)
     }
 
     bool a_pressed = (pushed & kButtonA);
-    bool left_pressed = (pushed & kButtonLeft);
-    bool right_pressed = (pushed & kButtonRight);
+    int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
-    if ((a_pressed || left_pressed || right_pressed) &&
-        is_option[settingsScene->cursorIndex])
+    if (settingsScene->entries[settingsScene->cursorIndex].pref_var)
     {
-        switch (settingsScene->cursorIndex)
-        {
-        case 0:  // Sound
-            if (left_pressed)
-            {
-                preferences_sound_mode = (preferences_sound_mode - 1 + 3) % 3;
-            }
-            else
-            {
-                preferences_sound_mode = (preferences_sound_mode + 1) % 3;
-            }
-            bool sound_on = (preferences_sound_mode > 0);
-            audio_enabled = sound_on ? 1 : 0;
-
-            if (gameScene)
-            {
-                gameScene->audioEnabled = sound_on;
-                gameScene->context->gb->direct.sound = sound_on ? 1 : 0;
-                audioGameScene = sound_on ? gameScene : NULL;
-            }
-            break;
-        case 1:  // 30FPS Mode
-            preferences_frame_skip = !preferences_frame_skip;
-
-            if (gameScene)
-            {
-                gameScene->context->gb->direct.frame_skip =
-                    preferences_frame_skip ? 1 : 0;
-            }
-            break;
-        case 2:  // Show FPS
-            preferences_display_fps = !preferences_display_fps;
-            break;
-        case 3:  // Crank Function
-            if (left_pressed)
-            {
-                preferences_crank_mode = (preferences_crank_mode - 1 + 3) % 3;
-            }
-            else
-            {
-                preferences_crank_mode = (preferences_crank_mode + 1) % 3;
-            }
-            break;
-        default:
-            if (!gameScene && strcmp(options[settingsScene->cursorIndex],
-                                     "ITCM acceleration") == 0)
-            {
-                preferences_itcm = !preferences_itcm;
-            }
-            else if (!gameScene && strcmp(options[settingsScene->cursorIndex],
-                                          "Lua Support") == 0)
-            {
-                preferences_lua_support = !preferences_lua_support;
-            }
-            break;
-        }
+        if (direction == 0) direction = a_pressed;
+        *settingsScene->entries[settingsScene->cursorIndex].pref_var = (
+            *settingsScene->entries[settingsScene->cursorIndex].pref_var
+            + direction + settingsScene->entries[settingsScene->cursorIndex].max_value
+        ) % settingsScene->entries[settingsScene->cursorIndex].max_value;
     }
-    else if (a_pressed)
+    else if (settingsScene->entries[settingsScene->cursorIndex].on_press)
     {
-        if (settingsScene->cursorIndex == 4 && gameScene &&
-            gameScene->save_states_supported)
-        {  // save state
-            if (!save_state(gameScene, 0))
-            {
-                char *msg;
-                playdate->system->formatString(&msg, "Error saving state:\n%s",
-                                               playdate->file->geterr());
-                PGB_presentModal(PGB_Modal_new(msg, NULL, NULL, NULL)->scene);
-                free(msg);
-            }
-            else
-            {
-                playdate->system->logToConsole("Saved state %d successfully",
-                                               0);
-
-                // TODO: something less invasive than a modal here.
-                PGB_presentModal(
-                    PGB_Modal_new("State saved successfully.", NULL, NULL, NULL)
-                        ->scene);
-            }
-        }
-        else if (settingsScene->cursorIndex == 5 && gameScene &&
-                 gameScene->save_states_supported)
-        {  // load state
-
-            // confirmation needed if more than 2 minutes of progress made
-            if (gameScene->playtime >= 60 * 120)
-            {
-                const char *confirm_options[] = {"No", "Yes", NULL};
-                PGB_presentModal(
-                    PGB_Modal_new("Really load state?", confirm_options,
-                                  (void *)settings_confirm_load_state,
-                                  gameScene)
-                        ->scene);
-            }
-            else
-            {
-                settings_load_state(gameScene);
-            }
-        }
+        settingsScene->entries[settingsScene->cursorIndex].on_press(
+            &settingsScene->entries[settingsScene->cursorIndex]
+        );
     }
-
+        
     playdate->graphics->clear(kColorWhite);
 
     // Draw the 60/40 vertical divider line
@@ -344,49 +410,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
     int initialY = (kScreenHeight - totalMenuHeight) / 2;
 
     // --- Left Pane (Options - 60%) ---
-    const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
-    const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
-                                       "Turbo B/A"};
+    
     for (int i = 0; i < menuItemCount; i++)
     {
         int y = initialY + i * rowHeight;
-        const char *stateText;
-
-        if (i == 0)
-        {
-            stateText = sound_mode_labels[preferences_sound_mode];
-        }
-        else if (i == 1)
-        {
-            stateText = preferences_frame_skip ? "On" : "Off";
-        }
-        else if (i == 2)
-        {
-            stateText = preferences_display_fps ? "On" : "Off";
-        }
-        else if (i == 3)
-        {
-            stateText = crank_mode_labels[preferences_crank_mode];
-        }
-        else if (!gameScene && i >= 4)  // Dynamic options in library
-        {
-            if (strcmp(options[i], "ITCM acceleration") == 0)
-            {
-                stateText = preferences_itcm ? "On" : "Off";
-            }
-            else if (strcmp(options[i], "Lua Support") == 0)
-            {
-                stateText = preferences_lua_support ? "On" : "Off";
-            }
-            else
-            {
-                stateText = "";
-            }
-        }
-        else  // Game scene save/load state options are not toggles
-        {
-            stateText = "";
-        }
+        const char* name = settingsScene->entries[i].name;
+        const char* stateText = settingsScene->entries[i].values
+            ? settingsScene->entries[i].values[*settingsScene->entries[i].pref_var]
+            : "";
 
         int stateWidth = playdate->graphics->getTextWidth(
             PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0);
@@ -404,9 +435,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
         }
 
         // Draw the option name (left-aligned)
-        playdate->graphics->drawText(options[i], strlen(options[i]),
+        playdate->graphics->drawText(name, strlen(name),
                                      kUTF8Encoding, kLeftPanePadding, y);
-        if (is_option[i])
+                                     
+        if (stateText[0])
         {
             // Draw the state (right-aligned)
             playdate->graphics->drawText(stateText, strlen(stateText),
@@ -418,26 +450,29 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Right Pane (Description - 40%) ---
     playdate->graphics->setFont(PGB_App->labelFont);
 
-    const char *selectedDescription = descriptions[settingsScene->cursorIndex];
 
-    // strtok modifies the string, so we need a mutable copy
-    char descriptionCopy[256];
-    strncpy(descriptionCopy, selectedDescription, sizeof(descriptionCopy));
-    descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';
-
-    char *line = strtok(descriptionCopy, "\n");
-
-    int descY = initialY;
-    int descLineHeight =
-        playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
-
-    while (line != NULL)
+    const char* description = settingsScene->entries[settingsScene->cursorIndex].description;
+    if (description)
     {
-        // Draw text in the right pane, with 10px padding from divider
-        playdate->graphics->drawText(line, strlen(line), kUTF8Encoding,
-                                     kDividerX + kRightPanePadding, descY);
-        descY += descLineHeight;
-        line = strtok(NULL, "\n");
+        // strtok modifies the string, so we need a mutable copy
+        char descriptionCopy[512];
+        strncpy(descriptionCopy, description, sizeof(descriptionCopy));
+        descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';
+
+        char *line = strtok(descriptionCopy, "\n");
+
+        int descY = initialY;
+        int descLineHeight =
+            playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
+
+        while (line != NULL)
+        {
+            // Draw text in the right pane, with 10px padding from divider
+            playdate->graphics->drawText(line, strlen(line), kUTF8Encoding,
+                                        kDividerX + kRightPanePadding, descY);
+            descY += descLineHeight;
+            line = strtok(NULL, "\n");
+        }
     }
 }
 
@@ -473,6 +508,8 @@ static void PGB_SettingsScene_free(void *object)
     {
         settingsScene->gameScene->audioLocked = false;
     }
+
+    if (settingsScene->entries) free(settingsScene->entries);
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);
