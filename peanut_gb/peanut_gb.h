@@ -1544,20 +1544,7 @@ __core_section("util") clalign
 __core_section("short") static uint16_t
     __gb_read16(struct gb_s *restrict gb, u16 addr)
 {
-    if (addr >= WRAM_0_ADDR && addr < (WRAM_0_ADDR + WRAM_SIZE - 1))
-    {
-        uint16_t val;
-        memcpy(&val, &gb->wram[addr - WRAM_0_ADDR], sizeof(uint16_t));
-        return val;
-    }
-
-    if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
-    {
-        uint16_t val;
-        memcpy(&val, &gb->hram[addr - HRAM_ADDR], sizeof(uint16_t));
-        return val;
-    }
-
+    // TODO: optimize
     u16 v = __gb_read(gb, addr);
     v |= (u16)__gb_read(gb, addr + 1) << 8;
     return v;
@@ -1566,18 +1553,7 @@ __core_section("short") static uint16_t
 __core_section("short") static void __gb_write16(struct gb_s *restrict gb,
                                                  u16 addr, u16 v)
 {
-    if (addr >= WRAM_0_ADDR && addr < (WRAM_0_ADDR + WRAM_SIZE - 1))
-    {
-        memcpy(&gb->wram[addr - WRAM_0_ADDR], &v, sizeof(uint16_t));
-        return;
-    }
-
-    if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
-    {
-        memcpy(&gb->hram[addr - HRAM_ADDR], &v, sizeof(uint16_t));
-        return;
-    }
-
+    // TODO: optimize
     __gb_write(gb, addr, v & 0xFF);
     __gb_write(gb, addr + 1, v >> 8);
 }
