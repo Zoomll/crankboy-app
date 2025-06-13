@@ -33,7 +33,6 @@
 #define PEANUT_GB_H
 
 #include <stdint.h> /* Required for int types */
-#include <stdlib.h> /* Required for qsort */
 #include <string.h> /* Required for memset */
 #include <time.h>   /* Required for tm struct */
 
@@ -67,11 +66,6 @@ typedef int16_t s16;
 /* Enable LCD drawing. On by default. May be turned off for testing purposes. */
 #ifndef ENABLE_LCD
 #define ENABLE_LCD 1
-#endif
-
-/* Adds more code to improve LCD rendering accuracy. */
-#ifndef PEANUT_GB_HIGH_LCD_ACCURACY
-#define PEANUT_GB_HIGH_LCD_ACCURACY 0
 #endif
 
 /* Interrupt masks */
@@ -1753,19 +1747,6 @@ struct sprite_data
     uint8_t sprite_number;
     uint8_t x;
 };
-
-#if PEANUT_GB_HIGH_LCD_ACCURACY
-__section__(".text.pgb") static int compare_sprites(const void *in1,
-                                                    const void *in2)
-{
-    const struct sprite_data *sd1 = in1, *sd2 = in2;
-    int x_res = (int)sd1->x - (int)sd2->x;
-    if (x_res != 0)
-        return x_res;
-
-    return (int)sd1->sprite_number - (int)sd2->sprite_number;
-}
-#endif
 
 __core_section("draw") static void __gb_draw_pixel(uint8_t *line, u8 x, u8 v)
 {
