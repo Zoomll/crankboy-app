@@ -1336,31 +1336,48 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
 
         /* LCD Registers */
         case 0x40:
-            if (((gb->gb_reg.LCDC & LCDC_ENABLE) == 0) && (val & LCDC_ENABLE))
-            {
-                gb->counter.lcd_count = 0;
-                gb->lcd_blank = 1;
-            }
+        {
+            uint8_t old_lcdc = gb->gb_reg.LCDC;
+            bool was_enabled = (old_lcdc & LCDC_ENABLE);
 
             gb->gb_reg.LCDC = val;
+            bool is_enabled = (gb->gb_reg.LCDC & LCDC_ENABLE);
 
-            /* LY fixed to 0 when LCD turned off. */
-            if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
+            if (was_enabled && !is_enabled)
             {
-                /* Do not turn off LCD outside of VBLANK. This may
-                 * happen due to poor timing in this emulator. */
-                if (gb->lcd_mode != LCD_VBLANK)
-                {
-                    gb->gb_reg.LCDC |= LCDC_ENABLE;
-                    return;
-                }
-
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~0x03) | LCD_VBLANK;
+                // LCD is being turned OFF.
+                // LY resets to 0, and the PPU clock stops.
                 gb->gb_reg.LY = 0;
                 gb->counter.lcd_count = 0;
-            }
 
+                // Mode becomes HBLANK (mode 0) and STAT is updated.
+                gb->lcd_mode = LCD_HBLANK;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
+
+                // The LY=LYC coincidence flag in STAT is cleared.
+                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+            }
+            else if (!was_enabled && is_enabled)
+            {
+                // LCD is being turned ON.
+                gb->counter.lcd_count = 0;
+                gb->lcd_blank = 1;  // From your original code
+
+                // When LCD turns on, LY is 0. An immediate LY=LYC check is
+                // needed.
+                if (gb->gb_reg.LY == gb->gb_reg.LYC)
+                {
+                    gb->gb_reg.STAT |= STAT_LYC_COINC;
+                    if (gb->gb_reg.STAT & STAT_LYC_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+                }
+                else
+                {
+                    gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+                }
+            }
             return;
+        }
 
         case 0x41:
             gb->gb_reg.STAT = (val & 0b01111000);
@@ -1377,6 +1394,21 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
         /* LY (0xFF44) is read only. */
         case 0x45:
             gb->gb_reg.LYC = val;
+
+            // Perform an LY=LYC check immediately if the LCD is enabled.
+            if (gb->gb_reg.LCDC & LCDC_ENABLE)
+            {
+                if (gb->gb_reg.LY == gb->gb_reg.LYC)
+                {
+                    gb->gb_reg.STAT |= STAT_LYC_COINC;
+                    if (gb->gb_reg.STAT & STAT_LYC_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+                }
+                else
+                {
+                    gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+                }
+            }
             return;
 
         /* DMA Register */
