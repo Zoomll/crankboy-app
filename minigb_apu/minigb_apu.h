@@ -23,14 +23,13 @@ extern int audio_enabled;
 struct chan_len_ctr
 {
     uint8_t load;
-    unsigned enabled : 1;
     uint32_t counter;
     uint32_t inc;
 };
 
 struct chan_vol_env
 {
-    uint8_t step;
+    uint8_t step : 3;
     unsigned up : 1;
     uint32_t counter;
     uint32_t inc;
@@ -41,7 +40,6 @@ struct chan_freq_sweep
     uint16_t freq;
     uint8_t rate;
     uint8_t shift;
-    unsigned up : 1;
     uint32_t counter;
     uint32_t inc;
 };
@@ -53,10 +51,12 @@ struct chan
     unsigned on_left : 1;
     unsigned on_right : 1;
     unsigned muted : 1;
+    uint8_t lfsr_wide : 1;
+    unsigned sweep_up : 1;
+    unsigned len_enabled : 1;
 
-    uint8_t volume;
-    uint8_t volume_init;
-
+    uint8_t volume : 4;
+    uint8_t volume_init : 4;
     uint16_t freq;
     uint32_t freq_counter;
     uint32_t freq_inc;
@@ -77,7 +77,6 @@ struct chan
         struct
         {
             uint16_t lfsr_reg;
-            uint8_t lfsr_wide;
             uint8_t lfsr_div;
         } noise;
         struct
@@ -89,7 +88,8 @@ struct chan
 
 typedef struct audio_data
 {
-    int32_t vol_l, vol_r;
+    int vol_l : 4;
+    int vol_r : 4;
     uint8_t *audio_mem;
     struct chan chans[4];
 } audio_data;

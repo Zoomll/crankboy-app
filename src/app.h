@@ -32,7 +32,7 @@ extern pthread_mutex_t audio_mutex;
 #endif
 
 // TODO: is this safe? should we lower it?
-#define PLAYDATE_STACK_SIZE 0x2000
+#define PLAYDATE_STACK_SIZE 0x2080
 
 typedef struct PGB_Application
 {

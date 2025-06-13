@@ -22,7 +22,7 @@ __dtcm_ctrl void *dtcm_alloc(size_t size)
     if (is_dtcm_init)
     {
         void *tmp = dtcm_mempool;
-        *(uint32_t *)dtcm_mempool = 0;
+        *(uint32_t *)dtcm_mempool = 0; // remove canary
         dtcm_mempool = (void *)(size + (uintptr_t)dtcm_mempool);
         // high canary
         *(uint32_t *)dtcm_mempool = DTCM_CANARY;
@@ -36,6 +36,19 @@ __dtcm_ctrl void *dtcm_alloc(size_t size)
 __dtcm_ctrl void *dtcm_alloc_aligned(size_t size, size_t offset)
 {
     offset %= 32;
+#if defined(DTCM_ALLOC)
+    if (is_dtcm_init)
+    {
+        *(uint32_t *)dtcm_mempool = 0; // remove canary
+        while ((uintptr_t)dtcm_mempool % 32 != offset)
+            dtcm_mempool = (void *)(dtcm_mempool + 1);
+        void *tmp = dtcm_mempool;
+        dtcm_mempool = (void *)(size + (uintptr_t)dtcm_mempool);
+        // high canary
+        *(uint32_t *)dtcm_mempool = DTCM_CANARY;
+        return tmp;
+    }
+#endif
     uintptr_t u = (uintptr_t)dtcm_alloc(size + 32);
 
     // smallest integer n >= u, s.t. n % 32 == offset

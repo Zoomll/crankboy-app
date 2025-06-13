@@ -11,6 +11,8 @@ void dtcm_init(void);
 void dtcm_deinit(void);
 bool dtcm_verify(const char *context);
 
+// TODO: dtcm_free, which has no effect if allocated on dtcm, but if address is outside of dtcm region then does normal free
+
 void *dtcm_alloc(size_t size);
 void *dtcm_alloc_aligned(size_t size, size_t offset);
 

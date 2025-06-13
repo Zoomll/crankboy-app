@@ -103,7 +103,7 @@ __audio static int update_len(audio_data* restrict audio, struct chan *c, int le
     if (!c->enabled)
         return 0;
 
-    if (!c->len.enabled || c->len.inc == 0)
+    if (!c->len_enabled || c->len.inc == 0)
         return len;
 
     int tr = (FREQ_INC_REF - c->len.counter) / c->len.inc;
@@ -149,7 +149,7 @@ __audio static void update_sweep(struct chan *c)
         if (c->sweep.shift)
         {
             uint16_t inc = (c->sweep.freq >> c->sweep.shift);
-            if (!c->sweep.up)
+            if (!c->sweep_up)
                 inc *= -1;
 
             c->freq += inc;
@@ -376,7 +376,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t *left, int1
                 c->noise.lfsr_reg = (c->noise.lfsr_reg << 1) |
                                     (c->val >= VOL_INIT_MAX / MAX_CHAN_VOLUME);
 
-                if (c->noise.lfsr_wide)
+                if (c->lfsr_wide)
                 {
                     c->val = !(((c->noise.lfsr_reg >> 14) & 1) ^
                                ((c->noise.lfsr_reg >> 13) & 1))
@@ -415,7 +415,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t *left, int1
                 c->noise.lfsr_reg <<= 1;
 
                 uint8_t xor_res =
-                    (c->noise.lfsr_wide)
+                    (c->lfsr_wide)
                         ? (((old_lfsr >> 14) & 1) ^ ((old_lfsr >> 13) & 1))
                         : (((old_lfsr >> 6) & 1) ^ ((old_lfsr >> 5) & 1));
 
@@ -465,7 +465,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.freq = c->freq;
         c->sweep.rate = (val >> 4) & 0x07;
-        c->sweep.up = !(val & 0x08);
+        c->sweep_up = !(val & 0x08);
         c->sweep.shift = (val & 0x07);
         c->sweep.inc =
             c->sweep.rate
@@ -633,14 +633,14 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         chans[i].freq |= ((val & 0x07) << 8);
         /* Intentional fall-through. */
     case 0xFF23:
-        chans[i].len.enabled = val & 0x40 ? 1 : 0;
+        chans[i].len_enabled = val & 0x40 ? 1 : 0;
         if (val & 0x80)
             chan_trigger(audio, i);
         break;
 
     case 0xFF22:
         chans[3].freq = val >> 4;
-        chans[3].noise.lfsr_wide = !(val & 0x08);
+        chans[3].lfsr_wide = !(val & 0x08);
         chans[3].noise.lfsr_div = val & 0x07;
         break;
 

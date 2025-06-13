@@ -2104,17 +2104,21 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
     {
     case kEventLock:
     case kEventPause:
+        DTCM_VERIFY();
         if (gameScene->cartridge_has_battery)
         {
             call_with_user_stack_1(PGB_GameScene_menu, gameScene);
         }
+        //fallthrough
     case kEventTerminate:
+        DTCM_VERIFY();
         if (context->gb->direct.sram_dirty &&
             gameScene->save_data_loaded_successfully)
         {
             playdate->system->logToConsole("saving (system event)");
             gb_save_to_disk(context->gb);
         }
+        DTCM_VERIFY();
         break;
     case kEventLowPower:
         if (context->gb->direct.sram_dirty &&

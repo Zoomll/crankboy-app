@@ -138,6 +138,7 @@ __section__(".text.main") void PGB_update(float dt)
 
 void PGB_present(PGB_Scene *scene)
 {
+    playdate->system->removeAllMenuItems();
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
@@ -147,6 +148,7 @@ void PGB_present(PGB_Scene *scene)
 
 void PGB_presentModal(PGB_Scene *scene)
 {
+    playdate->system->removeAllMenuItems();
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
     PGB_App->buttons_pressed = 0;
