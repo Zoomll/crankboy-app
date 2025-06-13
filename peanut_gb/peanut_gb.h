@@ -2109,148 +2109,90 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-#if PEANUT_GB_HIGH_LCD_ACCURACY
-        uint8_t number_of_sprites = 0;
-        struct sprite_data sprites_to_render[NUM_SPRITES];
+        uint8_t sprites_on_line[MAX_SPRITES_LINE];
+        uint8_t sprite_count = 0;
+        int sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
 
-        /* Record number of sprites on the line being rendered, limited
-         * to the maximum number sprites that the Game Boy is able to
-         * render on each line (10 sprites). */
-        for (uint8_t sprite_number = 0;
-             sprite_number < PEANUT_GB_ARRAYSIZE(sprites_to_render);
-             sprite_number++)
+        // Find up to 10 sprites visible on the current scanline.
+        for (uint8_t s = 0; s < NUM_SPRITES && sprite_count < MAX_SPRITES_LINE;
+             s++)
         {
-            /* Sprite Y position. */
-            uint8_t OY = gb->oam[4 * sprite_number + 0];
-            /* Sprite X position. */
-            uint8_t OX = gb->oam[4 * sprite_number + 1];
+            uint8_t OY = gb->oam[s * 4 + 0];
+            int on_screen_y = OY - 16;
 
-            /* If sprite isn't on this line, continue. */
-            if (gb->gb_reg.LY + (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0 : 8) >=
-                    OY ||
-                gb->gb_reg.LY + 16 < OY)
-                continue;
-
-            sprites_to_render[number_of_sprites].sprite_number = sprite_number;
-            sprites_to_render[number_of_sprites].x = OX;
-            number_of_sprites++;
+            if (gb->gb_reg.LY >= on_screen_y &&
+                gb->gb_reg.LY < (on_screen_y + sprite_height))
+            {
+                sprites_on_line[sprite_count++] = s;
+            }
         }
-
-        /* If maximum number of sprites reached, prioritise X
-         * coordinate and object location in OAM. */
-        qsort(&sprites_to_render[0], number_of_sprites,
-              sizeof(sprites_to_render[0]), compare_sprites);
-        if (number_of_sprites > MAX_SPRITES_LINE)
-            number_of_sprites = MAX_SPRITES_LINE;
-#endif
 
         const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
 
-        /* Render each sprite, from low priority to high priority. */
-#if PEANUT_GB_HIGH_LCD_ACCURACY
-        /* Render the top ten prioritised sprites on this scanline. */
-        for (uint8_t sprite_number = number_of_sprites - 1;
-             sprite_number != 0xFF; sprite_number--)
+        // Render the visible sprites, from high priority to low.
+        for (int i = sprite_count - 1; i >= 0; i--)
         {
-            uint8_t s = sprites_to_render[sprite_number].sprite_number;
-#else
-        for (uint8_t sprite_number = NUM_SPRITES - 1; sprite_number != 0xFF;
-             sprite_number--)
-        {
-#endif
-            uint8_t s_4 = sprite_number * 4;
+            uint8_t s_idx = sprites_on_line[i];
+            uint8_t s_4 = s_idx * 4;
 
-            /* Sprite Y position. */
-            uint8_t OY = gb->oam[s_4];
-            /* Sprite X position. */
+            uint8_t OY = gb->oam[s_4 + 0];
             uint8_t OX = gb->oam[s_4 + 1];
-            /* Sprite Tile/Pattern Number. */
-            uint8_t OT = gb->oam[s_4 + 2] &
-                         (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
-            /* Additional attributes. */
+            uint8_t OT = gb->oam[s_4 + 2] & (sprite_height == 16 ? 0xFE : 0xFF);
             uint8_t OF = gb->oam[s_4 + 3];
 
-#if !PEANUT_GB_HIGH_LCD_ACCURACY
-            /* If sprite isn't on this line, continue. */
-            if (gb->gb_reg.LY + (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0 : 8) >=
-                    OY ||
-                gb->gb_reg.LY + 16 < OY)
-                continue;
-#endif
-
-            /* Continue if sprite not visible. */
             if (OX == 0 || OX >= 168)
                 continue;
 
-            // y flip
-            uint8_t py = gb->gb_reg.LY - OY + 16;
-
+            // Determine the vertical row of the tile to render
+            uint8_t py = gb->gb_reg.LY - (OY - 16);
             if (OF & OBJ_FLIP_Y)
-                py = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 15 : 7) - py;
-
-            uint16_t t1_i = VRAM_TILES_1 + OT * 0x10 + 2 * py;
-
-            // fetch the tile
-            uint8_t t1 = gb->vram[t1_i];
-            uint8_t t2 = gb->vram[t1_i + 1];
-
-            // handle x flip
-            uint8_t dir, start, end, shift;
-
-            if (OF & OBJ_FLIP_X)
             {
-                dir = 1;
-                start = (OX < 8 ? 0 : OX - 8);
-                end = MIN(OX, LCD_WIDTH);
-                shift = 8 - OX + start;
-            }
-            else
-            {
-                dir = -1;
-                start = MIN(OX, LCD_WIDTH) - 1;
-                end = (OX < 8 ? 0 : OX - 8) - 1;
-                shift = OX - (start + 1);
+                py = (sprite_height - 1) - py;
             }
 
-            // copy tile
-            t1 >>= shift;
-            t2 >>= shift;
+            uint16_t tile_addr = VRAM_TILES_1 + OT * 16 + py * 2;
+            uint8_t tile_data1 = gb->vram[tile_addr];
+            uint8_t tile_data2 = gb->vram[tile_addr + 1];
 
-            uint8_t c_add = (OF & OBJ_PALETTE) ? 8 : 0;
+            uint8_t palette_offset = (OF & OBJ_PALETTE) ? 4 : 0;
+            bool behind_bg = (OF & OBJ_PRIORITY);
 
-            for (uint8_t disp_x = start; disp_x != end; disp_x += dir)
+            for (int x = 0; x < 8; x++)
             {
-                uint8_t c = ((t1 & 0x1) << 1) | ((t2 & 0x1) << 2);
-                // check transparency / sprite overlap / background overlap
-                if (c != 0)  // Sprite palette index 0 is transparent
+                int screen_x = (OX - 8) + x;
+                if (screen_x < 0 || screen_x >= LCD_WIDTH)
+                    continue;
+
+                uint8_t pixel_index = (OF & OBJ_FLIP_X) ? x : 7 - x;
+                uint8_t color_bit1 = (tile_data1 >> pixel_index) & 1;
+                uint8_t color_bit2 = (tile_data2 >> pixel_index) & 1;
+                uint8_t color_num = (color_bit2 << 1) | color_bit1;
+
+                // Skip if transparent
+                if (color_num == 0)
+                    continue;
+
+                // Priority check
+                if (behind_bg)
                 {
-                    int P_segment_index = disp_x / 32;
-                    int P_bit_in_segment = disp_x % 32;
-
-                    uint8_t background_pixel_is_transparent = 0;
-                    if (P_segment_index >= 0 &&
-                        P_segment_index < line_priority_len)
+                    uint32_t priority_mask = 1 << (screen_x % 32);
+                    if (!((line_priority[screen_x / 32]) & priority_mask))
                     {
-                        background_pixel_is_transparent =
-                            (line_priority[P_segment_index] >>
-                             P_bit_in_segment) &
-                            1;
-                    }
-
-                    bool sprite_has_behind_bg_attr = (OF & OBJ_PRIORITY);
-                    bool should_hide_sprite_pixel =
-                        sprite_has_behind_bg_attr &&
-                        !background_pixel_is_transparent;
-
-                    if (!should_hide_sprite_pixel)
-                    {
-                        __gb_draw_pixel(pixels, disp_x,
-                                        (OBP >> (c | c_add)) & 3);
+                        continue;  // Background pixel is not transparent, so
+                                   // hide sprite
                     }
                 }
 
-                t1 >>= 1;
-                t2 >>= 1;
+                // Get the final color from the correct palette
+                uint8_t final_color =
+                    (OBP >> (color_num * 2 + palette_offset)) & 3;
+
+                // Write the pixel to the line buffer.
+                uint8_t *pix_ptr = pixels + (screen_x / LCD_PACKING);
+                int shift = (screen_x % LCD_PACKING) * LCD_BITS_PER_PIXEL;
+                uint8_t mask =
+                    (uint8_t)~(((1 << LCD_BITS_PER_PIXEL) - 1) << shift);
+                *pix_ptr = (*pix_ptr & mask) | (final_color << shift);
             }
         }
     }
