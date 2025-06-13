@@ -86,7 +86,8 @@ void *core_itcm_reloc = NULL;
 
 __section__(".rare") void itcm_core_init()
 {
-    if (!dtcm_enabled())
+    // ITCM seems to crash Rev B, so we leave this is an option
+    if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
         core_itcm_reloc = (void *)&__itcm_start;
@@ -180,13 +181,10 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                    playdate->display->getHeight());
 #endif
 
-    // ITCM seems to crash Rev B, so we leave this is an option
-    if (preferences_itcm)
-        dtcm_init();
-    else
-        // TODO: an option where DTCM is not used for code, but the gameboy
-        // struct still persists there.
-        dtcm_deinit();
+    dtcm_deinit();
+    dtcm_init();
+    
+    itcm_core_init();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
     static struct gb_s *gb = NULL;
@@ -202,7 +200,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
         gb = &gb_fallback;
     }
     memset(gb, 0, sizeof(struct gb_s));
-    itcm_core_init();
     DTCM_VERIFY_DEBUG();
 
     if (PGB_App->soundSource == NULL)
