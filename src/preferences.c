@@ -41,8 +41,8 @@ void preferences_init(void)
     preferences_frame_skip = false;
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_lua_support = false;
-    preferences_sample_rate = 1;
     preferences_dynamic_rate = 0;
+    preferences_sample_rate = 1;
 
     // remove old preferences file
     // TODO: remove this eventually
