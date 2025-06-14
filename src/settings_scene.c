@@ -136,6 +136,7 @@ static const char *off_on_labels[] = {"Off", "On"};
 static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                           "Turbo B/A"};
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
+static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
 
 static void settings_action_save_state(OptionsMenuEntry *e)
 {
@@ -232,13 +233,14 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 
    // dynamic rate adjustment
    entries[++i] = (OptionsMenuEntry){
-       .name = "Auto Frame Skip",
-       .values = off_on_labels,
-       .description =
-           "Automatically skips\ndrawing lines to keep\nthe framerate smooth.\n \n"
-           "This may cause a mild\nflicker effect.",
+       .name = "Line Skipping",
+       .values = dynamic_rate_labels,
+       "Skips lines to keep\nthe framerate smooth.\n \n"
+       "Off:\nFull quality, no skipping.\n \n"
+       "On:\nAlways on for a slight\nspeed boost.\n \n"
+       "Auto:\nRecommended. Skips lines\nonly when needed.",
        .pref_var = &preferences_dynamic_rate,
-       .max_value = 2,
+       .max_value = 3,
        .on_press = NULL,
    };
 

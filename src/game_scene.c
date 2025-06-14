@@ -33,7 +33,7 @@
 #define LINE_RENDER_MARGIN_S 0.0005f
 
 // let's try to render a frame at least this fast
-#define TARGET_FRAME_TIME_S 0.0167f
+#define TARGET_FRAME_TIME_S 0.0177f
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -847,29 +847,44 @@ __section__(".text.tick") __space
     PGB_Scene_update(gameScene->scene, dt);
 
     float progress = 0.5f;
-    context->gb->direct.dynamic_rate_enabled = preferences_dynamic_rate;
 
-    if (preferences_dynamic_rate)
+    const float current_target_frame_time_s = (preferences_frame_skip)
+                                                  ? (2.0f * TARGET_FRAME_TIME_S)
+                                                  : TARGET_FRAME_TIME_S;
+
+    bool activate_dynamic_rate = false;
+
+    // "On" mode: Always activate.
+    if (preferences_dynamic_rate == 1)
     {
-        if (dt > TARGET_FRAME_TIME_S)
+        activate_dynamic_rate = true;
+    }
+    // "Auto" mode: Activate only if frame time is too high.
+    else if (preferences_dynamic_rate == 2)
+    {
+        if (dt > current_target_frame_time_s)
         {
-            static int frame_i;
-            frame_i++;
+            activate_dynamic_rate = true;
+        }
+    }
 
-            if (dt > TARGET_FRAME_TIME_S + 40 * LINE_RENDER_TIME_S)
-            {
-                context->gb->direct.interlace_mask =
-                    0b101010101010 >> (frame_i % 2);
-            }
-            else
-            {
-                context->gb->direct.interlace_mask =
-                    0b111011101110 >> (frame_i % 4);
-            }
+    context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
+
+    if (activate_dynamic_rate)
+    {
+        static int frame_i;
+        frame_i++;
+
+        if (dt > current_target_frame_time_s + 40 * LINE_RENDER_TIME_S &&
+            !preferences_frame_skip)
+        {
+            context->gb->direct.interlace_mask =
+                0b101010101010 >> (frame_i % 2);
         }
         else
         {
-            context->gb->direct.interlace_mask = 0xFF;
+            context->gb->direct.interlace_mask =
+                0b111011101110 >> (frame_i % 4);
         }
     }
     else
