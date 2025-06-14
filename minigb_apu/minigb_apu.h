@@ -9,13 +9,9 @@
 
 #include <stdint.h>
 
-#define AUDIO_SAMPLE_RATE 44100
-
 #define DMG_CLOCK_FREQ 4194304.0
 #define SCREEN_REFRESH_CYCLES 70224.0
 #define VERTICAL_SYNC (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES)
-
-#define AUDIO_SAMPLES ((unsigned)(AUDIO_SAMPLE_RATE / VERTICAL_SYNC))
 
 // master audio control
 extern int audio_enabled;
@@ -97,17 +93,18 @@ typedef struct audio_data
 /**
  * Read audio register at given address "addr".
  */
-uint8_t audio_read(struct audio_data* audio, const uint16_t addr);
+uint8_t audio_read(struct audio_data *audio, const uint16_t addr);
 
 /**
  * Write "val" to audio register at given address "addr".
  */
-void audio_write(struct audio_data* audio, const uint16_t addr, const uint8_t val);
+void audio_write(struct audio_data *audio, const uint16_t addr,
+                 const uint8_t val);
 
 /**
  * Initialise audio driver.
  */
-void audio_init(audio_data* audio);
+void audio_init(audio_data *audio);
 
 /**
  * Playdate audio callback function.
@@ -115,5 +112,5 @@ void audio_init(audio_data* audio);
 int audio_callback(void *context, int16_t *left, int16_t *right, int len);
 
 unsigned audio_get_state_size(void);
-void audio_state_save(void* buff);
-void audio_state_load(const void* buff);
+void audio_state_save(void *buff);
+void audio_state_load(const void *buff);

@@ -22,6 +22,7 @@ int preferences_frame_skip = false;
 int preferences_itcm = false;
 int preferences_lua_support = false;
 int preferences_dynamic_rate = false;
+int preferences_sample_rate = 0;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -40,6 +41,7 @@ void preferences_init(void)
     preferences_frame_skip = false;
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_lua_support = false;
+    preferences_sample_rate = 0;
 
     // remove old preferences file
     // TODO: remove this eventually
@@ -105,7 +107,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_dynamic_rate = pref.data.intval;
             }
-
+            KEY("sample_rate")
+            {
+                preferences_sample_rate = pref.data.intval;
+            }
         }
     }
 
@@ -119,7 +124,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 7
+#define NUM_PREFS 8
 
     union
     {
@@ -158,6 +163,10 @@ int preferences_save_to_disk(void)
     data.obj.data[6].key = "dynamic_rate";
     data.obj.data[6].value.type = kJSONInteger;
     data.obj.data[6].value.data.intval = preferences_dynamic_rate;
+
+    data.obj.data[7].key = "sample_rate";
+    data.obj.data[7].value.type = kJSONInteger;
+    data.obj.data[7].value.data.intval = preferences_sample_rate;
 
     int error = write_json_to_disk(pref_filename, j);
 

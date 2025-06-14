@@ -133,7 +133,9 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene)
 
 static const char *sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char *off_on_labels[] = {"Off", "On"};
-const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A"};
+static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
+                                          "Turbo B/A"};
+static const char *sample_rate_labels[] = {"High", "Low"};
 
 static void settings_action_save_state(OptionsMenuEntry *e)
 {
@@ -200,6 +202,22 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             .on_press = NULL,
         };
     }
+
+    // sample rate
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Sample Rate",
+        .values = sample_rate_labels,
+        .description =
+        "Adjusts audio quality.\n \n"
+        "High:\n"
+        "Best audio quality.\n(44.1kHz)\n \n"
+        "Low:\n"
+        "Reduced quality for\n"
+        "better performance.\n(22.0kHz)",
+        .pref_var = &preferences_sample_rate,
+        .max_value = 2,
+        .on_press = NULL,
+    };
 
     // frame skip
     entries[++i] = (OptionsMenuEntry){

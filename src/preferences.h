@@ -20,6 +20,7 @@ extern int preferences_lua_support;
 extern int preferences_sound_mode;
 extern int preferences_crank_mode;
 extern int preferences_dynamic_rate;
+extern int preferences_sample_rate;
 
 void preferences_init(void);
 

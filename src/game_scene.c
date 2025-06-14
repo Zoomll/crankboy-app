@@ -345,6 +345,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             }
 
             playdate->system->logToConsole("Initializing audio...");
+
             audio_init(&gb->audio);
             if (gameScene->audioEnabled)
             {
@@ -405,17 +406,12 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 void PGB_GameScene_apply_settings(PGB_GameScene *gameScene)
 {
     PGB_GameSceneContext *context = gameScene->context;
+
+    // Apply sound on/off and sound mode
     bool desiredAudioEnabled = (preferences_sound_mode > 0);
-
-    if (gameScene->audioEnabled == desiredAudioEnabled)
-    {
-        return;
-    }
-
     const char *mode_labels[] = {"Off", "Fast", "Accurate"};
-    playdate->system->logToConsole("Audio setting changed to: %s",
+    playdate->system->logToConsole("Audio mode setting: %s",
                                    mode_labels[preferences_sound_mode]);
-
     gameScene->audioEnabled = desiredAudioEnabled;
 
     if (desiredAudioEnabled)
