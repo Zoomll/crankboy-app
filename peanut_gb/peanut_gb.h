@@ -1800,13 +1800,11 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     int next_bgcache_line_stride = BGCACHE_STRIDE;
 #endif
 
-#if DYNAMIC_RATE_ADJUSTMENT
     if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
         return;
 
     if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY + 1) % 8)) & 1) == 0)
         next_bgcache_line_stride *= 2;
-#endif
 
 #if ENABLE_BGCACHE && ENABLE_BGCACHE_DEFERRED
     if unlikely (gb->dirty_tile_data_master)

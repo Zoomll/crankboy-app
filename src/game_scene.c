@@ -183,7 +183,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     dtcm_deinit();
     dtcm_init();
-    
+
     itcm_core_init();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
@@ -852,8 +852,7 @@ __section__(".text.tick") __space
 
     float progress = 0.5f;
 
-#if DYNAMIC_RATE_ADJUSTMENT
-    if (true)
+    if (preferences_dynamic_rate)
     {
         if (dt > TARGET_FRAME_TIME_S)
         {
@@ -876,8 +875,10 @@ __section__(".text.tick") __space
             context->gb->direct.interlace_mask = 0xFF;
         }
     }
-    gameScene->prev_dt = dt;
-#endif
+    else
+    {
+        context->gb->direct.interlace_mask = 0xFF;
+    }
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -1104,10 +1105,10 @@ __section__(".text.tick") __space
         PGB_ASSERT(context == context->gb->direct.priv);
 
         struct gb_s *tmp_gb = context->gb;
-        
-        #ifdef TARGET_SIMULATOR
+
+#ifdef TARGET_SIMULATOR
         pthread_mutex_lock(&audio_mutex);
-        #endif
+#endif
 
         // copy gb to stack (DTCM) temporarily only if dtcm not enabled
         int stack_gb_size = 1;
@@ -1144,10 +1145,10 @@ __section__(".text.tick") __space
             context->gb = tmp_gb;
             gameScene->audioLocked = 0;
         }
-        
-        #ifdef TARGET_SIMULATOR
+
+#ifdef TARGET_SIMULATOR
         pthread_mutex_unlock(&audio_mutex);
-        #endif
+#endif
 
         if (gameScene->cartridge_has_battery)
         {
@@ -2106,7 +2107,7 @@ __section__(".rare") static void PGB_GameScene_event(void *object,
         {
             call_with_user_stack_1(PGB_GameScene_menu, gameScene);
         }
-        //fallthrough
+        // fallthrough
     case kEventTerminate:
         DTCM_VERIFY();
         if (context->gb->direct.sram_dirty &&

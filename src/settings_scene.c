@@ -165,7 +165,7 @@ static void settings_action_load_state(OptionsMenuEntry *e)
 
 OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 {
-    int max_entries = 15;  // we can overshoot, it's ok
+    int max_entries = 16;  // we can overshoot, it's ok
     OptionsMenuEntry *entries = malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
@@ -200,6 +200,17 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL,
     };
+
+   // dynamic rate adjustment
+   entries[++i] = (OptionsMenuEntry){
+       .name = "Auto Frame Skip",
+       .values = off_on_labels,
+       .description =
+           "Automatically skips\ndrawing lines to keep\nthe framerate smooth.",
+       .pref_var = &preferences_dynamic_rate,
+       .max_value = 2,
+       .on_press = NULL,
+   };
 
     // show fps
     entries[++i] = (OptionsMenuEntry){
@@ -300,7 +311,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             entries[++i] = (OptionsMenuEntry){
                 .name = "Load state",
                 .values = NULL,
-                .description = 
+                .description =
                     "Restore the previously-\ncreated snapshot."
                 ,
                 .pref_var = NULL,

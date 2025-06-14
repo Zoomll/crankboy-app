@@ -21,6 +21,7 @@ int preferences_display_fps = false;
 int preferences_frame_skip = false;
 int preferences_itcm = false;
 int preferences_lua_support = false;
+int preferences_dynamic_rate = false;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -100,6 +101,11 @@ void preferences_read_from_disk(void)
             {
                 preferences_lua_support = pref.data.intval;
             }
+            KEY("dynamic_rate")
+            {
+                preferences_dynamic_rate = pref.data.intval;
+            }
+
         }
     }
 
@@ -113,7 +119,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 6
+#define NUM_PREFS 7
 
     union
     {
@@ -148,6 +154,10 @@ int preferences_save_to_disk(void)
     data.obj.data[5].key = "lua";
     data.obj.data[5].value.type = kJSONInteger;
     data.obj.data[5].value.data.intval = preferences_lua_support;
+
+    data.obj.data[6].key = "dynamic_rate";
+    data.obj.data[6].value.type = kJSONInteger;
+    data.obj.data[6].value.data.intval = preferences_dynamic_rate;
 
     int error = write_json_to_disk(pref_filename, j);
 
