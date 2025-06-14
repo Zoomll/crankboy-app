@@ -233,7 +233,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 
    // dynamic rate adjustment
    entries[++i] = (OptionsMenuEntry){
-       .name = "Line Skipping",
+       .name = "Interlacing",
        .values = dynamic_rate_labels,
        "Skips lines to keep\nthe framerate smooth.\n \n"
        "Off:\nFull quality, no skipping.\n \n"
