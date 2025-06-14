@@ -1857,7 +1857,7 @@ static void PGB_GameScene_menu(void *object)
     playdate->system->setMenuImage(gameScene->menuImage, 0);
     playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary,
                                   gameScene);
-    playdate->system->addMenuItem("Settings…", PGB_GameScene_showSettings,
+    playdate->system->addMenuItem("Settings", PGB_GameScene_showSettings,
                                   gameScene);
     const char *options[] = {
         "Select",

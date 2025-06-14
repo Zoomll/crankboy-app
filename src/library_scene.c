@@ -530,7 +530,7 @@ static void PGB_LibraryScene_showSettings(void *userdata)
 
 static void PGB_LibraryScene_menu(void *object)
 {
-    playdate->system->addMenuItem("Settings…", PGB_LibraryScene_showSettings,
+    playdate->system->addMenuItem("Settings", PGB_LibraryScene_showSettings,
                                   object);
 }
 
