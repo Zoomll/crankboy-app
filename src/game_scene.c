@@ -851,6 +851,7 @@ __section__(".text.tick") __space
     PGB_Scene_update(gameScene->scene, dt);
 
     float progress = 0.5f;
+    context->gb->direct.dynamic_rate_enabled = preferences_dynamic_rate;
 
     if (preferences_dynamic_rate)
     {

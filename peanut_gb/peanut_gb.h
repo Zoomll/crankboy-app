@@ -523,6 +523,7 @@ struct gb_s
          */
         uint8_t frame_skip : 1;
         uint8_t sound : 1;
+        uint8_t dynamic_rate_enabled : 1;
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
         uint8_t crank_docked : 1;
@@ -1800,11 +1801,14 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     int next_bgcache_line_stride = BGCACHE_STRIDE;
 #endif
 
-    if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
-        return;
+    if (gb->direct.dynamic_rate_enabled)
+    {
+        if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
+            return;
 
-    if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY + 1) % 8)) & 1) == 0)
-        next_bgcache_line_stride *= 2;
+        if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY + 1) % 8)) & 1) == 0)
+            next_bgcache_line_stride *= 2;
+    }
 
 #if ENABLE_BGCACHE && ENABLE_BGCACHE_DEFERRED
     if unlikely (gb->dirty_tile_data_master)
