@@ -24,7 +24,7 @@
 #include "game_scene.h"
 // clang-format on
 
-// TODO: double-check these (LINE_RENDER_* & TARGET_FRAME_TIME_30)
+// TODO: double-check these (LINE_RENDER_*)
 
 // approximately how long it takes to render one gameboy line
 #define LINE_RENDER_TIME_S 0.000032f
@@ -33,8 +33,7 @@
 #define LINE_RENDER_MARGIN_S 0.0005f
 
 // let's try to render a frame at least this fast
-#define TARGET_FRAME_TIME_60 (1.0 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
-#define TARGET_FRAME_TIME_30 (2.1 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
+#define TARGET_FRAME_TIME_S (1.0 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -849,22 +848,50 @@ __section__(".text.tick") __space
 
     float progress = 0.5f;
 
-    const float current_target_frame_time_s =
-        (preferences_frame_skip) ? TARGET_FRAME_TIME_30 : TARGET_FRAME_TIME_60;
+    /*
+     * =============================================================================
+     * Dynamic Rate Control with Adaptive Interlacing
+     * =============================================================================
+     *
+     * This system aims to maintain a smooth 60 FPS by dynamically skipping the
+     * rendering of some screen lines (interlacing) if the previous frame took
+     * too long to render.
+     *
+     * This entire feature is DISABLED in 30 FPS mode
+     * (`preferences_frame_skip`), as the visual disturbance from interlacing is
+     * much higher at a low framerate, and other performance tweaks (e.g. sound
+     * quality) are less distracting for the user.
+     *
+     * When active (in 60 FPS mode), it uses two levels of interlacing:
+     *
+     * 1. MILD INTERLACING: Skips 1 of every 4 lines.
+     *    - Trigger: Frame time `dt` is slightly over the 60 FPS target.
+     *    - Mask: 0b1110...
+     *
+     * 2. AGGRESSIVE INTERLACING: Skips every other line (50%).
+     *    - Trigger: Frame time `dt` is significantly over budget.
+     *    - Mask: 0b1010...
+     *
+     * To reduce flicker, the specific lines that are skipped are rotated each
+     * frame by shifting the bitmask (`frame_i`).
+     */
 
     bool activate_dynamic_rate = false;
 
-    // "On" mode: Always activate.
-    if (preferences_dynamic_rate == 1)
+    if (!preferences_frame_skip)
     {
-        activate_dynamic_rate = true;
-    }
-    // "Auto" mode: Activate only if frame time is too high.
-    else if (preferences_dynamic_rate == 2)
-    {
-        if (dt > current_target_frame_time_s)
+        // "On" mode: Always activate.
+        if (preferences_dynamic_rate == 1)
         {
             activate_dynamic_rate = true;
+        }
+        // "Auto" mode: Activate only if frame time is too high.
+        else if (preferences_dynamic_rate == 2)
+        {
+            if (dt > TARGET_FRAME_TIME_S)
+            {
+                activate_dynamic_rate = true;
+            }
         }
     }
 
@@ -875,8 +902,7 @@ __section__(".text.tick") __space
         static int frame_i;
         frame_i++;
 
-        if (dt > current_target_frame_time_s + 40 * LINE_RENDER_TIME_S &&
-            !preferences_frame_skip)
+        if (dt > TARGET_FRAME_TIME_S + 40 * LINE_RENDER_TIME_S)
         {
             context->gb->direct.interlace_mask =
                 0b101010101010 >> (frame_i % 2);

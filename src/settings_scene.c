@@ -225,7 +225,8 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \nDespite appearing to be\n30 FPS, the game "
-            "itself\nstill runs at full speed.",
+            "itself\nstill runs at full speed.\n \nEnabling this mode\ndisables "
+            "the Interlacing\nsettings.",
         .pref_var = &preferences_frame_skip,
         .max_value = 2,
         .on_press = NULL,
@@ -235,9 +236,9 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
    entries[++i] = (OptionsMenuEntry){
        .name = "Interlacing",
        .values = dynamic_rate_labels,
-       "Skips lines to keep\nthe framerate smooth.\n \n"
+       "Skips lines to keep the\nframerate smooth.\n \n"
        "Off:\nFull quality, no skipping.\n \n"
-       "On:\nAlways on for a slight\nspeed boost.\n \n"
+       "On:\nAlways on for a reliable\nspeed boost.\n \n"
        "Auto:\nRecommended. Skips lines\nonly when needed.",
        .pref_var = &preferences_dynamic_rate,
        .max_value = 3,
