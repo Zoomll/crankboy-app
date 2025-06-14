@@ -15,6 +15,9 @@
 #include "userstack.h"
 #include "utility.h"
 
+#define MAX_VISIBLE_ITEMS 6
+#define SCROLL_INDICATOR_MIN_HEIGHT 10
+
 static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
 static void PGB_SettingsScene_menu(void *object);
@@ -42,9 +45,19 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
     settingsScene->cursorIndex = 0;
+    settingsScene->topVisibleIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
     settingsScene->entries = getOptionsEntries(gameScene);
+
+    settingsScene->totalMenuItemCount = 0;
+    if (settingsScene->entries)
+    {
+        for (int i = 0; settingsScene->entries[i].name; i++)
+        {
+            settingsScene->totalMenuItemCount++;
+        }
+    }
 
     if (gameScene)
     {
@@ -344,11 +357,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     const int kLeftPanePadding = 20;
     const int kRightPanePadding = 10;
 
-    int menuItemCount;
-    for (menuItemCount = 0;
-         settingsScene->entries && settingsScene->entries[menuItemCount].name;
-         ++menuItemCount)
-        ;
+    int menuItemCount = settingsScene->totalMenuItemCount;
 
     PGB_Scene_update(settingsScene->scene, dt);
 
@@ -380,17 +389,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // Buttons
     PDButtons pushed = PGB_App->buttons_pressed;
 
-    bool cursorMoved = false;
     if (pushed & kButtonDown)
     {
-        cursorMoved = true;
         settingsScene->cursorIndex++;
         if (settingsScene->cursorIndex >= menuItemCount)
             settingsScene->cursorIndex = menuItemCount - 1;
     }
     if (pushed & kButtonUp)
     {
-        cursorMoved = true;
         settingsScene->cursorIndex--;
         if (settingsScene->cursorIndex < 0)
             settingsScene->cursorIndex = 0;
@@ -399,6 +405,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
     {
         PGB_SettingsScene_attemptDismiss(settingsScene);
         return;
+    }
+
+    if (settingsScene->cursorIndex < settingsScene->topVisibleIndex)
+    {
+        settingsScene->topVisibleIndex = settingsScene->cursorIndex;
+    }
+    else if (settingsScene->cursorIndex >=
+             settingsScene->topVisibleIndex + MAX_VISIBLE_ITEMS)
+    {
+        settingsScene->topVisibleIndex =
+            settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 1);
     }
 
     bool a_pressed = (pushed & kButtonA);
@@ -431,27 +448,33 @@ static void PGB_SettingsScene_update(void *object, float dt)
     int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
     int rowSpacing = 10;
     int rowHeight = fontHeight + rowSpacing;
-    int totalMenuHeight = (menuItemCount * rowHeight) - rowSpacing;
-
+    int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
     int initialY = (kScreenHeight - totalMenuHeight) / 2;
 
     // --- Left Pane (Options - 60%) ---
 
-    for (int i = 0; i < menuItemCount; i++)
+    for (int i = 0; i < MAX_VISIBLE_ITEMS; i++)
     {
+        int itemIndex = settingsScene->topVisibleIndex + i;
+
+        if (itemIndex >= menuItemCount)
+        {
+            break;
+        }
+
         int y = initialY + i * rowHeight;
-        const char *name = settingsScene->entries[i].name;
+        const char *name = settingsScene->entries[itemIndex].name;
         const char *stateText =
-            settingsScene->entries[i].values
-                ? settingsScene->entries[i]
-                      .values[*settingsScene->entries[i].pref_var]
+            settingsScene->entries[itemIndex].values
+                ? settingsScene->entries[itemIndex]
+                      .values[*settingsScene->entries[itemIndex].pref_var]
                 : "";
 
         int stateWidth = playdate->graphics->getTextWidth(
             PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0);
         int stateX = kDividerX - stateWidth - kLeftPanePadding;
 
-        if (i == settingsScene->cursorIndex)
+        if (itemIndex == settingsScene->cursorIndex)
         {
             playdate->graphics->fillRect(0, y - (rowSpacing / 2), kDividerX,
                                          rowHeight, kColorBlack);
@@ -473,16 +496,44 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                          kUTF8Encoding, stateX, y);
         }
     }
+
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+    if (menuItemCount > MAX_VISIBLE_ITEMS)
+    {
+        int scrollAreaY = initialY - (rowSpacing / 2);
+        int scrollAreaHeight = totalMenuHeight + rowSpacing;
+
+        float calculatedHeight = (float)scrollAreaHeight *
+                                 ((float)MAX_VISIBLE_ITEMS / menuItemCount);
+
+        float handleHeight =
+            PGB_MAX(calculatedHeight, SCROLL_INDICATOR_MIN_HEIGHT);
+
+        float handleY =
+            (float)scrollAreaY +
+            ((float)scrollAreaHeight *
+             ((float)settingsScene->topVisibleIndex / menuItemCount));
+
+        int indicatorX = kDividerX - 4;
+        int indicatorWidth = 2;
+
+        playdate->graphics->fillRect(indicatorX - 1, (int)handleY - 1,
+                                     indicatorWidth + 2, (int)handleHeight + 2,
+                                     kColorWhite);
+
+        playdate->graphics->fillRect(indicatorX, (int)handleY, indicatorWidth,
+                                     (int)handleHeight, kColorBlack);
+    }
 
     // --- Right Pane (Description - 40%) ---
     playdate->graphics->setFont(PGB_App->labelFont);
 
     const char *description =
         settingsScene->entries[settingsScene->cursorIndex].description;
+
     if (description)
     {
-        // strtok modifies the string, so we need a mutable copy
         char descriptionCopy[512];
         strncpy(descriptionCopy, description, sizeof(descriptionCopy));
         descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';

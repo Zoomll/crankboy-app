@@ -21,11 +21,13 @@ typedef struct PGB_SettingsScene
     PGB_GameScene *gameScene;
 
     int cursorIndex;
+    int topVisibleIndex;
+    int totalMenuItemCount;
     float crankAccumulator;
     bool shouldDismiss : 1;
     bool wasAudioLocked : 1;
 
-    struct OptionsMenuEntry* entries;
+    struct OptionsMenuEntry *entries;
 } PGB_SettingsScene;
 
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene);
