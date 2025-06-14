@@ -219,7 +219,8 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
        .name = "Auto Frame Skip",
        .values = off_on_labels,
        .description =
-           "Automatically skips\ndrawing lines to keep\nthe framerate smooth.",
+           "Automatically skips\ndrawing lines to keep\nthe framerate smooth.\n \n"
+           "This may cause a mild\nflicker effect.",
        .pref_var = &preferences_dynamic_rate,
        .max_value = 2,
        .on_press = NULL,

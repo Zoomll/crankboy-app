@@ -37,7 +37,7 @@ void preferences_init(void)
     preferences_sound_mode = 2;
     preferences_crank_mode = 0;
     preferences_display_fps = false;
-    preferences_frame_skip = true;
+    preferences_frame_skip = false;
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_lua_support = false;
 
