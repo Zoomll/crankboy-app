@@ -24,7 +24,7 @@
 #include "game_scene.h"
 // clang-format on
 
-// TODO: double-check these
+// TODO: double-check these (LINE_RENDER_* & TARGET_FRAME_TIME_30)
 
 // approximately how long it takes to render one gameboy line
 #define LINE_RENDER_TIME_S 0.000032f
@@ -33,7 +33,8 @@
 #define LINE_RENDER_MARGIN_S 0.0005f
 
 // let's try to render a frame at least this fast
-#define TARGET_FRAME_TIME_S 0.0177f
+#define TARGET_FRAME_TIME_60 (1.0 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
+#define TARGET_FRAME_TIME_30 (2.1 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -848,9 +849,8 @@ __section__(".text.tick") __space
 
     float progress = 0.5f;
 
-    const float current_target_frame_time_s = (preferences_frame_skip)
-                                                  ? (2.0f * TARGET_FRAME_TIME_S)
-                                                  : TARGET_FRAME_TIME_S;
+    const float current_target_frame_time_s =
+        (preferences_frame_skip) ? TARGET_FRAME_TIME_30 : TARGET_FRAME_TIME_60;
 
     bool activate_dynamic_rate = false;
 
