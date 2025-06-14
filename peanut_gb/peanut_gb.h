@@ -1804,7 +1804,14 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
     if (gb->direct.dynamic_rate_enabled)
     {
         if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
+        {
+            if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
+                (gb->gb_reg.LY >= gb->display.WY))
+            {
+                gb->display.window_clear++;
+            }
             return;
+        }
 
         if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY + 1) % 8)) & 1) == 0)
             next_bgcache_line_stride *= 2;
