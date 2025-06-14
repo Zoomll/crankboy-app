@@ -21,7 +21,7 @@ int preferences_display_fps = false;
 int preferences_frame_skip = false;
 int preferences_itcm = false;
 int preferences_lua_support = false;
-int preferences_dynamic_rate = false;
+int preferences_dynamic_rate = 0;
 int preferences_sample_rate = 0;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
@@ -42,6 +42,7 @@ void preferences_init(void)
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_lua_support = false;
     preferences_sample_rate = 1;
+    preferences_dynamic_rate = 0;
 
     // remove old preferences file
     // TODO: remove this eventually
