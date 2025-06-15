@@ -22,6 +22,7 @@ static void PGB_SettingsScene_update(void *object, float dt);
 static void PGB_SettingsScene_free(void *object);
 static void PGB_SettingsScene_menu(void *object);
 static void PGB_SettingsScene_didSelectBack(void *userdata);
+static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene);
 
 bool save_state(PGB_GameScene *gameScene, unsigned slot);
 bool load_state(PGB_GameScene *gameScene, unsigned slot);
@@ -278,17 +279,32 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
     };
 
    // dynamic rate adjustment
-   entries[++i] = (OptionsMenuEntry){
-       .name = "Interlacing",
-       .values = dynamic_rate_labels,
-       "Skips lines to keep the\nframerate smooth.\n \n"
-       "Off:\nFull quality, no skipping.\n \n"
-       "On:\nAlways on for a reliable\nspeed boost.\n \n"
-       "Auto:\nRecommended. Skips lines\nonly when needed.",
-       .pref_var = &preferences_dynamic_rate,
-       .max_value = 3,
-       .on_press = NULL,
-   };
+   if (preferences_frame_skip)
+   {
+       entries[++i] = (OptionsMenuEntry){
+          .name = "Interlacing",
+          .values = dynamic_rate_labels,
+          .description = "Unavailable in\n30 FPS mode.",
+          .pref_var = &preferences_dynamic_rate,
+          .max_value = 0,
+          .on_press = NULL,
+       };
+   }
+   else
+   {
+       entries[++i] = (OptionsMenuEntry){
+          .name = "Interlacing",
+          .values = dynamic_rate_labels,
+          .description =
+              "Skips lines to keep the\nframerate smooth.\n \n"
+              "Off:\nFull quality, no skipping.\n \n"
+              "On:\nAlways on for a reliable\nspeed boost.\n \n"
+              "Auto:\nRecommended. Skips lines\nonly when needed.",
+          .pref_var = &preferences_dynamic_rate,
+          .max_value = 3,
+          .on_press = NULL,
+       };
+   }
 
     // show fps
     entries[++i] = (OptionsMenuEntry){
@@ -359,6 +375,30 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 
     return entries;
 };
+
+static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene)
+{
+    if (settingsScene->entries)
+    {
+        free(settingsScene->entries);
+    }
+
+    settingsScene->entries = getOptionsEntries(settingsScene->gameScene);
+
+    settingsScene->totalMenuItemCount = 0;
+    if (settingsScene->entries)
+    {
+        for (int i = 0; settingsScene->entries[i].name; i++)
+        {
+            settingsScene->totalMenuItemCount++;
+        }
+    }
+
+    if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount)
+    {
+        settingsScene->cursorIndex = settingsScene->totalMenuItemCount - 1;
+    }
+}
 
 static void PGB_SettingsScene_update(void *object, float dt)
 {
@@ -445,21 +485,35 @@ static void PGB_SettingsScene_update(void *object, float dt)
     bool a_pressed = (pushed & kButtonA);
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
-    if (settingsScene->entries[settingsScene->cursorIndex].pref_var)
+    OptionsMenuEntry *cursor_entry =
+        &settingsScene->entries[settingsScene->cursorIndex];
+
+    if (cursor_entry->pref_var && cursor_entry->max_value > 0)
     {
         if (direction == 0)
             direction = a_pressed;
-        *settingsScene->entries[settingsScene->cursorIndex].pref_var =
-            (*settingsScene->entries[settingsScene->cursorIndex].pref_var +
-             direction +
-             settingsScene->entries[settingsScene->cursorIndex].max_value) %
-            settingsScene->entries[settingsScene->cursorIndex].max_value;
+
+        if (direction != 0)
+        {
+            int old_value = *cursor_entry->pref_var;
+
+            *cursor_entry->pref_var =
+                (old_value + direction + cursor_entry->max_value) %
+                cursor_entry->max_value;
+
+            if (old_value != *cursor_entry->pref_var &&
+                strcmp(cursor_entry->name, "30 FPS mode") == 0)
+            {
+                PGB_SettingsScene_rebuildEntries(settingsScene);
+
+                cursor_entry =
+                    &settingsScene->entries[settingsScene->cursorIndex];
+            }
+        }
     }
-    else if (settingsScene->entries[settingsScene->cursorIndex].on_press &&
-             a_pressed)
+    else if (cursor_entry->on_press && a_pressed)
     {
-        settingsScene->entries[settingsScene->cursorIndex].on_press(
-            &settingsScene->entries[settingsScene->cursorIndex]);
+        cursor_entry->on_press(cursor_entry);
     }
 
     playdate->graphics->clear(kColorWhite);
@@ -487,15 +541,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
         }
 
         OptionsMenuEntry *current_entry = &settingsScene->entries[itemIndex];
-        bool is_disabled = (current_entry->pref_var == NULL &&
-                            current_entry->on_press == NULL);
+        bool is_static_text = (current_entry->pref_var == NULL &&
+                               current_entry->on_press == NULL);
+        bool is_locked_option =
+            (current_entry->pref_var != NULL && current_entry->max_value == 0);
+        bool is_disabled = is_static_text || is_locked_option;
 
         int y = initialY + i * rowHeight;
-        const char *name = settingsScene->entries[itemIndex].name;
+        const char *name = current_entry->name;
         const char *stateText =
-            settingsScene->entries[itemIndex].values
-                ? settingsScene->entries[itemIndex]
-                      .values[*settingsScene->entries[itemIndex].pref_var]
+            current_entry->values
+                ? current_entry->values[*current_entry->pref_var]
                 : "";
 
         int nameWidth = playdate->graphics->getTextWidth(
@@ -572,8 +628,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     // --- Right Pane (Description - 40%) ---
     playdate->graphics->setFont(PGB_App->labelFont);
 
-    const char *description =
-        settingsScene->entries[settingsScene->cursorIndex].description;
+    const char *description = cursor_entry->description;
 
     if (description)
     {
