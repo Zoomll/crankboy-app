@@ -5848,7 +5848,7 @@ __section__(".rare") enum gb_init_error_e
     const uint8_t cart_ram[] =
     {
         0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0,
-        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
+        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0
     };
     const uint8_t cart_battery[] =
     {
