@@ -1547,37 +1547,29 @@ __section__(".text.tick") __space
 
 __section__(".text.tick") __space static void save_check(struct gb_s *gb)
 {
-    static uint32_t frames_since_last_save, frames_since_sram_update;
+    static uint32_t frames_since_sram_update;
 
     // save SRAM under some conditions
     // TODO: also save if menu opens, playdate goes to sleep, app closes, or
     // powers down
-    frames_since_last_save++;
     gb->direct.sram_dirty |= gb->direct.sram_updated;
-    if (gb->cart_battery && gb->direct.sram_dirty)
+
+    if (gb->direct.sram_updated)
     {
-        if (frames_since_last_save >= PGB_MAX_FRAMES_SAVE)
-        {
-            playdate->system->logToConsole("Saving (periodic)");
-            gb_save_to_disk(gb);
-            frames_since_last_save = 0;
-            frames_since_sram_update = 0;
-        }
-        else if (!gb->direct.sram_updated)
-        {
-            if (frames_since_sram_update >= PGB_MIN_FRAMES_SAVE)
-            {
-                playdate->system->logToConsole(
-                    "Saving (gap since last ram edit)");
-                gb_save_to_disk(gb);
-                frames_since_last_save = 0;
-            }
-            frames_since_sram_update = 0;
-        }
+        frames_since_sram_update = 0;
     }
     else
     {
         frames_since_sram_update++;
+    }
+
+    if (gb->cart_battery && gb->direct.sram_dirty && !gb->direct.sram_updated)
+    {
+        if (frames_since_sram_update >= PGB_MIN_FRAMES_SAVE)
+        {
+            playdate->system->logToConsole("Saving (idle detected)");
+            gb_save_to_disk(gb);
+        }
     }
 }
 
