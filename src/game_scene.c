@@ -78,6 +78,15 @@ static PDMenuItem *fpsMenuItem;
 static PDMenuItem *frameSkipMenuItem;
 static PDMenuItem *buttonMenuItem = NULL;
 
+static const char *buttonMenuOptions[] = {
+    "Select",
+    "None",
+    "Start",
+    "Both",
+};
+
+static const char *quitGameOptions[] = {"No", "Yes", NULL};
+
 #if ENABLE_RENDER_PROFILER
 static bool PGB_run_profiler_on_next_frame = false;
 #endif
@@ -1598,7 +1607,7 @@ __section__(".rare") void PGB_GameScene_didSelectLibrary_(void *userdata)
     if (gameScene->playtime >= 60 * 60)
     {
         const char *options[] = {"No", "Yes", NULL};
-        PGB_presentModal(PGB_Modal_new("Quit game?", &options[0],
+        PGB_presentModal(PGB_Modal_new("Quit game?", quitGameOptions,
                                        PGB_LibraryConfirmModal, gameScene)
                              ->scene);
     }
@@ -1956,14 +1965,10 @@ static void PGB_GameScene_menu(void *object)
                                   gameScene);
     playdate->system->addMenuItem("Settings", PGB_GameScene_showSettings,
                                   gameScene);
-    const char *options[] = {
-        "Select",
-        "None",
-        "Start",
-        "Both",
-    };
+
     buttonMenuItem = playdate->system->addOptionsMenuItem(
-        "Button", options, 4, PGB_GameScene_buttonMenuCallback, gameScene);
+        "Button", buttonMenuOptions, 4, PGB_GameScene_buttonMenuCallback,
+        gameScene);
     playdate->system->setMenuItemValue(buttonMenuItem,
                                        gameScene->button_hold_mode);
 }
