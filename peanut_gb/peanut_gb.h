@@ -554,7 +554,7 @@ struct gb_s
             uint8_t joypad;
         };
 
-#define PGB_MIN_FRAMES_SAVE 90
+#define PGB_IDLE_FRAMES_BEFORE_SAVE 180
         union
         {
             uint16_t peripherals[4];

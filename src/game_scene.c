@@ -1565,7 +1565,7 @@ __section__(".text.tick") __space static void save_check(struct gb_s *gb)
 
     if (gb->cart_battery && gb->direct.sram_dirty && !gb->direct.sram_updated)
     {
-        if (frames_since_sram_update >= PGB_MIN_FRAMES_SAVE)
+        if (frames_since_sram_update >= PGB_IDLE_FRAMES_BEFORE_SAVE)
         {
             playdate->system->logToConsole("Saving (idle detected)");
             gb_save_to_disk(gb);
