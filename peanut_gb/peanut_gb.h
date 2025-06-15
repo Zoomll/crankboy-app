@@ -5527,7 +5527,7 @@ __section__(".rare") void gb_state_save(struct gb_s *gb, char *out)
     struct StateHeader header;
     memset(&header, 0, sizeof(header));
     PGB_ASSERT(strlen(PGB_SAVE_STATE_MAGIC) == sizeof(header.magic));
-    strcpy(header.magic, PGB_SAVE_STATE_MAGIC);
+    memcpy(header.magic, PGB_SAVE_STATE_MAGIC, sizeof(header.magic));
     header.version = PGB_SAVE_STATE_VERSION;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     header.big_endian = 1;
