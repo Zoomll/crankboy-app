@@ -33,7 +33,7 @@
 #define LINE_RENDER_MARGIN_S 0.0005f
 
 // let's try to render a frame at least this fast
-#define TARGET_FRAME_TIME_S (1.0 / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
+#define TARGET_FRAME_TIME_S (1.0f / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.

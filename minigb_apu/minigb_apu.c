@@ -53,13 +53,13 @@
     __attribute__((short_call))
 #endif
 
-static inline int get_sample_replication()
+static inline int get_sample_replication(void)
 {
     // preferences_sample_rate: 0 -> 1 (44.1kHz), 1 -> 2 (22.05kHz)
     return preferences_sample_rate + 1;
 }
 
-static inline int get_audio_sample_rate()
+static inline int get_audio_sample_rate(void)
 {
     return FREQ_INC_REF / get_sample_replication();
 }

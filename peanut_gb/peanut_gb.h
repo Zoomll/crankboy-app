@@ -119,8 +119,14 @@ typedef int16_t s16;
 #define SERIAL_CYCLES 4096
 
 /* Calculating VSYNC. */
-#define DMG_CLOCK_FREQ 4194304.0
-#define SCREEN_REFRESH_CYCLES 70224.0
+#ifndef DMG_CLOCK_FREQ
+#define DMG_CLOCK_FREQ 4194304.0f
+#endif
+
+#ifndef SCREEN_REFRESH_CYCLES
+#define SCREEN_REFRESH_CYCLES 70224.0f
+#endif
+
 #define VERTICAL_SYNC (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES)
 
 /* SERIAL SC register masks. */

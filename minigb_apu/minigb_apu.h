@@ -9,8 +9,15 @@
 
 #include <stdint.h>
 
-#define DMG_CLOCK_FREQ 4194304.0
-#define SCREEN_REFRESH_CYCLES 70224.0
+/* Calculating VSYNC. */
+#ifndef DMG_CLOCK_FREQ
+#define DMG_CLOCK_FREQ 4194304.0f
+#endif
+
+#ifndef SCREEN_REFRESH_CYCLES
+#define SCREEN_REFRESH_CYCLES 70224.0f
+#endif
+
 #define VERTICAL_SYNC (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES)
 
 // master audio control
