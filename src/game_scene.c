@@ -888,7 +888,7 @@ __section__(".text.tick") __space
         // "Auto" mode: Activate only if frame time is too high.
         else if (preferences_dynamic_rate == 2)
         {
-            if (dt > TARGET_FRAME_TIME_S)
+            if (dt > TARGET_FRAME_TIME_S + LINE_RENDER_MARGIN_S)
             {
                 activate_dynamic_rate = true;
             }
