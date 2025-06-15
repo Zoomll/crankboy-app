@@ -23,9 +23,14 @@ static void PGB_SettingsScene_free(void *object);
 static void PGB_SettingsScene_menu(void *object);
 static void PGB_SettingsScene_didSelectBack(void *userdata);
 static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene);
+static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene);
+static void settings_load_state(PGB_GameScene *gameScene,
+                                PGB_SettingsScene *settingsScene);
 
 bool save_state(PGB_GameScene *gameScene, unsigned slot);
 bool load_state(PGB_GameScene *gameScene, unsigned slot);
+
+struct OptionsMenuEntry;
 
 typedef struct OptionsMenuEntry
 {
@@ -34,7 +39,8 @@ typedef struct OptionsMenuEntry
     const char *description;
     int *pref_var;
     unsigned max_value;
-    void (*on_press)(struct OptionsMenuEntry *);
+    void (*on_press)(struct OptionsMenuEntry *,
+                     PGB_SettingsScene *settingsScene);
     void *ud;
 } OptionsMenuEntry;
 
@@ -79,7 +85,18 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     return settingsScene;
 }
 
-static void settings_load_state(PGB_GameScene *gameScene)
+static void state_action_modal_callback(void *userdata, int option)
+{
+    PGB_SettingsScene *settingsScene = userdata;
+
+    if (option == 0)
+    {
+        PGB_SettingsScene_attemptDismiss(settingsScene);
+    }
+}
+
+static void settings_load_state(PGB_GameScene *gameScene,
+                                PGB_SettingsScene *settingsScene)
 {
     if (!load_state(gameScene, 0))
     {
@@ -92,18 +109,28 @@ static void settings_load_state(PGB_GameScene *gameScene)
         playdate->system->logToConsole("Loaded save state %d", 0);
 
         // TODO: something less invasive than a modal here.
-        PGB_presentModal(
-            PGB_Modal_new("Loaded saved state successfully.", NULL, NULL, NULL)
-                ->scene);
+        const char *options[] = {"Game", "Settings", NULL};
+        PGB_presentModal(PGB_Modal_new("State loaded. Return to:", options,
+                                       state_action_modal_callback,
+                                       settingsScene)
+                             ->scene);
     }
 }
 
-static void settings_confirm_load_state(PGB_GameScene *gameScene, int option)
+typedef struct
 {
+    PGB_GameScene *gameScene;
+    PGB_SettingsScene *settingsScene;
+} LoadStateUserdata;
+
+static void settings_confirm_load_state(void *userdata, int option)
+{
+    LoadStateUserdata *data = userdata;
     if (option == 1)
     {
-        settings_load_state(gameScene);
+        settings_load_state(data->gameScene, data->settingsScene);
     }
+    free(data);
 }
 
 static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene *settingsScene)
@@ -139,7 +166,8 @@ static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
 
-static void settings_action_save_state(OptionsMenuEntry *e)
+static void settings_action_save_state(OptionsMenuEntry *e,
+                                       PGB_SettingsScene *settingsScene)
 {
     PGB_GameScene *gameScene = e->ud;
     // TODO: confirmation if overwriting a state which is >= 10 minutes old
@@ -156,27 +184,33 @@ static void settings_action_save_state(OptionsMenuEntry *e)
         playdate->system->logToConsole("Saved state %d successfully", 0);
 
         // TODO: something less invasive than a modal here.
-        PGB_presentModal(
-            PGB_Modal_new("State saved successfully.", NULL, NULL, NULL)
-                ->scene);
+        const char *options[] = {"Game", "Settings", NULL};
+        PGB_presentModal(PGB_Modal_new("State saved. Return to:", options,
+                                       state_action_modal_callback,
+                                       settingsScene)
+                             ->scene);
     }
 }
 
-static void settings_action_load_state(OptionsMenuEntry *e)
+static void settings_action_load_state(OptionsMenuEntry *e,
+                                       PGB_SettingsScene *settingsScene)
 {
     PGB_GameScene *gameScene = e->ud;
     // confirmation needed if more than 2 minutes of progress made
     if (gameScene->playtime >= 60 * 120)
     {
         const char *confirm_options[] = {"No", "Yes", NULL};
+        LoadStateUserdata *data = malloc(sizeof(LoadStateUserdata));
+        data->gameScene = gameScene;
+        data->settingsScene = settingsScene;
         PGB_presentModal(PGB_Modal_new("Really load state?", confirm_options,
                                        (void *)settings_confirm_load_state,
-                                       gameScene)
+                                       data)
                              ->scene);
     }
     else
     {
-        settings_load_state(gameScene);
+        settings_load_state(gameScene, settingsScene);
     }
 }
 
@@ -213,8 +247,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
                 .name = "Save state",
                 .values = NULL,
                 .description =
-                    "Create a snapshot of\nthis moment, which\ncan be resumed later."
-                ,
+                    "Create a snapshot of\nthis moment, which\ncan be resumed later.",
                 .pref_var = NULL,
                 .max_value = 0,
                 .on_press = settings_action_save_state,
@@ -255,10 +288,10 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .name = "Sample Rate",
         .values = sample_rate_labels,
         .description =
-        "Adjusts audio quality.\nHigher values may impact\nperformance.\n \n"
-        "High:\nBest quality (44.1kHz)\n \n"
-        "Medium:\nGood quality (22.0kHz)\n \n"
-        "Low:\nReduced quality (14.7kHz)",
+            "Adjusts audio quality.\nHigher values may impact\nperformance.\n \n"
+            "High:\nBest quality (44.1kHz)\n \n"
+            "Medium:\nGood quality (22.0kHz)\n \n"
+            "Low:\nReduced quality (14.7kHz)",
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .on_press = NULL,
@@ -278,33 +311,33 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .on_press = NULL,
     };
 
-   // dynamic rate adjustment
-   if (preferences_frame_skip)
-   {
-       entries[++i] = (OptionsMenuEntry){
-          .name = "Interlacing",
-          .values = dynamic_rate_labels,
-          .description = "Unavailable in\n30 FPS mode.",
-          .pref_var = &preferences_dynamic_rate,
-          .max_value = 0,
-          .on_press = NULL,
-       };
-   }
-   else
-   {
-       entries[++i] = (OptionsMenuEntry){
-          .name = "Interlacing",
-          .values = dynamic_rate_labels,
-          .description =
-              "Skips lines to keep the\nframerate smooth.\n \n"
-              "Off:\nFull quality, no skipping.\n \n"
-              "On:\nAlways on for a reliable\nspeed boost.\n \n"
-              "Auto:\nRecommended. Skips lines\nonly when needed.",
-          .pref_var = &preferences_dynamic_rate,
-          .max_value = 3,
-          .on_press = NULL,
-       };
-   }
+    // dynamic rate adjustment
+    if (preferences_frame_skip)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing",
+            .values = dynamic_rate_labels,
+            .description = "Unavailable in\n30 FPS mode.",
+            .pref_var = &preferences_dynamic_rate,
+            .max_value = 0,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing",
+            .values = dynamic_rate_labels,
+            .description =
+                "Skips lines to keep the\nframerate smooth.\n \n"
+                "Off:\nFull quality, no skipping.\n \n"
+                "On:\nAlways on for a reliable\nspeed boost.\n \n"
+                "Auto:\nRecommended. Skips lines\nonly when needed.",
+            .pref_var = &preferences_dynamic_rate,
+            .max_value = 3,
+            .on_press = NULL,
+        };
+    }
 
     // show fps
     entries[++i] = (OptionsMenuEntry){
@@ -325,8 +358,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .description =
             "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
             "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
-            "B/A:\nCW for B, CCW for A."
-        ,
+            "B/A:\nCW for B, CCW for A.",
         .pref_var = &preferences_crank_mode,
         .max_value = 3,
         .on_press = NULL
@@ -334,12 +366,12 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 
     if (!gameScene)
     {
-        #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
         // itcm accel
 
-        static char* itcm_description = NULL;
+        static char *itcm_description = NULL;
         if (itcm_description == NULL) playdate->system->formatString(
-            &itcm_description,
+                &itcm_description,
             "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
             "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
             "\n(Your device: %s)",
@@ -353,22 +385,21 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             .max_value = 2,
             .on_press = NULL
         };
-        #endif
+#endif
 
-        #ifndef NOLUA
+#ifndef NOLUA
         // lua scripts
         entries[++i] = (OptionsMenuEntry){
             .name = "Game scripts",
             .values = off_on_labels,
             .description =
                 "Enable or disable Lua\nscripting support.\n \nEnabling this "
-                "may impact\nperformance."
-            ,
+                "may impact\nperformance.",
             .pref_var = &preferences_lua_support,
             .max_value = 2,
             .on_press = NULL,
         };
-        #endif
+#endif
     }
 
     /* clang-format on */
@@ -513,7 +544,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
     }
     else if (cursor_entry->on_press && a_pressed)
     {
-        cursor_entry->on_press(cursor_entry);
+        cursor_entry->on_press(cursor_entry, settingsScene);
     }
 
     playdate->graphics->clear(kColorWhite);
