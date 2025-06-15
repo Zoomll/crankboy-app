@@ -91,7 +91,7 @@ static void state_action_modal_callback(void *userdata, int option)
 
     if (option == 0)
     {
-        PGB_SettingsScene_attemptDismiss(settingsScene);
+        settingsScene->shouldDismiss = true;
     }
 }
 
