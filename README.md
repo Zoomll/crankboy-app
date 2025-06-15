@@ -17,25 +17,19 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 
 <a href="https://github.com/CrankBoyHQ/crankboy-app/releases/latest"><img src="assets/playdate-badge-download.png?raw=true" width="200"></a>
 
+__Currently, we do not provide stable releases, since CrankBoy is still under heavy development.__
+
 - Download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest),
   or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
 - Copy the pdx through the [Web sideload](https://play.date/account/sideload/) or USB.
 - Launch the app.
 - Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home
-  screen. Or go to Settings > System > Reboot to Data Disk.
+  screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder, the folder name depends on the sideload method.
   - For Web sideload: `/Data/user.*.app.crankboy/games/`
   - For USB: `/Data/app.crankboy/games/`
 - Filenames must end with `.gb` or `.gbc`
 
-## Notes
-
-- Use the crank to press Start or Select.
-- To save a game you have to use the save option inside that game. A save file is automatically
-  created when changing ROMs or quitting the app. After a crash, a new `(recovery).sav` file is
-  created. Save files are stored in `/Data/*.crankboy/saves/`
-- Audio is disabled by default. You can optionally enable it from the library screen
-
 ## Implementation
 
-CrankBoy uses a modified version of Peanut-GB.
+CrankBoy uses a heavily modified version of Peanut-GB.
