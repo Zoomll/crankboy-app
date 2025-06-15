@@ -57,6 +57,14 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     settingsScene->shouldDismiss = false;
     settingsScene->entries = getOptionsEntries(gameScene);
 
+    settingsScene->clickSynth = playdate->sound->synth->newSynth();
+    playdate->sound->synth->setWaveform(settingsScene->clickSynth,
+                                        kWaveformSquare);
+    playdate->sound->synth->setAttackTime(settingsScene->clickSynth, 0.0f);
+    playdate->sound->synth->setDecayTime(settingsScene->clickSynth, 0.05f);
+    playdate->sound->synth->setSustainLevel(settingsScene->clickSynth, 0.0f);
+    playdate->sound->synth->setReleaseTime(settingsScene->clickSynth, 0.0f);
+
     settingsScene->totalMenuItemCount = 0;
     if (settingsScene->entries)
     {
@@ -438,6 +446,7 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                             0xAA, 0x55, 0xAA, 0x55};
 
     PGB_SettingsScene *settingsScene = object;
+    int oldCursorIndex = settingsScene->cursorIndex;
 
     if (settingsScene->shouldDismiss)
     {
@@ -496,6 +505,14 @@ static void PGB_SettingsScene_update(void *object, float dt)
         if (settingsScene->cursorIndex < 0)
             settingsScene->cursorIndex = 0;
     }
+
+    if (oldCursorIndex != settingsScene->cursorIndex &&
+        settingsScene->clickSynth)
+    {
+        playdate->sound->synth->playNote(settingsScene->clickSynth, 1760.0f,
+                                         0.7f, 0.1f, 0);
+    }
+
     if (pushed & kButtonB)
     {
         PGB_SettingsScene_attemptDismiss(settingsScene);
@@ -532,13 +549,20 @@ static void PGB_SettingsScene_update(void *object, float dt)
                 (old_value + direction + cursor_entry->max_value) %
                 cursor_entry->max_value;
 
-            if (old_value != *cursor_entry->pref_var &&
-                strcmp(cursor_entry->name, "30 FPS mode") == 0)
+            if (old_value != *cursor_entry->pref_var)
             {
-                PGB_SettingsScene_rebuildEntries(settingsScene);
+                if (settingsScene->clickSynth)
+                {
+                    playdate->sound->synth->playNote(settingsScene->clickSynth,
+                                                     1480.0f, 0.7f, 0.1f, 0);
+                }
 
-                cursor_entry =
-                    &settingsScene->entries[settingsScene->cursorIndex];
+                if (strcmp(cursor_entry->name, "30 FPS mode") == 0)
+                {
+                    PGB_SettingsScene_rebuildEntries(settingsScene);
+                    cursor_entry =
+                        &settingsScene->entries[settingsScene->cursorIndex];
+                }
             }
         }
     }
@@ -711,6 +735,11 @@ static void PGB_SettingsScene_free(void *object)
 {
     DTCM_VERIFY();
     PGB_SettingsScene *settingsScene = object;
+
+    if (settingsScene->clickSynth)
+    {
+        playdate->sound->synth->freeSynth(settingsScene->clickSynth);
+    }
 
     if (settingsScene->gameScene)
     {

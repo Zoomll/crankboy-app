@@ -14,6 +14,7 @@
 #include "scene.h"
 
 struct OptionsMenuEntry;
+struct PDSynth;
 
 typedef struct PGB_SettingsScene
 {
@@ -28,6 +29,7 @@ typedef struct PGB_SettingsScene
     bool wasAudioLocked : 1;
 
     struct OptionsMenuEntry *entries;
+    struct PDSynth *clickSynth;
 } PGB_SettingsScene;
 
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene);
