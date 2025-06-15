@@ -1702,18 +1702,66 @@ static void PGB_GameScene_menu(void *object)
         bool has_cover_art = (cover_art.status == PGB_COVER_ART_SUCCESS &&
                               cover_art.bitmap != NULL);
 
-        // --- Get Save Time ---
-        bool show_save_time = false;
-        time_t save_timestamp = 0;
+        // --- Get Save Times ---
 
-        if (gameScene->cartridge_has_battery && gameScene->last_save_time > 0)
+        unsigned int last_cartridge_save_time = 0;
+        if (gameScene->cartridge_has_battery)
         {
-            show_save_time = true;
-            save_timestamp = gameScene->last_save_time + 946684800;
+            last_cartridge_save_time = gameScene->last_save_time;
+        }
+
+        unsigned int last_state_save_time = 0;
+        if (gameScene->save_states_supported)
+        {
+            char *state_filename = NULL;
+
+            playdate->system->formatString(&state_filename, "%s/%s.%u.state",
+                                           PGB_statesPath,
+                                           gameScene->base_filename, 0);
+
+            SDFile *file = playdate->file->open(state_filename, kFileReadData);
+            if (file)
+            {
+                struct StateHeader
+                {
+                    char magic[8];
+                    uint32_t version;
+                    uint8_t big_endian : 1;
+                    uint8_t bits : 4;
+                    uint32_t timestamp;
+                    char reserved[20];
+                };
+                struct StateHeader header;
+
+                if (playdate->file->read(file, &header, sizeof(header)) ==
+                    sizeof(header))
+                {
+                    last_state_save_time = header.timestamp;
+                }
+                playdate->file->close(file);
+            }
+            free(state_filename);
+        }
+
+        bool show_time_info = false;
+        const char *line1_text = NULL;
+        unsigned int final_timestamp = 0;
+
+        if (last_state_save_time > last_cartridge_save_time)
+        {
+            show_time_info = true;
+            final_timestamp = last_state_save_time;
+            line1_text = "Last time saved:";
+        }
+        else if (last_cartridge_save_time > 0)
+        {
+            show_time_info = true;
+            final_timestamp = last_cartridge_save_time;
+            line1_text = "Cartridge data saved:";
         }
 
         // --- Drawing Logic ---
-        if (has_cover_art || show_save_time)
+        if (has_cover_art || show_time_info)
         {
             gameScene->menuImage =
                 playdate->graphics->newBitmap(400, 240, kColorClear);
@@ -1727,7 +1775,7 @@ static void PGB_GameScene_menu(void *object)
                     playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
                     playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
                 }
-                else if (show_save_time)
+                else if (show_time_info)
                 {
                     LCDBitmap *ditherOverlay =
                         playdate->graphics->newBitmap(400, 240, kColorWhite);
@@ -1759,11 +1807,10 @@ static void PGB_GameScene_menu(void *object)
                 int content_height = 160;
                 int cover_art_y = 0, cover_art_height = 0;
 
-                // 1. Draw Cover Art if it exists
                 if (has_cover_art)
                 {
                     int art_x = (200 - cover_art.scaled_width) / 2;
-                    if (!show_save_time)
+                    if (!show_time_info)
                     {
                         cover_art_y =
                             content_top +
@@ -1775,12 +1822,12 @@ static void PGB_GameScene_menu(void *object)
                 }
 
                 // 2. Draw Save Time if it exists
-                if (show_save_time)
+                if (show_time_info)
                 {
                     playdate->graphics->setFont(PGB_App->labelFont);
-                    const char *line1 = "Cartridge data saved:";
+                    const char *line1 = line1_text;
 
-                    unsigned int utc_epoch = gameScene->last_save_time;
+                    unsigned int utc_epoch = final_timestamp;
                     int32_t offset = playdate->system->getTimezoneOffset();
                     unsigned int local_epoch = utc_epoch + offset;
 
@@ -1788,7 +1835,7 @@ static void PGB_GameScene_menu(void *object)
                     playdate->system->convertEpochToDateTime(local_epoch,
                                                              &time_info);
 
-                    char line2[32];
+                    char line2[40];
                     if (playdate->system->shouldDisplay24HourTime())
                     {
                         snprintf(line2, sizeof(line2),
@@ -1993,6 +2040,21 @@ __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
     else
     {
         gb_state_save(context->gb, buff);
+
+        struct StateHeader
+        {
+            char magic[8];
+            uint32_t version;
+            uint8_t big_endian : 1;
+            uint8_t bits : 4;
+            uint32_t timestamp;
+            char reserved[20];
+        };
+
+        struct StateHeader *header = (struct StateHeader *)buff;
+
+        header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
+
         // this function is haunted
         // for some reason we need to do file I/O from the main stack,
         // lest we get the mysterious filesystem error 0393
@@ -2112,6 +2174,33 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
 
                     if (success)
                     {
+                        struct StateHeader
+                        {
+                            char magic[8];
+                            uint32_t version;
+                            uint8_t big_endian : 1;
+                            uint8_t bits : 4;
+                            uint32_t timestamp;
+                            char reserved[20];
+                        };
+
+                        struct StateHeader *header = (struct StateHeader *)buff;
+                        unsigned int timestamp = 0;
+
+                        unsigned int loaded_timestamp = header->timestamp;
+
+                        if (timestamp > 0)
+                        {
+                            playdate->system->logToConsole(
+                                "Save state created at: %u", timestamp);
+                        }
+                        else
+                        {
+                            playdate->system->logToConsole(
+                                "Save state is from an old version (no "
+                                "timestamp).");
+                        }
+
                         const char *res =
                             gb_state_load(context->gb, buff, save_size);
                         if (res)
