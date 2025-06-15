@@ -555,8 +555,6 @@ struct gb_s
         };
 
 #define PGB_MIN_FRAMES_SAVE 90
-#define PGB_MAX_FRAMES_SAVE (60 * 100)
-
         union
         {
             uint16_t peripherals[4];
