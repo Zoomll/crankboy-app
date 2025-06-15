@@ -120,6 +120,10 @@ void PGB_ListView_reload(PGB_ListView *listView)
         {
             PGB_ListView_selectItem(listView, numberOfItems - 1, false);
         }
+        else
+        {
+            PGB_ListView_selectItem(listView, listView->selectedItem, false);
+        }
     }
     else
     {

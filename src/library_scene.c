@@ -20,6 +20,7 @@ static void PGB_LibraryScene_update(void *object, float dt);
 static void PGB_LibraryScene_free(void *object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene);
 static void PGB_LibraryScene_menu(void *object);
+static int last_selected_game_index = 0;
 
 PGB_LibraryScene *PGB_LibraryScene_new(void)
 {
@@ -43,6 +44,7 @@ PGB_LibraryScene *PGB_LibraryScene_new(void)
 
     libraryScene->games = array_new();
     libraryScene->listView = PGB_ListView_new();
+    libraryScene->listView->selectedItem = last_selected_game_index;
     libraryScene->tab = PGB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
 
@@ -144,6 +146,7 @@ static void PGB_LibraryScene_update(void *object, float dt)
         if (selectedItem >= 0 &&
             selectedItem < libraryScene->listView->items->length)
         {
+            last_selected_game_index = selectedItem;
 
             PGB_Game *game = libraryScene->games->items[selectedItem];
 
