@@ -195,11 +195,11 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         if (!gameScene->save_states_supported)
         {
             entries[++i] = (OptionsMenuEntry){
-                .name = "(save state)",
+                .name = "Save state",
                 .values = NULL,
                 .description =
-                    "CrankBoy does not\ncurrently support\ncreating save\nstates "
-                    "with a\nROM that has\nits own save data.",
+                    "CrankBoy does not\ncurrently support\ncreating save states\n"
+                    "with a ROM that has its\nown save data.",
                 .pref_var = NULL,
                 .max_value = 0,
                 .on_press = NULL
@@ -362,6 +362,10 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
 
 static void PGB_SettingsScene_update(void *object, float dt)
 {
+    static const uint8_t grey_dither[16] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+                                            0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+                                            0xAA, 0x55, 0xAA, 0x55};
+
     PGB_SettingsScene *settingsScene = object;
 
     if (settingsScene->shouldDismiss)
@@ -482,6 +486,10 @@ static void PGB_SettingsScene_update(void *object, float dt)
             break;
         }
 
+        OptionsMenuEntry *current_entry = &settingsScene->entries[itemIndex];
+        bool is_disabled = (current_entry->pref_var == NULL &&
+                            current_entry->on_press == NULL);
+
         int y = initialY + i * rowHeight;
         const char *name = settingsScene->entries[itemIndex].name;
         const char *stateText =
@@ -490,6 +498,8 @@ static void PGB_SettingsScene_update(void *object, float dt)
                       .values[*settingsScene->entries[itemIndex].pref_var]
                 : "";
 
+        int nameWidth = playdate->graphics->getTextWidth(
+            PGB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0);
         int stateWidth = playdate->graphics->getTextWidth(
             PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0);
         int stateX = kDividerX - stateWidth - kLeftPanePadding;
@@ -514,6 +524,19 @@ static void PGB_SettingsScene_update(void *object, float dt)
             // Draw the state (right-aligned)
             playdate->graphics->drawText(stateText, strlen(stateText),
                                          kUTF8Encoding, stateX, y);
+        }
+
+        if (is_disabled && itemIndex != settingsScene->cursorIndex)
+        {
+            playdate->graphics->setDrawMode(kDrawModeBlackTransparent);
+
+            playdate->graphics->fillRect(kLeftPanePadding, y, nameWidth,
+                                         fontHeight, (LCDColor)grey_dither);
+            if (stateText[0])
+            {
+                playdate->graphics->fillRect(stateX, y, stateWidth, fontHeight,
+                                             (LCDColor)grey_dither);
+            }
         }
     }
 
