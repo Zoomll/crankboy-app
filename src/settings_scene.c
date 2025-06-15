@@ -188,9 +188,54 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
     memset(entries, 0, sizeof(OptionsMenuEntry) * max_entries);
 
     /* clang-format off */
+    int i = -1;
+
+    if (gameScene)
+    {
+        if (!gameScene->save_states_supported)
+        {
+            entries[++i] = (OptionsMenuEntry){
+                .name = "(save state)",
+                .values = NULL,
+                .description =
+                    "CrankBoy does not\ncurrently support\ncreating save\nstates "
+                    "with a\nROM that has\nits own save data.",
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = NULL
+            };
+        }
+        else
+        {
+            // save state
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Save state",
+                .values = NULL,
+                .description =
+                    "Create a snapshot of\nthis moment, which\ncan be resumed later."
+                ,
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = settings_action_save_state,
+                .ud = gameScene,
+            };
+
+            // load state
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Load state",
+                .values = NULL,
+                .description =
+                    "Restore the previously-\ncreated snapshot."
+                ,
+                .pref_var = NULL,
+                .max_value = 0,
+                .on_press = settings_action_load_state,
+                .ud = gameScene,
+            };
+        }
+    }
 
     // sound
-    int i = -1;
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Sound",
@@ -308,51 +353,6 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             .on_press = NULL,
         };
         #endif
-    }
-
-    if (gameScene)
-    {
-        if (!gameScene->save_states_supported)
-        {
-            entries[++i] = (OptionsMenuEntry){
-                .name = "(save state)",
-                .values = NULL,
-                .description =
-                    "CrankBoy does not\ncurrently support\ncreating save\nstates "
-                    "with a\nROM that has\nits own save data.",
-                .pref_var = NULL,
-                .max_value = 0,
-                .on_press = NULL
-            };
-        }
-        else
-        {
-            // save state
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Save state",
-                .values = NULL,
-                .description =
-                    "Create a snapshot of\nthis moment, which\ncan be resumed later."
-                ,
-                .pref_var = NULL,
-                .max_value = 0,
-                .on_press = settings_action_save_state,
-                .ud = gameScene,
-            };
-
-            // load state
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Load state",
-                .values = NULL,
-                .description =
-                    "Restore the previously-\ncreated snapshot."
-                ,
-                .pref_var = NULL,
-                .max_value = 0,
-                .on_press = settings_action_load_state,
-                .ud = gameScene,
-            };
-        }
     }
 
     /* clang-format on */
