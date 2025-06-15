@@ -19,6 +19,7 @@ extern PlaydateAPI *playdate;
 
 #define PGB_DEBUG false
 #define PGB_DEBUG_UPDATED_ROWS false
+#define ENABLE_RENDER_PROFILER false
 
 #define PGB_LCD_WIDTH 320
 #define PGB_LCD_HEIGHT 240
