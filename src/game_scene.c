@@ -646,7 +646,7 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
     playdate->file->close(f);
 }
 
-static void gb_save_to_disk(struct gb_s *gb)
+static void gb_save_to_disk_(struct gb_s *gb)
 {
     DTCM_VERIFY_DEBUG();
 
@@ -682,6 +682,11 @@ static void gb_save_to_disk(struct gb_s *gb)
     gameScene->isCurrentlySaving = false;
 
     DTCM_VERIFY_DEBUG();
+}
+
+static void gb_save_to_disk(struct gb_s *gb)
+{
+    call_with_main_stack_1(gb_save_to_disk_, gb);
 }
 
 /**
