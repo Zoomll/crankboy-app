@@ -2187,31 +2187,26 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             uint8_t t2 = gb->vram[t1_i + 1];
 
             // handle x flip
-            uint8_t dir, start, end, shift;
+            int dir, start, end;
 
             if (OF & OBJ_FLIP_X)
             {
                 dir = 1;
-                start = (OX < 8 ? 0 : OX - 8);
-                end = MIN(OX, LCD_WIDTH);
-                shift = 8 - OX + start;
+                start = OX - 8;
+                end = OX;
             }
             else
             {
                 dir = -1;
-                start = MIN(OX, LCD_WIDTH) - 1;
-                end = (OX < 8 ? 0 : OX - 8) - 1;
-                shift = OX - (start + 1);
+                start = OX - 1;
+                end = OX - 9;
             }
-
-            // copy tile
-            t1 >>= shift;
-            t2 >>= shift;
 
             uint8_t c_add = (OF & OBJ_PALETTE) ? 8 : 0;
 
-            for (uint8_t disp_x = start; disp_x != end; disp_x += dir)
+            for (int disp_x = start; disp_x != end; disp_x += dir)
             {
+                if unlikely(disp_x < 0 || disp_x >= LCD_WIDTH) goto next_loop;
 #if ENABLE_BGCACHE
                 uint8_t c = ((t1 & 0x1) << 1) | ((t2 & 0x1) << 2);
 #else
@@ -2245,6 +2240,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
                     }
                 }
 
+            next_loop:
 #if ENABLE_BGCACHE
                 t1 >>= 1;
                 t2 >>= 1;
