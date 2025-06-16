@@ -8,6 +8,9 @@
 
 #define PGB_IMPL
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "../minigb_apu/minigb_apu.h"
 #include "../peanut_gb/peanut_gb.h"
 #include "app.h"
@@ -614,7 +617,6 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
 {
     // Get the size of the save RAM from the gb context.
     const size_t sram_len = gb_get_save_size(gb);
-
     PGB_GameSceneContext *context = gb->direct.priv;
     PGB_GameScene *gameScene = context->scene;
 
@@ -624,38 +626,115 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
         return;
     }
 
-    playdate->system->logToConsole("Saving SRAM, RTC, and timestamp to: %s",
-                                   save_filename);
+    // Generate .tmp and .bak filenames
+    size_t len = strlen(save_filename);
+    char *tmp_filename = malloc(len + 2);
+    char *bak_filename = malloc(len + 2);
 
-    SDFile *f = playdate->file->open(save_filename, kFileWrite);
-    if (f == NULL)
+    if (!tmp_filename || !bak_filename)
     {
         playdate->system->logToConsole(
-            "%s:%i: Can't open save file for writing: %s", __FILE__, __LINE__,
-            save_filename);
+            "Error: Failed to allocate memory for safe save filenames.");
+        if (tmp_filename)
+            free(tmp_filename);
+        if (bak_filename)
+            free(bak_filename);
         return;
     }
 
-    // 1. Write the main save RAM data first.
+    strcpy(tmp_filename, save_filename);
+    strcpy(bak_filename, save_filename);
+
+    char *ext_tmp = strrchr(tmp_filename, '.');
+    if (ext_tmp && strcmp(ext_tmp, ".sav") == 0)
+    {
+        strcpy(ext_tmp, ".tmp");
+    }
+    else
+    {
+        strcat(tmp_filename, ".tmp");
+    }
+
+    char *ext_bak = strrchr(bak_filename, '.');
+    if (ext_bak && strcmp(ext_bak, ".sav") == 0)
+    {
+        strcpy(ext_bak, ".bak");
+    }
+    else
+    {
+        strcat(bak_filename, ".bak");
+    }
+
+    playdate->file->unlink(tmp_filename, false);
+
+    // Write data to the temporary file
+    playdate->system->logToConsole("Saving to temporary file: %s",
+                                   tmp_filename);
+    SDFile *f = playdate->file->open(tmp_filename, kFileWrite);
+    if (f == NULL)
+    {
+        playdate->system->logToConsole(
+            "Error: Can't open temp save file for writing: %s", tmp_filename);
+        free(tmp_filename);
+        free(bak_filename);
+        return;
+    }
+
     if (sram_len > 0 && gb->gb_cart_ram != NULL)
     {
         playdate->file->write(f, gb->gb_cart_ram, (unsigned int)sram_len);
     }
 
-    // 2. If the cartridge has a battery, append its data.
     if (gameScene->cartridge_has_battery)
     {
-        // Write the 5 internal RTC register bytes.
         playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
-
-        // Write the current Playdate epoch time as an absolute timestamp.
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
         gameScene->last_save_time = now;
-
         playdate->file->write(f, &now, sizeof(now));
     }
 
     playdate->file->close(f);
+
+    // Verify that the temporary file is not zero-bytes
+    FileStat stat;
+    if (playdate->file->stat(tmp_filename, &stat) != 0)
+    {
+        playdate->system->logToConsole(
+            "Error: Failed to stat temp save file %s. Aborting save.",
+            tmp_filename);
+        playdate->file->unlink(tmp_filename, false);
+        free(tmp_filename);
+        free(bak_filename);
+        return;
+    }
+
+    if (stat.size == 0)
+    {
+        playdate->system->logToConsole(
+            "Error: Wrote 0-byte temp save file %s. Aborting and deleting.",
+            tmp_filename);
+        playdate->file->unlink(tmp_filename, false);
+        free(tmp_filename);
+        free(bak_filename);
+        return;
+    }
+
+    // Rename files: .sav -> .bak, then .tmp -> .sav
+    playdate->system->logToConsole("Save successful, renaming files.");
+
+    playdate->file->unlink(bak_filename, false);
+    playdate->file->rename(save_filename, bak_filename);
+
+    if (playdate->file->rename(tmp_filename, save_filename) != 0)
+    {
+        playdate->system->logToConsole(
+            "CRITICAL: Failed to rename temp file to save file. Restoring "
+            "backup.");
+        playdate->file->rename(bak_filename, save_filename);
+    }
+
+    free(tmp_filename);
+    free(bak_filename);
 }
 
 static void gb_save_to_disk_(struct gb_s *gb)
