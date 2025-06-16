@@ -2133,79 +2133,107 @@ __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
     gameScene->isCurrentlySaving = true;
 
     PGB_GameSceneContext *context = gameScene->context;
-    char *state_name;
-    playdate->system->formatString(&state_name, "%s/%s.%u.state",
-                                   PGB_statesPath, gameScene->base_filename,
-                                   slot);
     bool success = false;
+
+    char *path_prefix = NULL;
+    char *state_name = NULL;
+    char *tmp_name = NULL;
+    char *bak_name = NULL;
+
+    playdate->system->formatString(&path_prefix, "%s/%s.%u", PGB_statesPath,
+                                   gameScene->base_filename, slot);
+
+    playdate->system->formatString(&state_name, "%s.state", path_prefix);
+    playdate->system->formatString(&tmp_name, "%s.tmp", path_prefix);
+    playdate->system->formatString(&bak_name, "%s.bak", path_prefix);
+
+    // Clean up any old temp file
+    playdate->file->unlink(tmp_name, false);
 
     int save_size = gb_get_state_size(context->gb);
     if (save_size <= 0)
-        return false;
+    {
+        playdate->system->logToConsole("Save state failed: invalid save size.");
+        goto cleanup;
+    }
+
     char *buff = malloc(save_size);
     if (!buff)
     {
         playdate->system->logToConsole(
             "Failed to allocate buffer for save state");
+        goto cleanup;
+    }
+
+    gb_state_save(context->gb, buff);
+
+    struct StateHeader
+    {
+        char magic[8];
+        uint32_t version;
+        uint8_t big_endian : 1;
+        uint8_t bits : 4;
+        uint32_t timestamp;
+        char reserved[20];
+    };
+
+    struct StateHeader *header = (struct StateHeader *)buff;
+    header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
+
+    // Write the state to the temporary file
+    SDFile *file = playdate->file->open(tmp_name, kFileWrite);
+    if (!file)
+    {
+        playdate->system->logToConsole(
+            "failed to open temp state file \"%s\": %s", tmp_name,
+            playdate->file->geterr());
     }
     else
     {
-        gb_state_save(context->gb, buff);
+        int written = playdate->file->write(file, buff, save_size);
+        playdate->file->close(file);
 
-        struct StateHeader
-        {
-            char magic[8];
-            uint32_t version;
-            uint8_t big_endian : 1;
-            uint8_t bits : 4;
-            uint32_t timestamp;
-            char reserved[20];
-        };
-
-        struct StateHeader *header = (struct StateHeader *)buff;
-
-        header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
-
-        // this function is haunted
-        // for some reason we need to do file I/O from the main stack,
-        // lest we get the mysterious filesystem error 0393
-        SDFile *file = playdate->file->open(state_name, kFileWrite);
-        if (!file)
+        // Verify that the temporary file was written correctly
+        if (written != save_size)
         {
             playdate->system->logToConsole(
-                "failed to open save state file \"%s\": %s\n", state_name,
-                playdate->file->geterr());
+                "Error writing temp state file \"%s\" (wrote %d of %d bytes). "
+                "Aborting.",
+                tmp_name, written, save_size);
+            playdate->file->unlink(tmp_name, false);
         }
         else
         {
-            success = true;
-            char *buffptr = buff;
-            while (save_size > 0)
+            // Rename files: .state -> .bak, then .tmp -> .state
+            playdate->system->logToConsole("Temp state saved, renaming files.");
+            playdate->file->unlink(bak_name, false);
+            playdate->file->rename(state_name, bak_name);
+            if (playdate->file->rename(tmp_name, state_name) == 0)
             {
-                int written = playdate->file->write(file, buffptr, save_size);
-                printf("Wrote %d bytes\n", written);
-                if (written == 0)
-                {
-                    printf("Error writing save file \"%s\" (0 bytes written)\n",
-                           state_name);
-                }
-                else if (written < 0)
-                {
-                    printf("Error writing save file \"%s\": %s\n", state_name,
-                           playdate->file->geterr());
-                    success = false;
-                    break;
-                }
-                buffptr += written;
-                save_size -= written;
+                success = true;
             }
-
-            playdate->file->close(file);
+            else
+            {
+                playdate->system->logToConsole(
+                    "CRITICAL: Failed to rename temp state file. Restoring "
+                    "backup.");
+                playdate->file->rename(bak_name, state_name);
+            }
         }
-        free(buff);
     }
 
-    free(state_name);
+    free(buff);
+
+cleanup:
+    if (path_prefix)
+        free(path_prefix);
+    if (state_name)
+        free(state_name);
+    if (tmp_name)
+        free(tmp_name);
+    if (bak_name)
+        free(bak_name);
+
     gameScene->isCurrentlySaving = false;
     return success;
 }
