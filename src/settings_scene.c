@@ -108,8 +108,9 @@ static void settings_load_state(PGB_GameScene *gameScene,
 {
     if (!load_state(gameScene, 0))
     {
+        const char *options[] = {"OK", NULL};
         PGB_presentModal(
-            PGB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene);
+            PGB_Modal_new("Failed to load state.", options, NULL, NULL)->scene);
         playdate->system->logToConsole("Error loading state %d", 0);
     }
     else
@@ -184,7 +185,8 @@ static void settings_action_save_state(OptionsMenuEntry *e,
         char *msg;
         playdate->system->formatString(&msg, "Error saving state:\n%s",
                                        playdate->file->geterr());
-        PGB_presentModal(PGB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        const char *options[] = {"OK", NULL};
+        PGB_presentModal(PGB_Modal_new(msg, options, NULL, NULL)->scene);
         free(msg);
     }
     else
