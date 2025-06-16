@@ -28,6 +28,7 @@ typedef struct PGB_Modal
     char *options[MODAL_MAX_OPTIONS];
     PGB_ModalCallback callback;
     int timer;
+    int droptimer;
     bool exit : 1;
     int result;
 

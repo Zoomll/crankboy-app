@@ -128,4 +128,13 @@ static inline unsigned next_pow2(unsigned v)
 
 #define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ^_RESULT_TYPE_ _fn_ _ARGS_ _BODY_
 
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 #endif /* utility_h */

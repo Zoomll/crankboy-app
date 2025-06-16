@@ -200,10 +200,6 @@ typedef int16_t s16;
 
 #define ROM_HEADER_CHECKSUM_LOC 0x014D
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 #define PGB_HW_BREAKPOINT_OPCODE 0xD3
 #define MAX_BREAKPOINTS 0x80
 

@@ -5,11 +5,14 @@
 #include "utility.h"
 
 #define MODAL_ANIM_TIME 16
+#define MODAL_DROP_TIME 12
 
 void PGB_Modal_update(PGB_Modal *modal)
 {
     if (modal->exit)
     {
+        if (modal->droptimer-- <= 0)
+            modal->droptimer = 0;
         if (modal->timer-- == 0)
         {
             PGB_dismiss(modal->scene);
@@ -19,6 +22,8 @@ void PGB_Modal_update(PGB_Modal *modal)
     {
         if (++modal->timer > MODAL_ANIM_TIME)
             modal->timer = MODAL_ANIM_TIME;
+        if (++modal->droptimer > MODAL_DROP_TIME)
+            modal->droptimer = MODAL_DROP_TIME;
     }
     PDButtons pushed = PGB_App->buttons_pressed;
 
@@ -65,7 +70,9 @@ void PGB_Modal_update(PGB_Modal *modal)
     int w = 250;
     int x = (LCD_COLUMNS - w) / 2;
     int h = 120;
-    int y = -h + (((LCD_ROWS - h) / 2 + h) * modal->timer) / MODAL_ANIM_TIME;
+    float p = MIN(modal->droptimer, MODAL_DROP_TIME) / (float)MODAL_DROP_TIME;
+    p = 1 - (1-p) * sqrtf(1-p); // easing
+    int y = -h + ((LCD_ROWS - h) / 2 + h) * p;
 
     int white_border_thickness = 1;
     int black_border_thickness = 2;
@@ -116,18 +123,16 @@ void PGB_Modal_update(PGB_Modal *modal)
             kWrapClip, kAlignTextCenter);
     }
 
-    if (modal->exit || modal->timer < MODAL_ANIM_TIME)
+    if (modal->exit || modal->droptimer < MODAL_DROP_TIME)
         return;
     if ((pushed & kButtonB) ||
         (modal->options_count == 0 && (pushed & kButtonA)))
     {
-        modal->timer = MODAL_ANIM_TIME;
         modal->exit = 1;
         modal->result = -1;
     }
     else if (pushed & kButtonA)
     {
-        modal->timer = MODAL_ANIM_TIME;
         modal->exit = 1;
         modal->result = modal->option_selected;
     }

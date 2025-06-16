@@ -167,7 +167,7 @@ void PGB_presentModal(PGB_Scene *scene)
 
 void PGB_dismiss(PGB_Scene *sceneToDismiss)
 {
-    printf("Dismiss\\n");
+    printf("Dismiss\n");
     PGB_ASSERT(sceneToDismiss == PGB_App->scene);
     PGB_Scene *parent = sceneToDismiss->parentScene;
     if (parent)
