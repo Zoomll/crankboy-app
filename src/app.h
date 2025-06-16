@@ -49,7 +49,8 @@ typedef struct PGB_Application
     SoundSource *soundSource;
     PDButtons buttons_down;
     PDButtons buttons_pressed;
-    PDButtons buttons_suppress; // prevent these from registering until they are released
+    PDButtons buttons_suppress;  // prevent these from registering until they
+                                 // are released
 } PGB_Application;
 
 extern PGB_Application *PGB_App;
@@ -71,9 +72,9 @@ void *dtcm_alloc(size_t size);
 
 // relocatable and tightly-packed interpreter code
 #ifdef TARGET_SIMULATOR
-#define __core __attribute__((optimize("O0")))
-#define __core_section(x) __core
-#define __space __attribute__((optimize("O0")))
+#define __core
+#define __core_section(x)
+#define __space
 #else
 #define __space __attribute__((optimize("Os")))
 #ifdef ITCM_CORE
@@ -121,6 +122,6 @@ void itcm_core_init(void);
 // don't exceed 60 fps
 #define CAP_FRAME_RATE 1
 
-void save_test(const char* context);
+void save_test(const char *context);
 
 #endif /* app_h */
