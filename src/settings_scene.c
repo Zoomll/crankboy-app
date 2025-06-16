@@ -443,12 +443,11 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene)
 
 static void PGB_SettingsScene_update(void *object, float dt)
 {
-    static const uint8_t black_transparent_dither[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                                            0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55,
-                                            0xAA, 0x55, 0xAA, 0x55};
-    static const uint8_t white_transparent_dither[16] = {0, 0, 0, 0, 0, 0,
-                                            0, 0, 0xAA, 0x55, 0xAA, 0x55,
-                                            0xAA, 0x55, 0xAA, 0x55};
+    static const uint8_t black_transparent_dither[16] = {
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
+    static const uint8_t white_transparent_dither[16] = {
+        0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
 
     PGB_SettingsScene *settingsScene = object;
     int oldCursorIndex = settingsScene->cursorIndex;
@@ -644,9 +643,9 @@ static void PGB_SettingsScene_update(void *object, float dt)
 
         if (is_disabled)
         {
-            uint8_t* dither = (itemIndex != settingsScene->cursorIndex)
-                ? black_transparent_dither
-                : white_transparent_dither;
+            const uint8_t *dither = (itemIndex != settingsScene->cursorIndex)
+                                        ? black_transparent_dither
+                                        : white_transparent_dither;
             playdate->graphics->fillRect(kLeftPanePadding, y, nameWidth,
                                          fontHeight, (LCDColor)dither);
             if (stateText[0])
