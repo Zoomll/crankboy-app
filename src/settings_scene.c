@@ -441,8 +441,11 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene)
 
 static void PGB_SettingsScene_update(void *object, float dt)
 {
-    static const uint8_t grey_dither[16] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
-                                            0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+    static const uint8_t black_transparent_dither[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                                            0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55,
+                                            0xAA, 0x55, 0xAA, 0x55};
+    static const uint8_t white_transparent_dither[16] = {0, 0, 0, 0, 0, 0,
+                                            0, 0, 0xAA, 0x55, 0xAA, 0x55,
                                             0xAA, 0x55, 0xAA, 0x55};
 
     PGB_SettingsScene *settingsScene = object;
@@ -637,16 +640,17 @@ static void PGB_SettingsScene_update(void *object, float dt)
                                          kUTF8Encoding, stateX, y);
         }
 
-        if (is_disabled && itemIndex != settingsScene->cursorIndex)
+        if (is_disabled)
         {
-            playdate->graphics->setDrawMode(kDrawModeBlackTransparent);
-
+            uint8_t* dither = (itemIndex != settingsScene->cursorIndex)
+                ? black_transparent_dither
+                : white_transparent_dither;
             playdate->graphics->fillRect(kLeftPanePadding, y, nameWidth,
-                                         fontHeight, (LCDColor)grey_dither);
+                                         fontHeight, (LCDColor)dither);
             if (stateText[0])
             {
                 playdate->graphics->fillRect(stateX, y, stateWidth, fontHeight,
-                                             (LCDColor)grey_dither);
+                                             (LCDColor)dither);
             }
         }
     }
