@@ -411,6 +411,18 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         };
 #endif
     }
+    
+    // show fps
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Uncapped FPS",
+        .values = off_on_labels,
+        .description =
+            "Removes the speed limit.\n \nThis is intended\njust for benchmarking\nperformance, not for\ncasual play."
+        ,
+        .pref_var = &preferences_uncap_fps,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     /* clang-format on */
 

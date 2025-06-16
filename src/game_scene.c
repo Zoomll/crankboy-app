@@ -1410,6 +1410,8 @@ __section__(".text.tick") __space
         gameScene->scene->refreshRateCompensation =
             //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
             0;
+            
+        if (preferences_uncap_fps) gameScene->scene->preferredRefreshRate = -1;
 
         if (gameScene->cartridge_has_rtc)
         {

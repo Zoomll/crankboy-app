@@ -23,6 +23,7 @@ int preferences_itcm = false;
 int preferences_lua_support = false;
 int preferences_dynamic_rate = 0;
 int preferences_sample_rate = 0;
+int preferences_uncap_fps = 0;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -43,13 +44,7 @@ void preferences_init(void)
     preferences_lua_support = false;
     preferences_dynamic_rate = 0;
     preferences_sample_rate = 1;
-
-    // remove old preferences file
-    // TODO: remove this eventually
-    if (playdate->file->stat("preferences.bin", NULL) == 0)
-    {
-        playdate->file->unlink("preferences.bin", false);
-    }
+    preferences_uncap_fps = 0;
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
@@ -112,6 +107,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_sample_rate = pref.data.intval;
             }
+            KEY("uncap_fs")
+            {
+                preferences_uncap_fps = pref.data.intval;
+            }
         }
     }
 
@@ -125,7 +124,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 8
+#define NUM_PREFS 9
 
     union
     {
@@ -168,6 +167,10 @@ int preferences_save_to_disk(void)
     data.obj.data[7].key = "sample_rate";
     data.obj.data[7].value.type = kJSONInteger;
     data.obj.data[7].value.data.intval = preferences_sample_rate;
+    
+    data.obj.data[8].key = "uncap_fps";
+    data.obj.data[8].value.type = kJSONInteger;
+    data.obj.data[8].value.data.intval = preferences_uncap_fps;
 
     int error = write_json_to_disk(pref_filename, j);
 
