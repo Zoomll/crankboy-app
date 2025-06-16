@@ -172,6 +172,9 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
+    gameScene->interlace_missed_frame_count = 0;
+    gameScene->interlace_frames_remaining = 0;
+
     gameScene->isCurrentlySaving = false;
 
     gameScene->menuImage = NULL;
@@ -882,17 +885,41 @@ __section__(".text.tick") __space
 
     if (!preferences_frame_skip)
     {
-        // "On" mode: Always activate.
-        if (preferences_dynamic_rate == 1)
+        if (preferences_dynamic_rate == 0)  // "Off"
+        {
+            gameScene->interlace_missed_frame_count = 0;
+            gameScene->interlace_frames_remaining = 0;
+        }
+        else if (preferences_dynamic_rate == 1)  // "On"
         {
             activate_dynamic_rate = true;
+            gameScene->interlace_missed_frame_count = 0;
+            gameScene->interlace_frames_remaining = 0;
         }
-        // "Auto" mode: Activate only if frame time is too high.
-        else if (preferences_dynamic_rate == 2)
+        else if (preferences_dynamic_rate == 2)  // "Auto"
         {
-            if (dt > TARGET_FRAME_TIME_S + INTERLACE_THRESHOLD_S)
+            if (gameScene->interlace_frames_remaining > 0)
             {
                 activate_dynamic_rate = true;
+                gameScene->interlace_frames_remaining--;
+            }
+            else
+            {
+                if (dt > TARGET_FRAME_TIME_S + INTERLACE_THRESHOLD_S)
+                {
+                    gameScene->interlace_missed_frame_count++;
+                }
+                else
+                {
+                    gameScene->interlace_missed_frame_count = 0;
+                }
+
+                if (gameScene->interlace_missed_frame_count >= 3)
+                {
+                    activate_dynamic_rate = true;
+                    gameScene->interlace_frames_remaining = 60;
+                    gameScene->interlace_missed_frame_count = 0;
+                }
             }
         }
     }
