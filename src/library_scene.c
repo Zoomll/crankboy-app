@@ -150,10 +150,6 @@ static void PGB_LibraryScene_update(void *object, float dt)
 
             PGB_Game *game = libraryScene->games->items[selectedItem];
 
-            save_test("a");
-            save_test("a2");
-            save_test("a3");
-
             PGB_GameScene *gameScene = PGB_GameScene_new(game->fullpath);
             if (gameScene)
             {

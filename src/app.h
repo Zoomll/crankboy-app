@@ -122,6 +122,4 @@ void itcm_core_init(void);
 // don't exceed 60 fps
 #define CAP_FRAME_RATE 1
 
-void save_test(const char *context);
-
 #endif /* app_h */

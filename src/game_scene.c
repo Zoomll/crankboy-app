@@ -132,7 +132,6 @@ void itcm_core_init(void)
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 {
-    save_test("b");
     playdate->system->logToConsole("ROM: %s", rom_filename);
     playdate->system->setCrankSoundsDisabled(true);
 
@@ -413,8 +412,6 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     PGB_ASSERT(gameScene->context == context);
     PGB_ASSERT(gameScene->context->scene == gameScene);
     PGB_ASSERT(gameScene->context->gb->direct.priv == context);
-
-    save_test("c");
 
     return gameScene;
 }
@@ -1410,8 +1407,9 @@ __section__(".text.tick") __space
         gameScene->scene->refreshRateCompensation =
             //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
             0;
-            
-        if (preferences_uncap_fps) gameScene->scene->preferredRefreshRate = -1;
+
+        if (preferences_uncap_fps)
+            gameScene->scene->preferredRefreshRate = -1;
 
         if (gameScene->cartridge_has_rtc)
         {
@@ -2116,8 +2114,6 @@ __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
 {
     playdate->system->logToConsole("save state %p", __builtin_frame_address(0));
 
-    save_test("savestate_inner");
-
     if (gameScene->isCurrentlySaving)
     {
         playdate->system->logToConsole(
@@ -2236,7 +2232,6 @@ cleanup:
 // returns true if successful
 __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
 {
-    save_test("savestate");
     gameScene->playtime = 0;
     return (bool)call_with_main_stack_2(save_state_, gameScene, slot);
 }
