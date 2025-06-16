@@ -635,11 +635,7 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
     {
         playdate->system->logToConsole(
             "Error: Failed to allocate memory for safe save filenames.");
-        if (tmp_filename)
-            free(tmp_filename);
-        if (bak_filename)
-            free(bak_filename);
-        return;
+        goto cleanup;
     }
 
     strcpy(tmp_filename, save_filename);
@@ -675,9 +671,7 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
     {
         playdate->system->logToConsole(
             "Error: Can't open temp save file for writing: %s", tmp_filename);
-        free(tmp_filename);
-        free(bak_filename);
-        return;
+        goto cleanup;
     }
 
     if (sram_len > 0 && gb->gb_cart_ram != NULL)
@@ -703,9 +697,7 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
             "Error: Failed to stat temp save file %s. Aborting save.",
             tmp_filename);
         playdate->file->unlink(tmp_filename, false);
-        free(tmp_filename);
-        free(bak_filename);
-        return;
+        goto cleanup;
     }
 
     if (stat.size == 0)
@@ -714,9 +706,7 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
             "Error: Wrote 0-byte temp save file %s. Aborting and deleting.",
             tmp_filename);
         playdate->file->unlink(tmp_filename, false);
-        free(tmp_filename);
-        free(bak_filename);
-        return;
+        goto cleanup;
     }
 
     // Rename files: .sav -> .bak, then .tmp -> .sav
@@ -733,8 +723,11 @@ static void write_cart_ram_file(const char *save_filename, struct gb_s *gb)
         playdate->file->rename(bak_filename, save_filename);
     }
 
-    free(tmp_filename);
-    free(bak_filename);
+cleanup:
+    if (tmp_filename)
+        free(tmp_filename);
+    if (bak_filename)
+        free(bak_filename);
 }
 
 static void gb_save_to_disk_(struct gb_s *gb)
