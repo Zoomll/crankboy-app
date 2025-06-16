@@ -59,7 +59,7 @@ typedef int16_t s16;
 #endif
 
 #ifndef ENABLE_BGCACHE
-#define ENABLE_BGCACHE 1
+#define ENABLE_BGCACHE 0
 #endif
 
 #ifndef ENABLE_BGCACHE_DEFERRED
@@ -701,6 +701,15 @@ __section__(".text.pgb") static void __gb_update_selected_cart_bank_addr(
     }
 }
 
+// https://stackoverflow.com/a/2602885
+__core_section("short") u8 reverse_bits_u8(u8 b)
+{
+    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+    return b;
+}
+
 static uint8_t xram[0x100 - 0xA0];
 
 __section__(".rare.pgb") static void __gb_rare_write(struct gb_s *gb,
@@ -796,6 +805,8 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
 
     case 0x8:
     case 0x9:
+        if (addr < 0x1800 + VRAM_ADDR)
+            return reverse_bits_u8(gb->vram[addr - VRAM_ADDR]);
         return gb->vram[addr - VRAM_ADDR];
 
     case 0xA:
@@ -968,15 +979,6 @@ __core_section("bgdefer") void __gb_update_bgcache_tile_data_deferred(
 #define __gb_update_bgcache_tile_deferred __gb_update_bgcache_tile
 #define __gb_update_bgcache_tile_data_deferred __gb_update_bgcache_tile_data
 #endif
-
-// https://stackoverflow.com/a/2602885
-__core_section("bgcache") u8 reverse_bits_u8(u8 b)
-{
-    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-    return b;
-}
 
 // tile data was changed, so we need to redraw this tile where it appears in the
 // tilemap tmidx: index of tile in map to update. (0x400+ is the second map.)
@@ -1201,7 +1203,10 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
 #if ENABLE_BGCACHE
         __gb_write_vram(gb, addr, val);
 #else
-        gb->vram[addr - VRAM_ADDR] = val;
+        if (addr < 0x1800 + VRAM_ADDR)
+            gb->vram[addr - VRAM_ADDR] = reverse_bits_u8(val);
+        else
+            gb->vram[addr - VRAM_ADDR] = val;
 #endif
         return;
 
@@ -1801,10 +1806,6 @@ __core_section("draw") static u8 __gb_get_pixel(uint8_t *line, u8 x)
 // renders one scanline
 __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 {
-#if ENABLE_BGCACHE
-    int next_bgcache_line_stride = BGCACHE_STRIDE;
-#endif
-
     if (gb->direct.dynamic_rate_enabled)
     {
         if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
@@ -1816,9 +1817,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             }
             return;
         }
-
-        if (((gb->direct.interlace_mask >> ((gb->gb_reg.LY + 1) % 8)) & 1) == 0)
-            next_bgcache_line_stride *= 2;
     }
 
 #if ENABLE_BGCACHE && ENABLE_BGCACHE_DEFERRED
@@ -1859,6 +1857,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             // is this right? Works for link's awakening.
             wx = 0;
         }
+        if (wx >= LCD_WIDTH) wx = LCD_WIDTH;
     }
 
     // clear row
@@ -1909,80 +1908,56 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             out[0] = raw1;
             out[1] = raw2;
         }
-
-        __builtin_prefetch(
-            &bgcache[next_bgcache_line_stride / sizeof(uint32_t) + (bg_x / 16)],
-            1);
 #else
-        /* The displays (what the player sees) X coordinate, drawn right
-         * to left. */
-        uint8_t disp_x = LCD_WIDTH - 1;
-
-        /* The X coordinate to begin drawing the background at. */
-        uint8_t bg_x = disp_x + gb->gb_reg.SCX;
-
-        /* Get selected background map address for first tile
-         * corresponding to current line.
-         * 0x20 (32) is the width of a background tile, and the bit
-         * shift is to calculate the address. */
-        const uint16_t bg_map =
-            ((gb->gb_reg.LCDC & LCDC_BG_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1) +
-            (bg_y >> 3) * 0x20;
-
-        /* Get tile index for current background tile. */
-        uint8_t idx = gb->vram[bg_map + (bg_x >> 3)];
-        /* Y coordinate of tile pixel to draw. */
-        const uint8_t py = (bg_y & 0x07);
-        /* X coordinate of tile pixel to draw. */
-        uint8_t px = 7 - (bg_x & 0x07);
-
-        uint16_t tile;
-
-        /* Select addressing mode. */
-        if (gb->gb_reg.LCDC & LCDC_TILE_SELECT)
-            tile = VRAM_TILES_1 + idx * 0x10;
-        else
-            tile = VRAM_TILES_2 + ((idx + 0x80) % 0x100) * 0x10;
-
-        tile += 2 * py;
-
-        /* fetch first tile */
-        uint8_t t1 = gb->vram[tile] >> px;
-        uint8_t t2 = gb->vram[tile + 1] >> px;
-
-        for (; disp_x != 0xFF; disp_x--)
+        uint8_t bg_x = gb->gb_reg.SCX;
+        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
+        int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
+        int map2 = !!(gb->gb_reg.LCDC & LCDC_BG_MAP);
+        
+        uint8_t* vram = gb->vram;
+        
+        // tiles on this line
+        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32*(bg_y/8))];
+        
+        // points to line data for pixel offset
+        uint16_t* vram_tile_data = (void*)&vram[2*(bg_y % 8)];
+        
+        int subx = bg_x % 8;
+        
+        // prefetch each tile's data
+        for (int x = 0; x <= (wx+7)/8; ++x)
         {
-            if (px == 8)
-            {
-                /* fetch next tile */
-                px = 0;
-                bg_x = disp_x + gb->gb_reg.SCX;
-                idx = gb->vram[bg_map + (bg_x >> 3)];
-
-                if (gb->gb_reg.LCDC & LCDC_TILE_SELECT)
-                    tile = VRAM_TILES_1 + idx * 0x10;
-                else
-                    tile = VRAM_TILES_2 + ((idx + 0x80) % 0x100) * 0x10;
-
-                tile += 2 * py;
-                t1 = gb->vram[tile];
-                t2 = gb->vram[tile + 1];
-            }
-
-            /* copy background */
-            uint8_t c = (t1 & 0x1) | ((t2 & 0x1) << 1);
-            __gb_draw_pixel(pixels, disp_x,
-                            gb->display.bg_palette[c] /*| LCD_PALETTE_BG*/);
-
-            t1 >>= 1;
-            t2 >>= 1;
-            px++;
-            priority_bits <<= 1;
-            priority_bits |= (c == 0);
-            if (disp_x % 32 == 0)
-            {
-                line_priority[disp_x / 32] = priority_bits;
-            }
+            uint8_t tile = vram_line_tiles[(bg_x/8) % 32];
+            __builtin_prefetch(&vram_line_tiles[(tile < 0x80
+                    ? addr_mode_vram_tiledata_offset
+                    : 0) | (8*(unsigned)tile)], 0);
+        }
+        
+        uint8_t tile_hi = vram_line_tiles[(bg_x/8) % 32];
+        uint16_t vram_tile_data_hi = vram_tile_data[
+            (tile_hi < 0x80
+                ? addr_mode_vram_tiledata_offset
+                : 0) | (8*(unsigned)tile_hi)
+        ];
+        
+        for (int x = 0; x < (wx+7)/8; ++x)
+        {
+            uint8_t* out = pixels + (x%2) + (x/2)*4;
+            uint16_t vram_tile_data_lo = vram_tile_data_hi;
+            uint16_t tile_hi = vram_line_tiles[(bg_x/8 + x + 1) % 32];
+            vram_tile_data_hi = vram_tile_data[
+                (tile_hi < 0x80
+                    ? addr_mode_vram_tiledata_offset
+                    : 0) | (8*(unsigned)tile_hi)
+            ];
+            
+            uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
+            uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx|8);
+            raw1 |= (vram_tile_data_hi & 0x00FF) << (8 - subx);
+            raw2 |= ((vram_tile_data_hi & 0xFF00) >> subx) & 0xFF;
+            
+            out[0] = raw1;
+            out[2] = raw2;
         }
 #endif
     }
@@ -2002,8 +1977,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 
         uint8_t win_y = gb->display.window_clear;
 
-        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
-        int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
         uint32_t *win_cache_line =
             (uint32_t *)(gb->bgcache + (win_y * BGCACHE_STRIDE) +
                          addr_mode_2 * (BGCACHE_SIZE / 2) +
@@ -2039,88 +2012,77 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
             *dest_high_plane = (*dest_high_plane & ~bit_mask) |
                                (src_high_bit << dest_bit_in_chunk);
         }
+        
+        uint32_t *bgcache = (uint32_t *)(gb->bgcache + (bg_y * BGCACHE_STRIDE) +
+                                         addr_mode_2 * (BGCACHE_SIZE / 2) +
+                                         map2 * (BGCACHE_SIZE / 4));
+        uint32_t hi = bgcache[(bg_x / 16) % 0x10];
+        
+        // first part of window may be obscured
+        hi &= 0xFFFF0000 | (0x0000FFFF << obscure_x);
+        hi &= 0x0000FFFF | (0xFFFF0000 << obscure_x);
 
         gb->display.window_clear++;
 #else
-        /* Calculate Window Map Address. */
-        uint16_t win_line =
-            (gb->gb_reg.LCDC & LCDC_WINDOW_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1;
-        win_line += (gb->display.window_clear >> 3) * 0x20;
+    uint8_t bg_x =
+            256 - wx;  // CHECKME -- does window scroll? Should this be 0?
+    uint8_t bg_y = gb->gb_reg.LY - gb->display.WY;
+    int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
+    int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
+    int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
-        uint8_t disp_x = LCD_WIDTH - 1;
-        uint8_t win_x = disp_x - gb->gb_reg.WX + 7;
+    uint8_t* vram = gb->vram;
+    
+    // tiles on this line
+    uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32*(bg_y/8))];
+    
+    // points to line data for pixel offset
+    uint16_t* vram_tile_data = (void*)&vram[2*(bg_y % 8)];
+    
+    // prefetch each tile's data
+    for (int x = wx / 8; x <= LCD_WIDTH/8; ++x)
+    {
+        uint8_t tile = vram_line_tiles[(bg_x/8) % 32];
+        __builtin_prefetch(&vram_line_tiles[(tile < 0x80
+                ? addr_mode_vram_tiledata_offset
+                : 0) | (8*(unsigned)tile)], 0);
+    }
+    
+    uint8_t tile_hi = vram_line_tiles[(bg_x/8 + wx/8) % 32];
+    uint16_t vram_tile_data_hi = vram_tile_data[
+        (tile_hi < 0x80
+            ? addr_mode_vram_tiledata_offset
+            : 0) | (8*(unsigned)tile_hi)
+    ];
+    
+    int subx = bg_x % 8;
+    
+    // first part of window is obscured
+    vram_tile_data_hi &= (0xFFFF) << subx;
+    vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
 
-        // look up tile
-        uint8_t py = gb->display.window_clear & 0x07;
-        uint8_t px = 7 - (win_x & 0x07);
-        uint8_t idx = gb->vram[win_line + (win_x >> 3)];
-
-        uint16_t tile;
-
-        if (gb->gb_reg.LCDC & LCDC_TILE_SELECT)
-            tile = VRAM_TILES_1 + idx * 0x10;
-        else
-            tile = VRAM_TILES_2 + ((idx + 0x80) % 0x100) * 0x10;
-
-        tile += 2 * py;
-
-        // fetch first tile
-        uint8_t t1 = gb->vram[tile] >> px;
-        uint8_t t2 = gb->vram[tile + 1] >> px;
-
-        // loop & copy window
-        uint8_t end = (gb->gb_reg.WX < 7 ? 0 : gb->gb_reg.WX - 7) - 1;
-
-        for (; disp_x != end; disp_x--)
-        {
-            if (px == 8)
-            {
-                // fetch next tile
-                px = 0;
-                win_x = disp_x - gb->gb_reg.WX + 7;
-                idx = gb->vram[win_line + (win_x >> 3)];
-
-                if (gb->gb_reg.LCDC & LCDC_TILE_SELECT)
-                    tile = VRAM_TILES_1 + idx * 0x10;
-                else
-                    tile = VRAM_TILES_2 + ((idx + 0x80) % 0x100) * 0x10;
-
-                tile += 2 * py;
-                t1 = gb->vram[tile];
-                t2 = gb->vram[tile + 1];
-            }
-
-            // copy window
-            uint8_t c = (t1 & 0x1) | ((t2 & 0x1) << 1);
-            __gb_draw_pixel(pixels, disp_x,
-                            gb->display.bg_palette[c] /*| LCD_PALETTE_BG*/);
-
-            t1 >>= 1;
-            t2 >>= 1;
-            px++;
-
-            priority_bits <<= 1;
-            priority_bits |= (c == 0);
-            if (disp_x % 32 == 0)
-            {
-                line_priority[disp_x / 32] = priority_bits;
-            }
-        }
-
-        // FIXME -- why is this guard needed..?
-        if (disp_x / 32 < line_priority_len)
-        {
-            // priority where window begins is a bit tricky
-            priority_bits <<= (disp_x % 32);
-            line_priority[disp_x / 32] &= 0xFFFFFFFF << (disp_x % 32);
-            line_priority[disp_x / 32] |= priority_bits;
-        }
-
-        gb->display.window_clear++;  // advance window line
+    for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
+    {
+        uint8_t* out = pixels + (x%2) + (x/2)*4;
+        uint16_t vram_tile_data_lo = vram_tile_data_hi;
+        uint16_t tile_hi = vram_line_tiles[(bg_x/8 + x + 1) % 32];
+        vram_tile_data_hi = vram_tile_data[
+            (tile_hi < 0x80
+                ? addr_mode_vram_tiledata_offset
+                : 0) | (8*(unsigned)tile_hi)
+        ];
+        
+        uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
+        uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx|8);
+        raw1 |= (vram_tile_data_hi & 0x00FF) << (8 - subx);
+        raw2 |= ((vram_tile_data_hi & 0xFF00) >> subx) & 0xFF;
+        
+        out[0] |= raw1;
+        out[2] |= raw2;
+    }
 #endif
     }
 
-#if ENABLE_BGCACHE
     // remap background pixel by palette,
     // and set priority
     uint32_t pal = gb->gb_reg.BGP;
@@ -2137,7 +2099,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 
         ((uint16_t *)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
-#endif
 
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
@@ -2253,7 +2214,11 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 
             for (uint8_t disp_x = start; disp_x != end; disp_x += dir)
             {
+                #if ENABLE_BGCACHE
                 uint8_t c = ((t1 & 0x1) << 1) | ((t2 & 0x1) << 2);
+                #else
+                uint8_t c = ((t1 & 0x80) >> 6) | ((t2 & 0x80) >> 5);
+                #endif
                 // check transparency / sprite overlap / background overlap
                 if (c != 0)  // Sprite palette index 0 is transparent
                 {
@@ -2282,8 +2247,13 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
                     }
                 }
 
+                #if ENABLE_BGCACHE
                 t1 >>= 1;
                 t2 >>= 1;
+                #else
+                t1 <<= 1;
+                t2 <<= 1;
+                #endif
             }
         }
     }
