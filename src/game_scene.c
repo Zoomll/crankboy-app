@@ -198,8 +198,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     dtcm_deinit();
     dtcm_init();
-
-    itcm_core_init();
+    
+    DTCM_VERIFY();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
     static struct gb_s *gb = NULL;
@@ -214,8 +214,12 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     {
         gb = &gb_fallback;
     }
+    
+    DTCM_VERIFY();
+    
+    itcm_core_init();
     memset(gb, 0, sizeof(struct gb_s));
-    DTCM_VERIFY_DEBUG();
+    DTCM_VERIFY();
 
     if (PGB_App->soundSource == NULL)
     {
@@ -232,6 +236,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 
     PGB_GameSceneError romError;
     uint8_t *rom = read_rom_to_ram(rom_filename, &romError);
+    DTCM_VERIFY();
     if (rom)
     {
         playdate->system->logToConsole("Opened ROM.");
@@ -264,7 +269,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             //      |              |
             //      |              |
             // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING
-            // THIS LINE
+            // THIS LINE           |
             //      |              |
             gameScene->save_states_supported =
                 !gameScene->cartridge_has_battery;
@@ -360,6 +365,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             }
 
             playdate->system->logToConsole("Initializing audio...");
+            
+            DTCM_VERIFY();
 
             audio_init(&gb->audio);
             if (gameScene->audioEnabled)
