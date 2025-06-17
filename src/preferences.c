@@ -107,7 +107,7 @@ void preferences_read_from_disk(void)
             {
                 preferences_sample_rate = pref.data.intval;
             }
-            KEY("uncap_fs")
+            KEY("uncap_fps")
             {
                 preferences_uncap_fps = pref.data.intval;
             }
