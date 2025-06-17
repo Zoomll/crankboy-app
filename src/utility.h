@@ -128,7 +128,6 @@ static inline unsigned next_pow2(unsigned v)
 
 #define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ^_RESULT_TYPE_ _fn_ _ARGS_ _BODY_
 
-
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -136,5 +135,19 @@ static inline unsigned next_pow2(unsigned v)
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
+
+#define FLOAT_AS_UINT32(_f) \
+    (((union {             \
+         float f;          \
+         uint32_t u;       \
+     }){.f = (_f)})         \
+         .u)
+
+#define UINT32_AS_FLOAT(_u) \
+    (((union {             \
+         float f;          \
+         uint32_t u;       \
+     }){.u = (_u)})         \
+         .f)
 
 #endif /* utility_h */

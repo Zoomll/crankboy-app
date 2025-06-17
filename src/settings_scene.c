@@ -18,7 +18,7 @@
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
 
-static void PGB_SettingsScene_update(void *object, float dt);
+static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt);
 static void PGB_SettingsScene_free(void *object);
 static void PGB_SettingsScene_menu(void *object);
 static void PGB_SettingsScene_didSelectBack(void *userdata);
@@ -453,8 +453,9 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene *settingsScene)
     }
 }
 
-static void PGB_SettingsScene_update(void *object, float dt)
+static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
 {
+    float dt = UINT32_AS_FLOAT(u32enc_dt);
     static const uint8_t black_transparent_dither[16] = {
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};

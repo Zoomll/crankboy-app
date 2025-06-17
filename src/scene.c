@@ -34,7 +34,7 @@ PGB_Scene *PGB_Scene_new(void)
     return scene;
 }
 
-void PGB_Scene_update(void *object, float dt)
+void PGB_Scene_update(void *object, uint32_t u32enc_dt)
 {
 }
 

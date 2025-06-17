@@ -214,3 +214,22 @@ __section__(".rare") int write_json_to_disk(const char* path, json_value out)
     playdate->file->close(file);
     return 0;
 }
+
+__section__(".rare") json_value json_get_table_value(json_value j, const char* key)
+{
+    if (j.type != kJSONTable) goto ret_null;
+    JsonObject* obj = j.data.tableval;
+    if (!obj) goto ret_null;
+    
+    for (size_t i = 0; i < obj->n; ++i)
+    {
+        if (!strcmp(obj->data[i].key, key))
+        {
+            return obj->data[i].value;
+        }
+    }
+    
+ret_null:
+    j.type = kJSONNull;
+    return j;
+}

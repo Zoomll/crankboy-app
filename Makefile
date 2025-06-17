@@ -17,6 +17,7 @@ VPATH += peanut_gb
 VPATH += minigb_apu
 
 # List C source files here
+SRC += src/credits_scene.c
 SRC += src/modal.c
 SRC += src/userstack.c
 SRC += src/jparse.c

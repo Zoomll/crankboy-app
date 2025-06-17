@@ -42,7 +42,7 @@
 PGB_GameScene *audioGameScene = NULL;
 
 static void PGB_GameScene_selector_init(PGB_GameScene *gameScene);
-static void PGB_GameScene_update(void *object, float dt);
+static void PGB_GameScene_update(void *object, uint32_t u32enc_dt);
 static void PGB_GameScene_menu(void *object);
 static void PGB_GameScene_generateBitmask(void);
 static void PGB_GameScene_free(void *object);
@@ -926,8 +926,9 @@ __core_section("fb") void update_fb_dirty_lines(
 static void save_check(struct gb_s *gb);
 
 __section__(".text.tick") __space
-    static void PGB_GameScene_update(void *object, float dt)
+    static void PGB_GameScene_update(void *object, uint32_t u32enc_dt)
 {
+    float dt = UINT32_AS_FLOAT(u32enc_dt);
     PGB_GameScene *gameScene = object;
     PGB_GameSceneContext *context = gameScene->context;
 

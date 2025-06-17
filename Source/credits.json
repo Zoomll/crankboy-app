@@ -37,12 +37,15 @@
             "Gameboy Development Wiki",
             "Megan Sullivan",
             "Panic",
-            "Playdate Squad (community discord)"
+            "Playdate Squad (community discord)",
+            "FReDs72"
         ]
     }, {
         "section": "Testing",
         "contributors": [
-            "Ophelia Bee"
+            "Ophelia Bee",
+            "Exguardi",
+            "Boozook"
         ]
     }, {
         "section": "Using code from",
@@ -52,6 +55,13 @@
             "florin (StackOverflow)",
             "Sean Eron Anderson",
             "Deathwink"
+        ]
+    }, {
+        "section": "Fonts",
+        "contributors": [
+            "Roobert",
+            "Asheville Sans",
+            "Nontendo"
         ]
     }, {
         "info": [
@@ -68,5 +78,7 @@
             "",
             "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
         ]
+    }, {
+        "section": "Thanks for using CrankBoy!"
     }
 ]

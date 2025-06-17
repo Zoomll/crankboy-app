@@ -15,8 +15,9 @@
 #include "modal.h"
 #include "preferences.h"
 #include "settings_scene.h"
+#include "credits_scene.h"
 
-static void PGB_LibraryScene_update(void *object, float dt);
+static void PGB_LibraryScene_update(void *object, uint32_t u32enc_dt);
 static void PGB_LibraryScene_free(void *object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene);
 static void PGB_LibraryScene_menu(void *object);
@@ -132,9 +133,10 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene *libraryScene)
     PGB_ListView_reload(libraryScene->listView);
 }
 
-static void PGB_LibraryScene_update(void *object, float dt)
+static void PGB_LibraryScene_update(void *object, uint32_t u32enc_dt)
 {
     PGB_LibraryScene *libraryScene = object;
+    float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     PGB_Scene_update(libraryScene->scene, dt);
 
@@ -527,8 +529,17 @@ static void PGB_LibraryScene_showSettings(void *userdata)
     PGB_presentModal(settingsScene->scene);
 }
 
+static void PGB_LibraryScene_showCredits(void *userdata)
+{
+    PGB_CreditsScene *creditsScene = PGB_CreditsScene_new();
+    PGB_presentModal(creditsScene->scene);
+}
+
 static void PGB_LibraryScene_menu(void *object)
 {
+    playdate->system->addMenuItem("Credits", PGB_LibraryScene_showCredits,
+                                  object);
+                                  
     playdate->system->addMenuItem("Settings", PGB_LibraryScene_showSettings,
                                   object);
 }

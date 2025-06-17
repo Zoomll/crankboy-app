@@ -30,3 +30,5 @@ int parse_json(const char *file, json_value *out, FileOptions opts);
 
 // returns 0 on success
 int write_json_to_disk(const char* path, json_value out);
+
+json_value json_get_table_value(json_value table, const char* key);

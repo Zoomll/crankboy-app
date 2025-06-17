@@ -15,13 +15,6 @@
 #include "preferences.h"
 #include "userstack.h"
 
-#define FLOAT_AS_UINT32(f) \
-    (((union {             \
-         float f;          \
-         uint32_t u;       \
-     }){.f = (f)})         \
-         .u)
-
 PGB_Application *PGB_App;
 
 #if defined(TARGET_SIMULATOR)
@@ -99,8 +92,8 @@ __section__(".text.main") void PGB_update(float dt)
         DTCM_VERIFY_DEBUG();
         if (PGB_App->scene->use_user_stack)
         {
-            call_with_user_stack_2(PGB_App->scene->update, managedObject,
-                                   FLOAT_AS_UINT32(dt));
+            uint32_t udt = FLOAT_AS_UINT32(dt);
+            call_with_user_stack_2(PGB_App->scene->update, managedObject, udt);
         }
         else
         {

@@ -7,6 +7,7 @@
 //
 
 #include <stdio.h>
+#include <time.h>
 
 #include "./src/app.h"
 #include "app.h"
@@ -56,6 +57,8 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
+        
+        srand(time(NULL));
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
@@ -66,7 +69,7 @@ __section__(".text.main") DllExport
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
-
+        
         PGB_init();
 
         pd->system->setUpdateCallback(update, pd);

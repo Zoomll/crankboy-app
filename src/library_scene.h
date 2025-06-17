@@ -6,8 +6,7 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#ifndef library_scene_h
-#define library_scene_h
+#pragma once
 
 #include <stdio.h>
 
@@ -53,5 +52,3 @@ PGB_LibraryScene *PGB_LibraryScene_new(void);
 
 PGB_Game *PGB_Game_new(const char *filename);
 void PGB_Game_free(PGB_Game *game);
-
-#endif /* library_scene_h */
