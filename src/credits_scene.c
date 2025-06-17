@@ -25,11 +25,24 @@ static void shuffle_array(JsonArray* array)
     }
 }
 
+static void PGB_CreditsScene_didSelectBack(void *userdata)
+{
+    PGB_CreditsScene *creditsScene = userdata;
+    creditsScene->shouldDismiss = true;
+}
+
 static void PGB_CreditsScene_update(void *object, uint32_t u32enc_dt)
 {
-    playdate->graphics->clear(kColorWhite);
     PGB_CreditsScene *creditsScene = object;
     JsonArray* carray = creditsScene->jcred.data.arrayval; 
+    
+    if (creditsScene->shouldDismiss)
+    {
+        PGB_dismiss(creditsScene->scene);
+        return;
+    }
+    
+    playdate->graphics->clear(kColorWhite);
     
     int margin = 12;
     int width = LCD_COLUMNS - margin*2;
@@ -179,6 +192,20 @@ static void PGB_CreditsScene_update(void *object, uint32_t u32enc_dt)
     {
         creditsScene->scroll = credits_height - LCD_ROWS;
     }
+    
+    if (PGB_App->buttons_pressed & kButtonB)
+    {
+        creditsScene->shouldDismiss = true;
+    }
+}
+
+static void PGB_CreditsScene_menu(void *object)
+{
+    PGB_CreditsScene *creditsScene = object;
+    playdate->system->removeAllMenuItems();
+
+    playdate->system->addMenuItem("Library", PGB_CreditsScene_didSelectBack,
+                                    creditsScene);
 }
 
 static void PGB_CreditsScene_free(void *object)
@@ -207,6 +234,7 @@ PGB_CreditsScene *PGB_CreditsScene_new(void)
     scene->managedObject = creditsScene;
     scene->update = PGB_CreditsScene_update;
     scene->free = PGB_CreditsScene_free;
+    scene->menu = PGB_CreditsScene_menu;
     
     creditsScene->scene = scene;
     

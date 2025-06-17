@@ -21,6 +21,7 @@ typedef struct PGB_CreditsScene
     int* y_advance_by_item;
     float scroll;
     float time;
+    bool shouldDismiss;
 } PGB_CreditsScene;
 
 PGB_CreditsScene *PGB_CreditsScene_new(void);
