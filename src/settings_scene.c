@@ -39,6 +39,7 @@ typedef struct OptionsMenuEntry
     const char *description;
     int *pref_var;
     unsigned max_value;
+    bool locked;
     void (*on_press)(struct OptionsMenuEntry *,
                      PGB_SettingsScene *settingsScene);
     void *ud;
@@ -374,43 +375,52 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .on_press = NULL
     };
 
-    if (!gameScene)
-    {
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
-        // itcm accel
+    // itcm accel
 
-        static char *itcm_description = NULL;
-        if (itcm_description == NULL) playdate->system->formatString(
-                &itcm_description,
-            "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
-            "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
-            "\n(Your device: %s)",
-            pd_rev_description
-        );
-        entries[++i] = (OptionsMenuEntry){
-            .name = "ITCM acceleration",
-            .values = off_on_labels,
-            .description = itcm_description,
-            .pref_var = &preferences_itcm,
-            .max_value = 2,
-            .on_press = NULL
-        };
+    static char *itcm_description = NULL;
+    if (itcm_description == NULL) playdate->system->formatString(
+            &itcm_description,
+        "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
+        "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
+        "\n(Your device: %s)",
+        pd_rev_description
+    );
+    entries[++i] = (OptionsMenuEntry){
+        .name = "ITCM acceleration",
+        .values = off_on_labels,
+        .description = itcm_description,
+        .pref_var = &preferences_itcm,
+        .max_value = 2,
+        .on_press = NULL
+    };
+    
+    if (gameScene)
+    {
+        entries[i].locked = 1;
+        entries[i].description = "Cannot be modified\nmid-game.";
+    }
 #endif
 
 #ifndef NOLUA
-        // lua scripts
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Game scripts",
-            .values = off_on_labels,
-            .description =
-                "Enable or disable Lua\nscripting support.\n \nEnabling this "
-                "may impact\nperformance.",
-            .pref_var = &preferences_lua_support,
-            .max_value = 2,
-            .on_press = NULL,
-        };
-#endif
+    // lua scripts
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Game scripts",
+        .values = off_on_labels,
+        .description =
+            "Enable or disable Lua\nscripting support.\n \nEnabling this "
+            "may impact\nperformance.",
+        .pref_var = &preferences_lua_support,
+        .max_value = 2,
+        .on_press = NULL,
+    };
+    
+    if (gameScene)
+    {
+        entries[i].locked = 1;
+        entries[i].description = "Cannot be modified\nmid-game.";
     }
+#endif
     
     // show fps
     entries[++i] = (OptionsMenuEntry){
@@ -553,7 +563,7 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
     OptionsMenuEntry *cursor_entry =
         &settingsScene->entries[settingsScene->cursorIndex];
 
-    if (cursor_entry->pref_var && cursor_entry->max_value > 0)
+    if (cursor_entry->pref_var && cursor_entry->max_value > 0 && !cursor_entry->locked)
     {
         if (direction == 0)
             direction = a_pressed;
@@ -616,7 +626,8 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
         bool is_static_text = (current_entry->pref_var == NULL &&
                                current_entry->on_press == NULL);
         bool is_locked_option =
-            (current_entry->pref_var != NULL && current_entry->max_value == 0);
+            (current_entry->pref_var != NULL && current_entry->max_value == 0)
+            || current_entry->locked;
         bool is_disabled = is_static_text || is_locked_option;
 
         int y = initialY + i * rowHeight;
