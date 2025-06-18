@@ -450,6 +450,13 @@ struct gb_s
     uint16_t selected_rom_bank;
     /* WRAM and VRAM bank selection not available. */
     uint8_t cart_ram_bank;
+
+    /* Tracks if 0x00 was the last value written to 6000-7FFF */
+    uint8_t rtc_latch_s1;
+
+    /* Stores a copy of the RTC registers when latched */
+    uint8_t latched_rtc[5];
+
     union
     {
         struct
@@ -657,12 +664,7 @@ __section__(".text.pgb") static void __gb_update_tac(struct gb_s *gb)
 __section__(".text.pgb") static void __gb_update_selected_bank_addr(
     struct gb_s *gb)
 {
-    int32_t offset;
-    if (gb->mbc == 1 && gb->cart_mode_select)
-        offset = (gb->selected_rom_bank & 0x1F) - 1;
-    else
-        offset = gb->selected_rom_bank - 1;
-    offset *= ROM_BANK_SIZE;
+    int32_t offset = (gb->selected_rom_bank - 1) * ROM_BANK_SIZE;
 
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
@@ -791,7 +793,25 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
     case 0x1:
     case 0x2:
     case 0x3:
-        return gb->gb_rom[addr];
+        // Check for MBC1 in Mode 1
+        if (gb->mbc == 1 && gb->cart_mode_select)
+        {
+            // In this mode, the 0000-3FFF area is banked using the upper
+            // two bits from the 4000-5FFF register.
+            // The lower 5 bits of the bank number are treated as 0.
+            uint32_t bank_number = (gb->selected_rom_bank & 0x60);
+            uint32_t bank_offset = bank_number * ROM_BANK_SIZE;
+            uint32_t rom_addr = bank_offset + addr;
+
+            return gb
+                ->gb_rom[rom_addr &
+                         (gb->num_rom_banks_mask * ROM_BANK_SIZE + 0x3FFF)];
+        }
+        else
+        {
+            // Default behavior (Mode 0 or not MBC1)
+            return gb->gb_rom[addr];
+        }
 
     case 0x4:
     case 0x5:
@@ -809,8 +829,21 @@ __shell uint8_t __gb_read_full(struct gb_s *gb, const uint_fast16_t addr)
     case 0xB:
         if (gb->enable_cart_ram)
         {
+            if (gb->mbc == 2)
+            {
+                // Mask address to 9 bits (0x1FF) to handle the 512-byte RAM and
+                // its mirroring.
+                uint16_t ram_addr = (addr - CART_RAM_ADDR) & 0x1FF;
+
+                // Read the stored 4-bit value and OR with 0xF0 because the
+                // upper 4 bits are undefined and read as 1s.
+                return (gb->gb_cart_ram[ram_addr] & 0x0F) | 0xF0;
+            }
+
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
-                return gb->cart_rtc[gb->cart_ram_bank - 0x08];
+            {
+                return gb->latched_rtc[gb->cart_ram_bank - 0x08];
+            }
             else if ((gb->cart_mode_select || gb->mbc != 1) &&
                      gb->cart_ram_bank < gb->num_ram_banks)
             {
@@ -1117,59 +1150,66 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
     {
     case 0x0:
     case 0x1:
-        if (gb->mbc == 2 && (addr & 0x100))
-            return;
-        else if (gb->mbc > 0 && gb->cart_ram)
+    case 0x2:
+    case 0x3:
+        if (gb->mbc == 2)
         {
-            gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
+            if (addr &
+                0x0100)  // Bit 8 of address is set: This controls ROM Bank.
+            {
+                gb->selected_rom_bank = val & 0x0F;
+                if (gb->selected_rom_bank == 0)
+                    gb->selected_rom_bank = 1;
+            }
+            else  // Bit 8 of address is clear: This controls RAM Enable.
+            {
+                if (gb->cart_ram)
+                    gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
+            }
+        }
+        // Handle other MBCs (MBC1, 3, 5) which have distinct register ranges.
+        else if (addr < 0x2000)  // Address is 0000-1FFF (RAM Enable)
+        {
+            if (gb->mbc > 0 && gb->cart_ram)
+                gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
+        }
+        else if (addr < 0x4000)  // Address is 2000-3FFF (ROM Bank Lower Bits)
+        {
+            if (gb->mbc == 1)
+            {
+                gb->selected_rom_bank =
+                    (val & 0x1F) | (gb->selected_rom_bank & 0x60);
+                if ((gb->selected_rom_bank & 0x1F) == 0x00)
+                    gb->selected_rom_bank++;
+            }
+            else if (gb->mbc == 3)
+            {
+                gb->selected_rom_bank = val & 0x7F;
+                if (!gb->selected_rom_bank)
+                    gb->selected_rom_bank++;
+            }
+            else if (gb->mbc == 5)
+            {
+                if (addr < 0x3000)
+                {
+                    gb->selected_rom_bank =
+                        (gb->selected_rom_bank & 0x100) | val;
+                }
+                else
+                {
+                    gb->selected_rom_bank =
+                        ((val & 0x01) << 8) | (gb->selected_rom_bank & 0xFF);
+                }
+            }
+        }
+
+        if (gb->mbc > 0)
+        {
+            gb->selected_rom_bank &= gb->num_rom_banks_mask;
+            __gb_update_selected_bank_addr(gb);
             __gb_update_selected_cart_bank_addr(gb);
         }
-
         return;
-
-    case 0x2:
-        if (gb->mbc == 5)
-        {
-            gb->selected_rom_bank = (gb->selected_rom_bank & 0x100) | val;
-            gb->selected_rom_bank =
-                gb->selected_rom_bank & gb->num_rom_banks_mask;
-            __gb_update_selected_bank_addr(gb);
-            return;
-        }
-
-        /* Intentional fall through. */
-
-    case 0x3:
-        if (gb->mbc == 1)
-        {
-            // selected_rom_bank = val & 0x7;
-            gb->selected_rom_bank =
-                (val & 0x1F) | (gb->selected_rom_bank & 0x60);
-
-            if ((gb->selected_rom_bank & 0x1F) == 0x00)
-                gb->selected_rom_bank++;
-        }
-        else if (gb->mbc == 2 && (addr & 0x100))
-        {
-            gb->selected_rom_bank = val & 0x0F;
-
-            if (!gb->selected_rom_bank)
-                gb->selected_rom_bank++;
-        }
-        else if (gb->mbc == 3)
-        {
-            gb->selected_rom_bank = val & 0x7F;
-
-            if (!gb->selected_rom_bank)
-                gb->selected_rom_bank++;
-        }
-        else if (gb->mbc == 5)
-            gb->selected_rom_bank =
-                (val & 0x01) << 8 | (gb->selected_rom_bank & 0xFF);
-        gb->selected_rom_bank = gb->selected_rom_bank & gb->num_rom_banks_mask;
-        __gb_update_selected_bank_addr(gb);
-        return;
-
     case 0x4:
     case 0x5:
         if (gb->mbc == 1)
@@ -1190,8 +1230,20 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
 
     case 0x6:
     case 0x7:
-        gb->cart_mode_select = (val & 1);
-        __gb_update_selected_cart_bank_addr(gb);
+        if (gb->mbc == 3)
+        {
+            if (gb->rtc_latch_s1 && val == 0x01)
+            {
+                memcpy(gb->latched_rtc, gb->cart_rtc, sizeof(gb->latched_rtc));
+            }
+
+            gb->rtc_latch_s1 = (val == 0x00);
+        }
+        else if (gb->mbc == 1)
+        {
+            gb->cart_mode_select = (val & 1);
+            __gb_update_selected_cart_bank_addr(gb);
+        }
         return;
 
     case 0x8:
@@ -2206,7 +2258,8 @@ __core_section("draw") void __gb_draw_line(struct gb_s *restrict gb)
 
             for (int disp_x = start; disp_x != end; disp_x += dir)
             {
-                if unlikely(disp_x < 0 || disp_x >= LCD_WIDTH) goto next_loop;
+                if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
+                    goto next_loop;
 #if ENABLE_BGCACHE
                 uint8_t c = ((t1 & 0x1) << 1) | ((t2 & 0x1) << 2);
 #else
@@ -5730,6 +5783,11 @@ __section__(".rare") void gb_reset(struct gb_s *gb)
     gb->cart_ram_bank = 0;
     gb->enable_cart_ram = 0;
     gb->cart_mode_select = 0;
+
+    /* Initialize RTC latching values */
+    gb->rtc_latch_s1 = 0;
+    memset(gb->latched_rtc, 0, sizeof(gb->latched_rtc));
+
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
 
@@ -5796,8 +5854,8 @@ __section__(".rare") enum gb_init_error_e
     const uint16_t ram_size_location = 0x0149;
     /**
      * Table for cartridge type (MBC). -1 if invalid.
-     * TODO: MMM01 is untested.
-     * TODO: MBC6 is untested.
+     * TODO: MMM01 is unsupported.
+     * TODO: MBC6 is unsupported.
      * TODO: MBC7 is unsupported.
      * TODO: POCKET CAMERA is unsupported.
      * TODO: BANDAI TAMA5 is unsupported.
