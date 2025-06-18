@@ -27,13 +27,10 @@
 #include "game_scene.h"
 // clang-format on
 
-// If frame time exceeds the target by this much, activate interlacing.
-// (Triggers at ~57 FPS / 5% from target)
-#define INTERLACE_THRESHOLD_S 0.0008f
-
-// The target frame time in seconds, matching the original Game Boy's refresh
-// rate.
-#define TARGET_FRAME_TIME_S (1.0f / (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES))
+// If the number of updated Playdate lines exceeds this,
+// activate interlace for the next frame.
+// The maximum lines that can be updated is 208.
+#define INTERLACE_LINE_COUNT_THRESHOLD 104
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -202,8 +199,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
-    gameScene->interlace_missed_frame_count = 0;
-    gameScene->interlace_frames_remaining = 0;
+    gameScene->next_frame_should_interlace = false;
 
     gameScene->isCurrentlySaving = false;
 
@@ -993,43 +989,19 @@ __section__(".text.tick") __space
 
     if (!preferences_frame_skip)
     {
-        if (preferences_dynamic_rate == 0)  // "Off"
-        {
-            gameScene->interlace_missed_frame_count = 0;
-            gameScene->interlace_frames_remaining = 0;
-        }
-        else if (preferences_dynamic_rate == 1)  // "On"
+        if (preferences_dynamic_rate == 1)  // "On"
         {
             activate_dynamic_rate = true;
-            gameScene->interlace_missed_frame_count = 0;
-            gameScene->interlace_frames_remaining = 0;
         }
         else if (preferences_dynamic_rate == 2)  // "Auto"
         {
-            if (gameScene->interlace_frames_remaining > 0)
-            {
-                activate_dynamic_rate = true;
-                gameScene->interlace_frames_remaining--;
-            }
-            else
-            {
-                if (dt > TARGET_FRAME_TIME_S + INTERLACE_THRESHOLD_S)
-                {
-                    gameScene->interlace_missed_frame_count++;
-                }
-                else
-                {
-                    gameScene->interlace_missed_frame_count = 0;
-                }
-
-                if (gameScene->interlace_missed_frame_count >= 3)
-                {
-                    activate_dynamic_rate = true;
-                    gameScene->interlace_frames_remaining = 60;
-                    gameScene->interlace_missed_frame_count = 0;
-                }
-            }
+            activate_dynamic_rate = gameScene->next_frame_should_interlace;
         }
+    }
+
+    if (preferences_dynamic_rate != 2 || preferences_frame_skip)
+    {
+        gameScene->next_frame_should_interlace = false;
     }
 
     context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
@@ -1339,6 +1311,35 @@ __section__(".text.tick") __space
             {
                 line_has_changed[y / 16] |= (1 << (y % 16));
             }
+        }
+
+        // --- Decide if the *next* frame needs interlacing ---
+        if (!preferences_frame_skip && preferences_dynamic_rate == 2)
+        {
+            int updated_playdate_lines = 0;
+            int scale_index = 0;
+
+            for (int y_gb = 0; y_gb < LCD_HEIGHT; y_gb++)
+            {
+                if ((line_has_changed[y_gb / 16] >> (y_gb % 16)) & 1)
+                {
+                    int row_height_on_playdate = 2;
+                    if (scale_index == 2)
+                    {
+                        row_height_on_playdate = 1;
+                    }
+                    updated_playdate_lines += row_height_on_playdate;
+                }
+
+                scale_index++;
+                if (scale_index == 3)
+                {
+                    scale_index = 0;
+                }
+            }
+
+            gameScene->next_frame_should_interlace =
+                (updated_playdate_lines > INTERLACE_LINE_COUNT_THRESHOLD);
         }
 
 #if LOG_DIRTY_LINES

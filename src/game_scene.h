@@ -139,12 +139,8 @@ typedef struct PGB_GameScene
     // time since started or last save/load state
     unsigned playtime;
 
-    // Counts consecutive frames that missed the performance target.
-    int interlace_missed_frame_count;
-    // Frames remaining for forced interlacing.
-    int interlace_frames_remaining;
-
     bool isCurrentlySaving;
+    bool next_frame_should_interlace;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
