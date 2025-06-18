@@ -22,6 +22,7 @@ extern int preferences_crank_mode;
 extern int preferences_dynamic_rate;
 extern int preferences_sample_rate;
 extern int preferences_uncap_fps;
+extern int preferences_dither_pattern;
 
 void preferences_init(void);
 

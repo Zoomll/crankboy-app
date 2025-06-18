@@ -175,6 +175,7 @@ static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                           "Turbo B/A"};
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
+static const char *dither_pattern_labels[] = {"Staggered", "Grid", "Staggered (L)", "Grid (L)", "Staggered (D)", "Grid (D)"};
 
 static void settings_action_save_state(OptionsMenuEntry *e,
                                        PGB_SettingsScene *settingsScene)
@@ -433,6 +434,20 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL
     };
+    
+    // dither
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Dither",
+        .values = dither_pattern_labels,
+        .description =
+            "How to represent\n4-color graphics\non a 1-bit display.\n \nL: bias toward light\n \nD: bias toward dark"
+        ,
+        .pref_var = &preferences_dither_pattern,
+        .max_value = 6,
+        .on_press = NULL
+    };
+    
+    PGB_ASSERT(i < max_entries);
 
     /* clang-format on */
 

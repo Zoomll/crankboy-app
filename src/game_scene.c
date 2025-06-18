@@ -67,11 +67,34 @@ static void gb_save_to_disk(struct gb_s *gb);
 static const char *startButtonText = "start";
 static const char *selectButtonText = "select";
 
-static const uint16_t PGB_dither_lut_c0 =
-    0 | (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12);
+static const uint16_t PGB_dither_lut_c0[] = {
+    (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
+    
+    // L
+    (0b1111 << 0) | (0b0111 << 4) | (0b0101 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
+    
+    // D
+    (0b1111 << 0) | (0b0101 << 4) | (0b0001 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
+};
 
-static const uint16_t PGB_dither_lut_c1 =
-    0 | (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12);
+// defined here for minor cache coherence benefit
+int preferences_dither_pattern = 0;
+
+static const uint16_t PGB_dither_lut_c1[] = {
+    (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b1111 << 4) | (0b0101 << 8) | (0b0000 << 12),
+    
+    // L
+    (0b1111 << 0) | (0b1101 << 4) | (0b1010 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b1111 << 4) | (0b1010 << 8) | (0b0000 << 12),
+    
+    // D
+    (0b1111 << 0) | (0b1010 << 4) | (0b0100 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b1010 << 4) | (0b0101 << 8) | (0b0000 << 12),
+};
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
@@ -850,13 +873,13 @@ __core_section("fb") void update_fb_dirty_lines(
     markUpdateRows_t markUpdateRows)
 {
     framebuffer += (PGB_LCD_X / 8);
-    // const u32 dither = 0b00011111 | (0b00001011 << 8);
     int scale_index = 0;
     unsigned fb_y_playdate_current_bottom =
         PGB_LCD_Y + PGB_LCD_HEIGHT;  // Bottom of drawable area on Playdate
 
     uint32_t dither_lut =
-        PGB_dither_lut_c0 | ((uint32_t)PGB_dither_lut_c1 << 16);
+        PGB_dither_lut_c0[preferences_dither_pattern]
+        | ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
 
     for (int y_gb = LCD_HEIGHT;
          y_gb-- > 0;)  // y_gb is Game Boy line index from top, 143 down to 0

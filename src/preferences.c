@@ -111,6 +111,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_uncap_fps = pref.data.intval;
             }
+            KEY("dither")
+            {
+                preferences_dither_pattern = pref.data.intval;
+            }
         }
     }
 
@@ -124,7 +128,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 9
+#define NUM_PREFS 10
 
     union
     {
@@ -171,6 +175,10 @@ int preferences_save_to_disk(void)
     data.obj.data[8].key = "uncap_fps";
     data.obj.data[8].value.type = kJSONInteger;
     data.obj.data[8].value.data.intval = preferences_uncap_fps;
+    
+    data.obj.data[9].key = "dither";
+    data.obj.data[9].value.type = kJSONInteger;
+    data.obj.data[9].value.data.intval = preferences_dither_pattern;
 
     int error = write_json_to_disk(pref_filename, j);
 
