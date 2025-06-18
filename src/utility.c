@@ -71,6 +71,106 @@ int pgb_strcmp(const char *s1, const char *s2)
     return strcmp(s1, s2);
 }
 
+static const char* en_plural(int n)
+{
+    return (n == 1 || n == -1)
+        ? ""
+        : "s";
+}
+
+static const char* en_pluraly(int n)
+{
+    return (n == 1 || n == -1)
+        ? "y"
+        : "ies";
+}
+
+char* en_human_time(unsigned secondsAgo)
+{
+    char* tr;
+    if (secondsAgo < 60)
+    {
+        playdate->system->formatString(
+            &tr, "%d second%s",
+            secondsAgo, en_plural(secondsAgo)
+        );
+        return tr;
+    }
+    int minutesAgo = (secondsAgo / 60);
+    if (minutesAgo < 60)
+    {
+        playdate->system->formatString(
+            &tr, "%d minute%s",
+            minutesAgo, en_plural(minutesAgo)
+        );
+        return tr;
+    }
+    int hoursAgo = (minutesAgo / 60);
+    if (hoursAgo < 24)
+    {
+        playdate->system->formatString(
+            &tr, "%d hour%s",
+            hoursAgo, en_plural(hoursAgo)
+        );
+        return tr;
+    }
+    int daysAgo = (hoursAgo / 24);
+    int weeksAgo = (daysAgo / 7);
+    
+    // approximate, but good enough
+    int monthsAgo = (daysAgo / 30);
+    int yearsAgo = (daysAgo / 365);
+    int decadesAgo = (yearsAgo / 10);
+    int centuriesAgo = (yearsAgo / 100);
+    if (centuriesAgo)
+    {
+        // sure
+        playdate->system->formatString(
+            &tr, "%d centur%s",
+            centuriesAgo, en_pluraly(centuriesAgo)
+        );
+        return tr;
+    }
+    if (decadesAgo)
+    {
+        playdate->system->formatString(
+            &tr, "%d decade%s",
+            decadesAgo, en_plural(decadesAgo)
+        );
+        return tr;
+    }
+    if (yearsAgo)
+    {
+        playdate->system->formatString(
+            &tr, "%d year%s",
+            yearsAgo, en_plural(yearsAgo)
+        );
+        return tr;
+    }
+    if (monthsAgo)
+    {
+        playdate->system->formatString(
+            &tr, "%d month%s",
+            monthsAgo, en_plural(monthsAgo)
+        );
+        return tr;
+    }
+    if (weeksAgo)
+    {
+        playdate->system->formatString(
+            &tr, "%d week%s",
+            weeksAgo, en_plural(weeksAgo)
+        );
+        return tr;
+    }
+    
+    playdate->system->formatString(
+        &tr, "%d day%s",
+        daysAgo, en_plural(daysAgo)
+    );
+    return tr;
+}
+
 char *pgb_basename(const char *filename, bool stripExtension) {
     if (filename == NULL) {
         return NULL;

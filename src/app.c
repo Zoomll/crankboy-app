@@ -70,8 +70,6 @@ __section__(".rare") static void switchToPendingScene(void)
 
     PGB_App->scene = PGB_App->pendingScene;
     PGB_App->pendingScene = NULL;
-
-    PGB_Scene_refreshMenu(PGB_App->scene);
 }
 
 __section__(".text.main") void PGB_update(float dt)
@@ -183,6 +181,12 @@ __section__(".rare") void PGB_event(PDSystemEvent event, uint32_t arg)
     {
         PGB_ASSERT(PGB_App->scene->event != NULL);
         PGB_App->scene->event(PGB_App->scene->managedObject, event, arg);
+        
+        if (event == kEventPause)
+        {
+            // This probably supercedes any need to call PGB_Scene_refreshMenu anywhere else
+            PGB_Scene_refreshMenu(PGB_App->scene);
+        }
     }
 }
 

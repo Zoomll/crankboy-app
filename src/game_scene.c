@@ -1870,15 +1870,6 @@ static void PGB_GameScene_menu(void *object)
             SDFile *file = playdate->file->open(state_filename, kFileReadData);
             if (file)
             {
-                struct StateHeader
-                {
-                    char magic[8];
-                    uint32_t version;
-                    uint8_t big_endian : 1;
-                    uint8_t bits : 4;
-                    uint32_t timestamp;
-                    char reserved[20];
-                };
                 struct StateHeader header;
 
                 if (playdate->file->read(file, &header, sizeof(header)) ==
@@ -1905,7 +1896,7 @@ static void PGB_GameScene_menu(void *object)
         {
             show_time_info = true;
             final_timestamp = last_cartridge_save_time;
-            line1_text = "Cartridge data saved:";
+            line1_text = "Cartridge data stored:";
         }
 
         // --- Drawing Logic ---
@@ -1974,41 +1965,54 @@ static void PGB_GameScene_menu(void *object)
                 {
                     playdate->graphics->setFont(PGB_App->labelFont);
                     const char *line1 = line1_text;
-
-                    unsigned int utc_epoch = final_timestamp;
-                    int32_t offset = playdate->system->getTimezoneOffset();
-                    unsigned int local_epoch = utc_epoch + offset;
-
-                    struct PDDateTime time_info;
-                    playdate->system->convertEpochToDateTime(local_epoch,
-                                                             &time_info);
-
+                    
+                    unsigned current_time = playdate->system->getSecondsSinceEpoch(NULL);
+                    
+                    const int max_human_time = 60*60*24*10;
+                    
+                    unsigned use_absolute_time = (current_time < final_timestamp) || (final_timestamp + max_human_time < current_time);
+                    
                     char line2[40];
-                    if (playdate->system->shouldDisplay24HourTime())
+                    if (use_absolute_time)
                     {
-                        snprintf(line2, sizeof(line2),
-                                 "%02d.%02d.%d - %02d:%02d:%02d", time_info.day,
-                                 time_info.month, time_info.year,
-                                 time_info.hour, time_info.minute,
-                                 time_info.second);
-                    }
-                    else
-                    {
-                        const char *suffix =
-                            (time_info.hour < 12) ? " am" : " pm";
-                        int display_hour = time_info.hour;
-                        if (display_hour == 0)
+                        unsigned int utc_epoch = final_timestamp;
+                        int32_t offset = playdate->system->getTimezoneOffset();
+                        unsigned int local_epoch = utc_epoch + offset;
+
+                        struct PDDateTime time_info;
+                        playdate->system->convertEpochToDateTime(local_epoch,
+                                                                &time_info);
+
+                        if (playdate->system->shouldDisplay24HourTime())
                         {
-                            display_hour = 12;
+                            snprintf(line2, sizeof(line2),
+                                    "%02d.%02d.%d - %02d:%02d:%02d", time_info.day,
+                                    time_info.month, time_info.year,
+                                    time_info.hour, time_info.minute,
+                                    time_info.second);
                         }
-                        else if (display_hour > 12)
+                        else
                         {
-                            display_hour -= 12;
+                            const char *suffix =
+                                (time_info.hour < 12) ? " am" : " pm";
+                            int display_hour = time_info.hour;
+                            if (display_hour == 0)
+                            {
+                                display_hour = 12;
+                            }
+                            else if (display_hour > 12)
+                            {
+                                display_hour -= 12;
+                            }
+                            snprintf(line2, sizeof(line2),
+                                    "%02d.%02d.%d - %d:%02d:%02d%s", time_info.day,
+                                    time_info.month, time_info.year, display_hour,
+                                    time_info.minute, time_info.second, suffix);
                         }
-                        snprintf(line2, sizeof(line2),
-                                 "%02d.%02d.%d - %d:%02d:%02d%s", time_info.day,
-                                 time_info.month, time_info.year, display_hour,
-                                 time_info.minute, time_info.second, suffix);
+                    } else {
+                        char* human_time = en_human_time(current_time - final_timestamp);
+                        snprintf(line2, sizeof(line2), "%s ago", human_time);
+                        free(human_time);
                     }
 
                     int font_height =
@@ -2197,16 +2201,6 @@ __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
     }
 
     gb_state_save(context->gb, buff);
-
-    struct StateHeader
-    {
-        char magic[8];
-        uint32_t version;
-        uint8_t big_endian : 1;
-        uint8_t bits : 4;
-        uint32_t timestamp;
-        char reserved[20];
-    };
 
     struct StateHeader *header = (struct StateHeader *)buff;
     header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);

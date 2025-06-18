@@ -83,6 +83,9 @@ int pgb_strcmp(const char *s1, const char *s2);
 char *pgb_find_cover_art_path(const char *rom_basename_no_ext,
                               const char *rom_clean_basename_no_ext);
 
+// caller-freed
+char* en_human_time(unsigned seconds);
+
 PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
     const char *cover_path, int max_target_width, int max_target_height);
 
