@@ -70,11 +70,11 @@ static const char *selectButtonText = "select";
 static const uint16_t PGB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
-    
+
     // L
     (0b1111 << 0) | (0b0111 << 4) | (0b0101 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
-    
+
     // D
     (0b1111 << 0) | (0b0101 << 4) | (0b0001 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
@@ -86,11 +86,11 @@ int preferences_dither_pattern = 0;
 static const uint16_t PGB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1111 << 4) | (0b0101 << 8) | (0b0000 << 12),
-    
+
     // L
     (0b1111 << 0) | (0b1101 << 4) | (0b1010 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1111 << 4) | (0b1010 << 8) | (0b0000 << 12),
-    
+
     // D
     (0b1111 << 0) | (0b1010 << 4) | (0b0100 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1010 << 4) | (0b0101 << 8) | (0b0000 << 12),
@@ -229,27 +229,26 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
 #endif
     dtcm_deinit();
     dtcm_init();
-    
+
     DTCM_VERIFY();
 
     PGB_GameSceneContext *context = pgb_malloc(sizeof(PGB_GameSceneContext));
-    static struct gb_s *gb = NULL;
+    struct gb_s *gb;
     static struct gb_s
         gb_fallback;  // use this gb struct if dtcm alloc not available
     if (dtcm_enabled())
     {
-        if (gb == NULL || gb == &gb_fallback)
-            gb = dtcm_alloc(sizeof(struct gb_s));
+        gb = dtcm_alloc(sizeof(struct gb_s));
     }
     else
     {
         gb = &gb_fallback;
     }
-    
+
     DTCM_VERIFY();
-    
+
     itcm_core_init();
-    
+
     memset(gb, 0, sizeof(struct gb_s));
     DTCM_VERIFY();
 
@@ -397,7 +396,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
             }
 
             playdate->system->logToConsole("Initializing audio...");
-            
+
             DTCM_VERIFY();
 
             audio_init(&gb->audio);
@@ -878,8 +877,8 @@ __core_section("fb") void update_fb_dirty_lines(
         PGB_LCD_Y + PGB_LCD_HEIGHT;  // Bottom of drawable area on Playdate
 
     uint32_t dither_lut =
-        PGB_dither_lut_c0[preferences_dither_pattern]
-        | ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
+        PGB_dither_lut_c0[preferences_dither_pattern] |
+        ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
 
     for (int y_gb = LCD_HEIGHT;
          y_gb-- > 0;)  // y_gb is Game Boy line index from top, 143 down to 0
@@ -2519,6 +2518,8 @@ static void PGB_GameScene_free(void *object)
 
     pgb_free(context);
     pgb_free(gameScene);
+
+    dtcm_deinit();
     DTCM_VERIFY();
 }
 
