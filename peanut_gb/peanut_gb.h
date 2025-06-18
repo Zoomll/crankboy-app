@@ -1283,7 +1283,7 @@ __shell void __gb_write_full(struct gb_s *gb, const uint_fast16_t addr,
                 PGB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
                 gb->cart_rtc[idx] = val;
             }
-            else if (gb->cart_mode_select &&
+            else if ((gb->cart_mode_select || gb->mbc != 1) &&
                      gb->cart_ram_bank < gb->num_ram_banks)
             {
                 size_t idx =
