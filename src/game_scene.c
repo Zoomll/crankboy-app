@@ -196,6 +196,9 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
                    playdate->display->getHeight());
 #endif
 
+#if ITCM_CORE
+    core_itcm_reloc = NULL;
+#endif
     dtcm_deinit();
     dtcm_init();
     
