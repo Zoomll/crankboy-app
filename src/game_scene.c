@@ -120,7 +120,9 @@ __section__(".rare") void itcm_core_init()
     // make region to copy instructions to; ensure it has same cache alignment
     core_itcm_reloc =
         dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_start);
+    DTCM_VERIFY();
     memcpy(core_itcm_reloc, __itcm_start, itcm_core_size);
+    DTCM_VERIFY();
     playdate->system->logToConsole("itcm start: %x, end %x: run_frame: %x",
                                    &__itcm_start, &__itcm_end, &gb_run_frame);
     playdate->system->logToConsole("core is 0x%X bytes, relocated at 0x%X",
