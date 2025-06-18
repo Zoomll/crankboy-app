@@ -114,9 +114,12 @@ __section__(".rare") void itcm_core_init()
     if (core_itcm_reloc != NULL)
         return;
 
+    // paranoia
+    int MARGIN = 4;
+
     // make region to copy instructions to; ensure it has same cache alignment
     core_itcm_reloc =
-        dtcm_alloc_aligned(itcm_core_size, (uintptr_t)&__itcm_start);
+        dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_start);
     memcpy(core_itcm_reloc, __itcm_start, itcm_core_size);
     playdate->system->logToConsole("itcm start: %x, end %x: run_frame: %x",
                                    &__itcm_start, &__itcm_end, &gb_run_frame);
@@ -221,6 +224,7 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     DTCM_VERIFY();
     
     itcm_core_init();
+    
     memset(gb, 0, sizeof(struct gb_s));
     DTCM_VERIFY();
 
