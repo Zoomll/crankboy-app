@@ -175,7 +175,9 @@ static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                           "Turbo B/A"};
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
-static const char *dither_pattern_labels[] = {"Staggered", "Grid", "Staggered (L)", "Grid (L)", "Staggered (D)", "Grid (D)"};
+static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
+                                              "Staggered (L)", "Grid (L)",
+                                              "Staggered (D)", "Grid (D)"};
 
 static void settings_action_save_state(OptionsMenuEntry *e,
                                        PGB_SettingsScene *settingsScene)
@@ -351,6 +353,18 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         };
     }
 
+    // dither
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Dither",
+        .values = dither_pattern_labels,
+        .description =
+            "How to represent\n4-color graphics\non a 1-bit display.\n \nL: bias toward light\n \nD: bias toward dark"
+        ,
+        .pref_var = &preferences_dither_pattern,
+        .max_value = 6,
+        .on_press = NULL
+    };
+
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Show FPS",
@@ -395,7 +409,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL
     };
-    
+
     if (gameScene)
     {
         entries[i].locked = 1;
@@ -415,14 +429,14 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL,
     };
-    
+
     if (gameScene)
     {
         entries[i].locked = 1;
         entries[i].description = "Cannot be modified\nmid-game.";
     }
 #endif
-    
+
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Uncapped FPS",
@@ -434,19 +448,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL
     };
-    
-    // dither
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Dither",
-        .values = dither_pattern_labels,
-        .description =
-            "How to represent\n4-color graphics\non a 1-bit display.\n \nL: bias toward light\n \nD: bias toward dark"
-        ,
-        .pref_var = &preferences_dither_pattern,
-        .max_value = 6,
-        .on_press = NULL
-    };
-    
+
     PGB_ASSERT(i < max_entries);
 
     /* clang-format on */
@@ -578,7 +580,8 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
     OptionsMenuEntry *cursor_entry =
         &settingsScene->entries[settingsScene->cursorIndex];
 
-    if (cursor_entry->pref_var && cursor_entry->max_value > 0 && !cursor_entry->locked)
+    if (cursor_entry->pref_var && cursor_entry->max_value > 0 &&
+        !cursor_entry->locked)
     {
         if (direction == 0)
             direction = a_pressed;
@@ -640,9 +643,9 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
         OptionsMenuEntry *current_entry = &settingsScene->entries[itemIndex];
         bool is_static_text = (current_entry->pref_var == NULL &&
                                current_entry->on_press == NULL);
-        bool is_locked_option =
-            (current_entry->pref_var != NULL && current_entry->max_value == 0)
-            || current_entry->locked;
+        bool is_locked_option = (current_entry->pref_var != NULL &&
+                                 current_entry->max_value == 0) ||
+                                current_entry->locked;
         bool is_disabled = is_static_text || is_locked_option;
 
         int y = initialY + i * rowHeight;
