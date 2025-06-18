@@ -21,7 +21,7 @@ TabWidth: 4
 UseTab: Never
 
 # Pointer Alignment: Right align pointer operators
-PointerAlignment: Right
+PointerAlignment: Left
 
 # Spaces
 SpaceBeforeParens: ControlStatements
@@ -33,7 +33,7 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 
 # Column Limit (optional, but common in C)
-ColumnLimit: 80
+ColumnLimit: 100
 
 # Sort Includes
 SortIncludes: true
@@ -51,9 +51,9 @@ DerivePointerAlignment: false
 DisableFormat: false
 IncludeCategories:
   - Regex:           '^<.*\.h>'
-    Priority:        1 # C system headers
+    Priority:        2 # C system headers
   - Regex:           '.*'
-    Priority:        2
+    Priority:        1
 IndentCaseLabels: false
 IndentPPDirectives: None
 KeepEmptyLinesAtTheStartOfBlocks: true
@@ -69,4 +69,4 @@ SpacesInContainerLiterals: false
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-
+AlignAfterOpenBracket: BlockIndent
