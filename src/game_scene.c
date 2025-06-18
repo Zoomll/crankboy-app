@@ -30,7 +30,7 @@
 // If the number of updated Playdate lines exceeds this,
 // activate interlace for the next frame.
 // The maximum lines that can be updated is 208.
-#define INTERLACE_LINE_COUNT_THRESHOLD 104
+#define INTERLACE_LINE_COUNT_THRESHOLD 95
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -1965,13 +1965,13 @@ static void PGB_GameScene_menu(void *object)
                 {
                     playdate->graphics->setFont(PGB_App->labelFont);
                     const char *line1 = line1_text;
-                    
+
                     unsigned current_time = playdate->system->getSecondsSinceEpoch(NULL);
-                    
+
                     const int max_human_time = 60*60*24*10;
-                    
+
                     unsigned use_absolute_time = (current_time < final_timestamp) || (final_timestamp + max_human_time < current_time);
-                    
+
                     char line2[40];
                     if (use_absolute_time)
                     {
