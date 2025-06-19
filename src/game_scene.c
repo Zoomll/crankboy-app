@@ -1446,9 +1446,6 @@ __section__(".text.tick") __space
         // This ensures gb_run_frame() is called at a consistent rate.
         gameScene->scene->preferredRefreshRate =
             preferences_frame_skip ? 30 : 60;
-        gameScene->scene->refreshRateCompensation =
-            //    (1.0f / gameScene->scene->preferredRefreshRate - PGB_App->dt);
-            0;
 
         if (preferences_uncap_fps)
             gameScene->scene->preferredRefreshRate = -1;
@@ -1612,7 +1609,6 @@ __section__(".text.tick") __space
     else if (gameScene->state == PGB_GameSceneStateError)
     {
         gameScene->scene->preferredRefreshRate = 30;
-        gameScene->scene->refreshRateCompensation = 0;
 
         if (gbScreenRequiresFullRefresh)
         {

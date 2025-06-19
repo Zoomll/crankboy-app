@@ -24,7 +24,6 @@ PGB_Scene *PGB_Scene_new(void)
     scene->event = PGB_Scene_event;
 
     scene->preferredRefreshRate = 30;
-    scene->refreshRateCompensation = 0;
     scene->forceFullRefresh = false;
 
     // extra stack space, to avoid stack overflow.

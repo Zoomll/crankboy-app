@@ -114,19 +114,17 @@ __section__(".text.main") void PGB_update(float dt)
 #else
 
     float refreshRate = 30;
-    float compensation = 0;
 
     if (PGB_App->scene)
     {
         refreshRate = PGB_App->scene->preferredRefreshRate;
-        compensation = PGB_App->scene->refreshRateCompensation;
     }
 
 #if CAP_FRAME_RATE
     // cap frame rate
     if (refreshRate > 0)
     {
-        float refreshInterval = 1.0f / refreshRate + compensation;
+        float refreshInterval = 1.0f / refreshRate;
         while (playdate->system->getElapsedTime() < refreshInterval)
             ;
     }
