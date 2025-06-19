@@ -45,7 +45,7 @@
 
 // Defines the [min, max] frame range for the adaptive lock.
 // A lower user sensitivity setting results in a longer lock duration (closer to MAX).
-#define INTERLACE_LOCK_DURATION_MAX 90
+#define INTERLACE_LOCK_DURATION_MAX 60
 #define INTERLACE_LOCK_DURATION_MIN 1
 
 // Enables console logging for the dirty line update mechanism.
@@ -178,7 +178,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 {
     playdate->system->logToConsole("ROM: %s", rom_filename);
     playdate->system->setCrankSoundsDisabled(true);
-    
+
     if (!numbers_bmp)
     {
         numbers_bmp = playdate->graphics->loadBitmap("fonts/numbers", NULL);
@@ -970,9 +970,9 @@ static __section__(".text.tick")
 void display_fps(void)
 {
     if (!numbers_bmp) return;
-    
+
     if (++fps_draw_timer % 4 != 0) return;
-    
+
     float fps;
     if (PGB_App->avg_dt <= 1.0f/98.5f)
     {
@@ -982,25 +982,25 @@ void display_fps(void)
     {
         fps = 1.0f / PGB_App->avg_dt;
     }
-    
+
     // for rounding
     fps += 0.004f;
-    
+
     uint8_t* lcd = playdate->graphics->getFrame();
-    
+
     uint8_t* data;
     int width, height, rowbytes;
     playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
-    
+
     if (!data || !lcd) return;
-    
+
     char buff[5];
     snprintf(buff, sizeof(buff), "%04.1f", (double)fps);
-    
+
     uint32_t digits4 = *(uint32_t*)&buff[0];
     if (digits4 == last_fps_digits) return;
     last_fps_digits = digits4;
-    
+
     for (int y = 0; y < height; ++y)
     {
         uint32_t out = 0;
@@ -1020,12 +1020,12 @@ void display_fps(void)
                 cidx = c - '0';
                 advance = 7;
             }
-            
+
             unsigned cdata = (rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
             out |= cdata << (32 - x - 8);
             x += advance;
         }
-        
+
         uint32_t mask = ((1 << (30 - x)) - 1);
 
         for (int i = 0; i < 4; ++i)
@@ -1034,7 +1034,7 @@ void display_fps(void)
             lcd[y*LCD_ROWSIZE + i] |= (out >> ((3 - i)*8));
         }
     }
-    
+
     playdate->graphics->markUpdatedRows(0, height - 1);
 }
 
