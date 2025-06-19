@@ -333,8 +333,6 @@ struct gb_registers_s
     /* Internal emulator state for timer implementation. */
     uint16_t tac_cycles;
     uint8_t tac_cycles_shift;
-
-    uint8_t tima_overflow_delay : 1
 };
 
 #if ENABLE_LCD
@@ -5314,14 +5312,6 @@ done_instr:
         }
 #endif
 
-    /* Handle delayed TIMA overflow from the previous cycle. */
-    if (gb->gb_reg.tima_overflow_delay)
-    {
-        gb->gb_reg.IF |= TIMER_INTR;
-        gb->gb_reg.TIMA = gb->gb_reg.TMA;
-        gb->gb_reg.tima_overflow_delay = 0;
-    }
-
     /* TIMA register timing */
     if (gb->gb_reg.tac_enable)
     {
@@ -5331,9 +5321,10 @@ done_instr:
             gb->counter.tima_count -= gb->gb_reg.tac_cycles;
             gb->gb_reg.TIMA++;
 
-            if (gb->gb_reg.TIMA == 0x00)
+            if (gb->gb_reg.TIMA == 0x00)  // Overflow detected
             {
-                gb->gb_reg.tima_overflow_delay = 1;
+                gb->gb_reg.IF |= TIMER_INTR;
+                gb->gb_reg.TIMA = gb->gb_reg.TMA;
             }
         }
     }
@@ -5813,8 +5804,6 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 
     gb->direct.joypad = 0xFF;
     gb->gb_reg.P1 = 0xCF;
-
-    gb->gb_reg.tima_overflow_delay = 0;
 
     memset(gb->vram, 0x00, VRAM_SIZE);
     memset(gb->wram, 0x00, WRAM_SIZE);
