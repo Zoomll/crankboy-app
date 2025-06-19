@@ -18,7 +18,7 @@ static const char *pref_filename = "preferences.json";
 int preferences_sound_mode = 0;
 int preferences_crank_mode = 0;
 int preferences_display_fps = false;
-int preferences_frame_skip = false;
+int preferences_frame_skip = true;
 int preferences_itcm = false;
 int preferences_lua_support = false;
 int preferences_dynamic_rate = 0;
@@ -40,7 +40,7 @@ void preferences_init(void)
     preferences_sound_mode = 2;
     preferences_crank_mode = 0;
     preferences_display_fps = false;
-    preferences_frame_skip = false;
+    preferences_frame_skip = true;
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_lua_support = false;
     preferences_dynamic_rate = 0;

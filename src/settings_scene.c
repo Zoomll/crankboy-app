@@ -383,9 +383,9 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .values = sample_rate_labels,
         .description =
             "Adjusts audio quality.\nHigher values may impact\nperformance.\n \n"
-            "High:\nBest quality (44.1kHz)\n \n"
-            "Medium:\nGood quality (22.0kHz)\n \n"
-            "Low:\nReduced quality (14.7kHz)",
+            "High:\nBest quality (44.1 kHz)\n \n"
+            "Medium:\nGood quality (22.1 kHz)\n \n"
+            "Low:\nReduced quality (14.7 kHz)",
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .on_press = NULL,
