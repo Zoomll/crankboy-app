@@ -775,7 +775,7 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
         {
         case 0x4D:  // KEY1
         case 0x4F:  // VBK
-        case 0x56:  // RP (CGB Infrared Port)
+        case 0x56:  // RP
         case 0x68:  // BCPS
         case 0x69:  // BCPD
             return 0xFF;
