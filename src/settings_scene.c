@@ -32,6 +32,8 @@ static void settings_load_state(PGB_GameScene *gameScene,
 bool save_state(PGB_GameScene *gameScene, unsigned slot);
 bool load_state(PGB_GameScene *gameScene, unsigned slot);
 
+static void update_thumbnail(PGB_SettingsScene *settingsScene);
+
 struct OptionsMenuEntry;
 
 typedef struct OptionsMenuEntry
@@ -43,6 +45,7 @@ typedef struct OptionsMenuEntry
     unsigned max_value;
     bool locked : 1;
     bool show_value_only_on_hover : 1;
+    bool thumbnail : 1;
     void (*on_press)(struct OptionsMenuEntry *,
                      PGB_SettingsScene *settingsScene);
     void *ud;
@@ -93,6 +96,8 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     settingsScene->scene = scene;
 
     PGB_Scene_refreshMenu(scene);
+    
+    update_thumbnail(settingsScene);
 
     return settingsScene;
 }
@@ -178,10 +183,25 @@ static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                           "Turbo B/A"};
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
-static const char *slot_labels[] = {"[0]", "[1]", "[2]", "[3]", "[4]", "[5]", "[6]", "[7]", "[8]", "[9]"};
+static const char *slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]", "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
 static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
                                               "Staggered (L)", "Grid (L)",
                                               "Staggered (D)", "Grid (D)"};
+
+static void update_thumbnail(PGB_SettingsScene *settingsScene)
+{
+    int slot = preferences_save_state_slot;
+    PGB_GameScene *gameScene = settingsScene->gameScene;
+    
+    if (!gameScene) return;
+    
+    bool result = load_state_thumbnail(gameScene, slot, settingsScene->thumbnail);
+    
+    if (!result)
+    {
+        memset(settingsScene->thumbnail, 0xFF, sizeof(settingsScene->thumbnail));
+    }
+}
 
 static void confirm_save_state(PGB_SettingsScene *settingsScene, int option)
 {
@@ -210,6 +230,8 @@ static void confirm_save_state(PGB_SettingsScene *settingsScene, int option)
                                        settingsScene)
                              ->scene);
     }
+    
+    update_thumbnail(settingsScene);
 }
 
 static void settings_action_save_state(OptionsMenuEntry *e,
@@ -319,6 +341,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
                 .pref_var = &preferences_save_state_slot,
                 .max_value = SAVE_STATE_SLOT_COUNT,
                 .show_value_only_on_hover = 1,
+                .thumbnail = 1,
                 .on_press = settings_action_save_state,
                 .ud = gameScene,
             };
@@ -333,6 +356,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
                 .pref_var = &preferences_save_state_slot,
                 .max_value = SAVE_STATE_SLOT_COUNT,
                 .show_value_only_on_hover = 1,
+                .thumbnail = 1,
                 .on_press = settings_action_load_state,
                 .ud = gameScene,
             };
@@ -669,14 +693,12 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                         &settingsScene->entries[settingsScene->cursorIndex];
                 }
             }
+            
+            if (cursor_entry->thumbnail) update_thumbnail(settingsScene);
         }
     }
 
     playdate->graphics->clear(kColorWhite);
-
-    // Draw the 60/40 vertical divider line
-    playdate->graphics->drawLine(kDividerX, 0, kDividerX, kScreenHeight, 1,
-                                 kColorBlack);
 
     playdate->graphics->setFont(PGB_App->bodyFont);
     int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
@@ -810,7 +832,32 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
             descY += descLineHeight;
             line = strtok(NULL, "\n");
         }
+        
+        // draw save state thumbnail
+        if (cursor_entry->thumbnail)
+        {
+            int thumbx = kDividerX + (LCD_COLUMNS - kDividerX)/2 - (SAVE_STATE_THUMBNAIL_W/2);
+            thumbx /= 8; // for memcpy
+            int thumby = LCD_ROWS - (LCD_COLUMNS - kDividerX)/2 + (SAVE_STATE_THUMBNAIL_W/2) - SAVE_STATE_THUMBNAIL_H;
+            
+            uint8_t* frame = playdate->graphics->getFrame();
+            
+            const int rowsize = ((SAVE_STATE_THUMBNAIL_W + 7) / 8);
+            for (size_t i = 0; i < SAVE_STATE_THUMBNAIL_H; ++i)
+            {
+                uint8_t *frame_row_start = frame + (thumby+i)*LCD_ROWSIZE + thumbx;
+                memcpy(frame_row_start, &settingsScene->thumbnail[i*rowsize], rowsize);
+            }
+            
+            playdate->graphics->markUpdatedRows(
+                thumby, thumby + SAVE_STATE_THUMBNAIL_H
+            );
+        }
     }
+    
+    // Draw the 60/40 vertical divider line
+    playdate->graphics->drawLine(kDividerX, 0, kDividerX, kScreenHeight, 1,
+                                 kColorBlack);
 }
 
 static void PGB_SettingsScene_didSelectBack(void *userdata)

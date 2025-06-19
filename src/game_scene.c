@@ -2197,12 +2197,14 @@ __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
     char *state_name = NULL;
     char *tmp_name = NULL;
     char *bak_name = NULL;
+    char *thumb_name = NULL;
 
     playdate->system->formatString(&path_prefix, "%s/%s.%u", PGB_statesPath,
                                    gameScene->base_filename, slot);
 
     playdate->system->formatString(&state_name, "%s.state", path_prefix);
     playdate->system->formatString(&tmp_name, "%s.tmp", path_prefix);
+    playdate->system->formatString(&thumb_name, "%s.thumb", path_prefix);
     playdate->system->formatString(&bak_name, "%s.bak", path_prefix);
 
     // Clean up any old temp file
@@ -2281,6 +2283,57 @@ cleanup:
         free(tmp_name);
     if (bak_name)
         free(bak_name);
+        
+    // we check playtime nonzero so that LCD has been updated at least once
+    uint8_t* lcd = context->gb->lcd;
+    if (success && lcd && gameScene->playtime > 1)
+    {
+        // save thumbnail, too
+        // (inessential, so we don't take safety precautions)
+        SDFile* file = playdate->file->open(thumb_name, kFileWrite);
+        
+        static const uint8_t dither_pattern[5] = {
+            0b00000000 ^ 0xFF,
+            0b01000100 ^ 0xFF,
+            0b10101010 ^ 0xFF,
+            0b11011101 ^ 0xFF,
+            0b11111111 ^ 0xFF,
+        };
+        
+        if (file)
+        {
+            for (unsigned y = 0; y < SAVE_STATE_THUMBNAIL_H; ++y)
+            {
+                uint8_t* line0 = lcd + y*LCD_WIDTH_PACKED;
+                
+                u8 thumbline[(SAVE_STATE_THUMBNAIL_W+7)/8];
+                memset(thumbline, 0, sizeof(thumbline));
+                
+                for (unsigned x = 0; x < SAVE_STATE_THUMBNAIL_W; ++x)
+                {
+                    u8 p0 = __gb_get_pixel(line0, x);
+                    u8 p1 = __gb_get_pixel(line0, x ^ 1);
+                    
+                    u8 pattern = dither_pattern[(p0 + p1/2)];
+                    if (y % 2 == 1)
+                    {
+                        pattern = (pattern >> 2) | (pattern << 6);
+                    }
+                    
+                    u8 pix = (pattern >> (x%8)) & 1;
+                    
+                    thumbline[x/8] |= pix << (7 - (x%8));
+                }
+                
+                playdate->file->write(file, thumbline, sizeof(thumbline));
+            }
+        }
+        
+        playdate->file->close(file);
+    }
+    
+    if (thumb_name)
+        free(thumb_name);
 
     gameScene->isCurrentlySaving = false;
     return success;
@@ -2289,8 +2342,38 @@ cleanup:
 // returns true if successful
 __section__(".rare") bool save_state(PGB_GameScene *gameScene, unsigned slot)
 {
-    gameScene->playtime = 0;
     return (bool)call_with_main_stack_2(save_state_, gameScene, slot);
+    gameScene->playtime = 0;
+}
+
+__section__(".rare") bool load_state_thumbnail_(PGB_GameScene *gameScene, unsigned slot, uint8_t* out)
+{
+    char* path;
+    playdate->system->formatString(
+        &path, "%s/%s.%u.thumb", PGB_statesPath,
+        gameScene->base_filename, slot
+    );
+    
+    SDFile *file = playdate->file->open(path, kFileReadData);
+    
+    free(path);
+    
+    if (!file)
+    {
+        return 0;
+    }
+    
+    int count = SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7)/8);
+    int read = playdate->file->read(file, out, count);
+    playdate->file->close(file);
+    
+    return read == count;
+}
+
+// returns true if successful
+__section__(".rare") bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out)
+{
+    return (bool)call_with_main_stack_3(load_state_thumbnail_, gameScene, slot, out);
 }
 
 // returns true if successful

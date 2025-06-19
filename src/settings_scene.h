@@ -30,6 +30,8 @@ typedef struct PGB_SettingsScene
 
     struct OptionsMenuEntry *entries;
     struct PDSynth *clickSynth;
+    
+    uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
 } PGB_SettingsScene;
 
 PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene);
