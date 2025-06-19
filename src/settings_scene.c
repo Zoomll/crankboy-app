@@ -431,9 +431,10 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
-
+    
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
     // dynamic level
-    if (preferences_dynamic_rate == 2 && !preferences_frame_skip)
+    if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO && !preferences_frame_skip)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing Level",
@@ -461,6 +462,8 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
+    #endif
+    
     // dither
     entries[++i] = (OptionsMenuEntry){
         .name = "Dither",

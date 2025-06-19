@@ -1048,6 +1048,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     float progress = 0.5f;
 
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
     /*
      * =========================================================================
      * Dynamic Rate Control with Adaptive Interlacing
@@ -1082,12 +1083,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     if (!preferences_frame_skip)
     {
-        if (preferences_dynamic_rate == 1)  // "On"
+        if (preferences_dynamic_rate == DYNAMIC_RATE_ON)
         {
             activate_dynamic_rate = true;
             gameScene->interlace_lock_frames_remaining = 0;
         }
-        else if (preferences_dynamic_rate == 2)  // "Auto"
+        else if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
         {
             if (gameScene->interlace_lock_frames_remaining > 0)
             {
@@ -1121,7 +1122,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         gameScene->interlace_lock_frames_remaining = adaptive_lock_duration;
     }
 
-    if (preferences_dynamic_rate != 2 || preferences_frame_skip)
+    if (preferences_dynamic_rate != DYNAMIC_RATE_AUTO || preferences_frame_skip)
     {
         gameScene->interlace_tendency_counter = 0;
     }
@@ -1139,6 +1140,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     {
         context->gb->direct.interlace_mask = 0xFF;
     }
+    #endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -1404,10 +1406,6 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             save_check(context->gb);
         }
 
-#if DYNAMIC_RATE_ADJUSTMENT
-        float logic_time = playdate->system->getElapsedTime();
-#endif
-
         // --- Conditional Screen Update (Drawing) Logic ---
         uint8_t* current_lcd = context->gb->lcd;
         uint8_t* previous_lcd = context->previous_lcd;
@@ -1425,8 +1423,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
         }
 
+        #if TENDENCY_BASED_ADAPTIVE_INTERLACING
         // --- Decide if the *next* frame needs interlacing ---
-        if (!preferences_frame_skip && preferences_dynamic_rate == 2)
+        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
         {
             int updated_playdate_lines = 0;
             int scale_index = 0;
@@ -1467,6 +1466,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
                 gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
         }
+        #endif
 
 #if LOG_DIRTY_LINES
         playdate->system->logToConsole("--- Frame Update ---");

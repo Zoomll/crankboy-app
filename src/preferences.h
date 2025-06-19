@@ -13,6 +13,10 @@
 
 #include <stdio.h>
 
+#define DYNAMIC_RATE_OFF 0
+#define DYNAMIC_RATE_ON 1
+#define DYNAMIC_RATE_AUTO 2
+
 extern int preferences_display_fps;
 extern int preferences_frame_skip;
 extern int preferences_itcm;

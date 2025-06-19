@@ -35,6 +35,8 @@ extern pthread_mutex_t audio_mutex;
 
 #define FPS_AVG_DECAY 0.8f
 
+#define TENDENCY_BASED_ADAPTIVE_INTERLACING 1
+
 typedef struct PGB_Application
 {
     float dt;
