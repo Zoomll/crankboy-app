@@ -725,6 +725,14 @@ __section__(".rare.pgb") static void __gb_rare_write(
     {
         switch (addr & 0xFF)
         {
+        // On a DMG, these writes are ignored.
+        case 0x4D:  // KEY1 (CGB Speed Switch)
+        case 0x4F:  // VBK (CGB VRAM Bank)
+        case 0x56:  // RP (CGB Infrared Port)
+        case 0x68:  // BCPS (CGB BG Palette Spec)
+        case 0x69:  // BCPD (CGB BG Palette Data)
+            return;
+
         case 0x57:
             playdate->system->logToConsole("Set accelerometer enabled: %d", val & 1);
             playdate->system->setPeripheralsEnabled((val & 1) ? kAccelerometer : kNone);
@@ -759,6 +767,13 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
     {
         switch (addr & 0xFF)
         {
+        case 0x4D:  // KEY1
+        case 0x4F:  // VBK
+        case 0x56:  // RP (CGB Infrared Port)
+        case 0x68:  // BCPS
+        case 0x69:  // BCPD
+            return 0xFF;
+
         case 0x57:
             return gb->direct.crank_docked;
         case 0x58 ... 0x5F:
@@ -2450,7 +2465,8 @@ _0x0F:
 
 _0x10:
 { /* STOP */
-    // gb->gb_halt = 1;
+    gb->gb_ime = 0;
+    gb->gb_halt = 1;
     goto exit;
 }
 
