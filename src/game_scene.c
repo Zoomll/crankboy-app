@@ -64,9 +64,9 @@ static void gb_save_to_disk(struct gb_s *gb);
 static const char *startButtonText = "start";
 static const char *selectButtonText = "select";
 
-static const uint16_t PGB_dither_lut_c0[] = {
+const uint16_t PGB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
-    (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
 
     // L
     (0b1111 << 0) | (0b0111 << 4) | (0b0101 << 8) | (0b0000 << 12),
@@ -74,15 +74,15 @@ static const uint16_t PGB_dither_lut_c0[] = {
 
     // D
     (0b1111 << 0) | (0b0101 << 4) | (0b0001 << 8) | (0b0000 << 12),
-    (0b1111 << 0) | (0b0101 << 4) | (0b0000 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
 };
 
 // defined here for minor cache coherence benefit
 int preferences_dither_pattern = 0;
 
-static const uint16_t PGB_dither_lut_c1[] = {
+const uint16_t PGB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12),
-    (0b1111 << 0) | (0b1111 << 4) | (0b0101 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b1111 << 4) | (0b0000 << 8) | (0b0000 << 12),
 
     // L
     (0b1111 << 0) | (0b1101 << 4) | (0b1010 << 8) | (0b0000 << 12),
@@ -90,7 +90,7 @@ static const uint16_t PGB_dither_lut_c1[] = {
 
     // D
     (0b1111 << 0) | (0b1010 << 4) | (0b0100 << 8) | (0b0000 << 12),
-    (0b1111 << 0) | (0b1010 << 4) | (0b0101 << 8) | (0b0000 << 12),
+    (0b1111 << 0) | (0b1010 << 4) | (0b0000 << 8) | (0b0000 << 12),
 };
 
 static uint8_t PGB_bitmask[4][4][4];

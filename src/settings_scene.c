@@ -31,6 +31,8 @@ static void settings_load_state(PGB_GameScene *gameScene,
 
 bool save_state(PGB_GameScene *gameScene, unsigned slot);
 bool load_state(PGB_GameScene *gameScene, unsigned slot);
+extern const uint16_t PGB_dither_lut_c0[];
+extern const uint16_t PGB_dither_lut_c1[];
 
 static void update_thumbnail(PGB_SettingsScene *settingsScene);
 
@@ -46,6 +48,7 @@ typedef struct OptionsMenuEntry
     bool locked : 1;
     bool show_value_only_on_hover : 1;
     bool thumbnail : 1;
+    bool graphics_test : 1;
     void (*on_press)(struct OptionsMenuEntry *,
                      PGB_SettingsScene *settingsScene);
     void *ud;
@@ -441,6 +444,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         ,
         .pref_var = &preferences_dither_pattern,
         .max_value = 6,
+        .graphics_test = 1,
         .on_press = NULL
     };
 
@@ -535,7 +539,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .description =
             "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
             "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
-            "Not a guaranteed way to\nimprove performance."
+            "Not a guaranteed way to\nimprove performance.\n \nMay introduce inaccuracies."
         ,
         .pref_var = &preferences_overclock,
         .max_value = 3,
@@ -864,6 +868,74 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
             
             playdate->graphics->markUpdatedRows(
                 thumby, thumby + SAVE_STATE_THUMBNAIL_H
+            );
+        }
+        
+        // graphics test
+        if (cursor_entry->graphics_test)
+        {
+            uint16_t d0 = PGB_dither_lut_c0[preferences_dither_pattern];
+            uint16_t d1 = PGB_dither_lut_c1[preferences_dither_pattern];
+            
+            int cwidth = 4 * 8;
+            
+            int total_width = (cwidth * 4);
+            int total_height = 64;
+            int start = kDividerX + (LCD_COLUMNS - kDividerX)/2 - (total_width/2);
+            start = (start + 6)/8;
+            
+            uint8_t* frame = playdate->graphics->getFrame();
+            
+            for (int k = 0; k < total_height; ++k)
+            {
+                int y = LCD_ROWS - 24 - total_height + k;
+                uint8_t* pix = &frame[y*LCD_ROWSIZE + start];
+                for (int i = 0; i < 4; ++i)
+                {
+                    bool double_size = (k > total_height / 2);
+                    
+                    uint16_t d = ((double_size ? (k/2) : k) % 2)
+                        ? d0
+                        : d1;
+                    uint8_t col = (d >> (4*(3 - i))) & 0x0F;
+                    
+                    if (k == total_height/2 || k == total_height/2 + 1)
+                        col = 0xFF;
+                    else if (double_size)
+                    {
+                        uint8_t tmp = col;
+                        col = 0;
+                        for (int i = 0; i < 4; ++i)
+                        {
+                            col |= (tmp & (1 << i)) << i;
+                        }
+                        col = col | (col << 1);
+                    }
+                    else
+                    {
+                        col |= col << 4;
+                    }
+                    
+                    if (k <= 1 || k >= total_height - 2)
+                        col = 0; // border
+                    
+                    for (int j = 0; j < cwidth/8; ++j)
+                    {
+                        pix[j + (cwidth/8)*i] = col;
+                        if (j == cwidth/8 - 1 && i == 3)
+                        {
+                            pix[j + (cwidth/8)*i] &= ~3; // border
+                        }
+                        if (j == 0 && i == 0)
+                        {
+                            pix[0] &= ~0xC0; // border
+                        }
+                    }
+                }
+            }
+            
+            playdate->graphics->markUpdatedRows(
+                100, 250
             );
         }
     }
