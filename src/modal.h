@@ -30,6 +30,7 @@ typedef struct PGB_Modal
     int timer;
     int droptimer;
     bool exit : 1;
+    bool setup : 1;
     int result;
 
     LCDBitmap *dissolveMask;

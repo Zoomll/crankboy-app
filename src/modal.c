@@ -26,6 +26,15 @@ void PGB_Modal_update(PGB_Modal *modal)
             modal->droptimer = MODAL_DROP_TIME;
     }
     PDButtons pushed = PGB_App->buttons_pressed;
+    
+    if (modal->setup == 0)
+    {
+        modal->setup = 1;
+        
+        // copy in what's on the screen
+        uint8_t *src = playdate->graphics->getFrame();
+        memcpy(modal->lcd, src, sizeof(modal->lcd));
+    }
 
     uint8_t *lcd = playdate->graphics->getFrame();
     memcpy(lcd, modal->lcd, sizeof(modal->lcd));
@@ -194,10 +203,7 @@ PGB_Modal *PGB_Modal_new(char *text, char const *const *options,
     modal->callback = callback;
     modal->ud = ud;
 
-    // copy in what's currently on the screen
-
-    uint8_t *src = playdate->graphics->getFrame();
-    memcpy(modal->lcd, src, sizeof(modal->lcd));
+    modal->setup = 0;
 
     modal->dissolveMask =
         playdate->graphics->newBitmap(LCD_COLUMNS, LCD_ROWS, kColorWhite);
