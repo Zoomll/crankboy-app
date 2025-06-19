@@ -421,6 +421,7 @@ struct gb_s
         uint8_t gb_ime : 1;
         uint8_t gb_bios_enable : 1;
         uint8_t gb_frame : 1; /* New frame drawn. */
+        uint8_t halt_bug_active : 1;
 
 #define LCD_HBLANK 0
 #define LCD_VBLANK 1
@@ -430,6 +431,9 @@ struct gb_s
         uint8_t lcd_blank : 1;
         uint8_t lcd_master_enable : 1;
     };
+
+    /* EI delay */
+    uint8_t ime_enable_delay;
 
     /* Cartridge information:
      * Memory Bank Controller (MBC) type. */
@@ -3228,10 +3232,18 @@ _0x75:
     goto exit;
 }
 
-_0x76:
-{ /* HALT */
-    /* TODO: Emulate HALT bug? */
-    gb->gb_halt = 1;
+_0x76: /* HALT */
+{
+    /* Check for the HALT bug condition: HALT is executed while interrupts are
+     * disabled (IME=0), but there is a pending interrupt request. */
+    if (!gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+    {
+        gb->halt_bug_active = 1;
+    }
+    else
+    {
+        gb->gb_halt = 1;
+    }
     goto exit;
 }
 
@@ -4468,7 +4480,8 @@ _0xFA:
 
 _0xFB:
 { /* EI */
-    gb->gb_ime = 1;
+    // Schedule IME to be enabled after the next instruction.
+    gb->ime_enable_delay = 2;
     goto exit;
 }
 
@@ -4735,8 +4748,16 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
             {
                 if unlikely (srcidx == 7)
                 {
-                    gb->gb_halt = 1;
-                    return 4;
+                    /* Check for the HALT bug condition */
+                    if (!gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+                    {
+                        gb->halt_bug_active = 1;
+                    }
+                    else
+                    {
+                        gb->gb_halt = 1;
+                    }
+                    return 4; /* Return cycle count for HALT */
                 }
                 else
                 {
@@ -5068,6 +5089,18 @@ __shell static uint16_t __gb_calc_halt_cycles(struct gb_s* gb)
  */
 __core void __gb_step_cpu(struct gb_s* gb)
 {
+    // Handle EI instruction delay.
+    if (gb->ime_enable_delay > 0)
+    {
+        if (--gb->ime_enable_delay == 0)
+        {
+            gb->gb_ime = 1;
+        }
+    }
+
+    uint8_t halt_bug_was_active = gb->halt_bug_active;
+    gb->halt_bug_active = 0;
+
     unsigned inst_cycles = 16;
 
     /* Handle interrupts */
@@ -5216,6 +5249,11 @@ __core void __gb_step_cpu(struct gb_s* gb)
         }
     }
 #endif
+
+    if (halt_bug_was_active)
+    {
+        gb->cpu_reg.pc--;
+    }
 
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
@@ -6108,7 +6146,7 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         gb->cpu_reg.sp = gb->cpu_reg.hl;
         return 2 * 4;
     case 0xFB:
-        gb->gb_ime = 1;
+        gb->ime_enable_delay = 2;
         return 1 * 4;
     default:
         return __gb_invalid_instruction(gb, opcode);
