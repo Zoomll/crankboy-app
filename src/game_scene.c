@@ -1890,7 +1890,7 @@ static void PGB_GameScene_menu(void *object)
         {
             show_time_info = true;
             final_timestamp = last_state_save_time;
-            line1_text = "Last time saved:";
+            line1_text = "Last save state:";
         }
         else if (last_cartridge_save_time > 0)
         {
@@ -2152,6 +2152,44 @@ static void PGB_GameScene_generateBitmask(void)
     }
 }
 
+__section__(".rare") static unsigned get_save_state_timestamp_(PGB_GameScene *gameScene,
+                                             unsigned slot)
+{
+    char* path;
+    playdate->system->formatString(
+        &path, "%s/%s.%u.state", PGB_statesPath,
+        gameScene->base_filename, slot
+    );
+    
+    SDFile *file = playdate->file->open(path, kFileReadData);
+    
+    free(path);
+    
+    if (!file)
+    {
+        return 0;
+    }
+    
+    struct StateHeader header;
+    int read =
+                            playdate->file->read(file, &header, sizeof(header));
+    playdate->file->close(file);
+    if (read < sizeof(header))
+    {
+        return 0;
+    }
+    else
+    {
+        return header.timestamp;
+    }
+}
+
+__section__(".rare") unsigned get_save_state_timestamp(PGB_GameScene *gameScene,
+                                             unsigned slot)
+{
+    return (unsigned)call_with_main_stack_2(get_save_state_timestamp_, gameScene, slot);
+}
+
 // returns true if successful
 __section__(".rare") static bool save_state_(PGB_GameScene *gameScene,
                                              unsigned slot)
@@ -2337,16 +2375,6 @@ __section__(".rare") bool load_state(PGB_GameScene *gameScene, unsigned slot)
 
                     if (success)
                     {
-                        struct StateHeader
-                        {
-                            char magic[8];
-                            uint32_t version;
-                            uint8_t big_endian : 1;
-                            uint8_t bits : 4;
-                            uint32_t timestamp;
-                            char reserved[20];
-                        };
-
                         struct StateHeader *header = (struct StateHeader *)buff;
                         unsigned int timestamp = 0;
 

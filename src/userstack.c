@@ -29,9 +29,6 @@ __section__(".rare") void validate_user_stack(void)
     }
 }
 
-#define STRINGIFY_(x) #x
-#define STRINGIFY(x) STRINGIFY_(x)
-
 void* user_stack_exit_sp;
 
 

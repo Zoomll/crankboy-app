@@ -62,14 +62,16 @@ void PGB_init(void)
 
 __section__(".rare") static void switchToPendingScene(void)
 {
-    if (PGB_App->scene)
-    {
-        void *managedObject = PGB_App->scene->managedObject;
-        PGB_App->scene->free(managedObject);
-    }
-
+    PGB_Scene* scene = PGB_App->scene;
+    
     PGB_App->scene = PGB_App->pendingScene;
     PGB_App->pendingScene = NULL;
+    
+    if (scene)
+    {
+        void *managedObject = scene->managedObject;
+        scene->free(managedObject);
+    }
 }
 
 __section__(".text.main") void PGB_update(float dt)

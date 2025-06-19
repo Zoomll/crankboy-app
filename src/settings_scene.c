@@ -181,12 +181,14 @@ static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
                                               "Staggered (L)", "Grid (L)",
                                               "Staggered (D)", "Grid (D)"};
 
-static void settings_action_save_state(OptionsMenuEntry *e,
-                                       PGB_SettingsScene *settingsScene)
+static void confirm_save_state(PGB_SettingsScene *settingsScene, int option)
 {
-    PGB_GameScene *gameScene = e->ud;
-    // TODO: confirmation if overwriting a state which is >= 10 minutes old
-    if (!save_state(gameScene, 0))
+    // must select 'yes'
+    if (option != 1) return;
+    
+    PGB_GameScene *gameScene = settingsScene->gameScene;
+    int slot = preferences_save_state_slot;
+    if (!save_state(gameScene, slot))
     {
         char *msg;
         playdate->system->formatString(&msg, "Error saving state:\n%s",
@@ -197,7 +199,7 @@ static void settings_action_save_state(OptionsMenuEntry *e,
     }
     else
     {
-        playdate->system->logToConsole("Saved state %d successfully", 0);
+        playdate->system->logToConsole("Saved state %d successfully", slot);
 
         // TODO: something less invasive than a modal here.
         const char *options[] = {"Game", "Settings", NULL};
@@ -208,10 +210,42 @@ static void settings_action_save_state(OptionsMenuEntry *e,
     }
 }
 
+static void settings_action_save_state(OptionsMenuEntry *e,
+                                       PGB_SettingsScene *settingsScene)
+{
+    PGB_GameScene *gameScene = e->ud;
+    int slot = preferences_save_state_slot;
+    
+    // confirmation if slot is >= 5 minutes old
+    unsigned timestamp = get_save_state_timestamp(gameScene, slot);
+    unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+    
+    #define MIN_TIME_CONFIRM (300)
+    
+    if (timestamp != 0 && timestamp + MIN_TIME_CONFIRM <= now)
+    {
+        char* human_time = en_human_time(now - timestamp);
+        char *msg;
+        playdate->system->formatString(&msg, "Overwrite state which is %s old?", human_time);
+        free(human_time);
+        
+        const char *options[] = {"Cancel", "Yes", NULL};
+        PGB_presentModal(PGB_Modal_new(msg, options, (PGB_ModalCallback)confirm_save_state, settingsScene)->scene);
+        
+        free(msg);
+    }
+    else
+    {
+        confirm_save_state(settingsScene, 1);
+    }
+}
+
 static void settings_action_load_state(OptionsMenuEntry *e,
                                        PGB_SettingsScene *settingsScene)
 {
     PGB_GameScene *gameScene = e->ud;
+    int slot = preferences_save_state_slot;
+    
     // confirmation needed if more than 2 minutes of progress made
     if (gameScene->playtime >= 60 * 120)
     {
@@ -219,10 +253,26 @@ static void settings_action_load_state(OptionsMenuEntry *e,
         LoadStateUserdata *data = malloc(sizeof(LoadStateUserdata));
         data->gameScene = gameScene;
         data->settingsScene = settingsScene;
-        PGB_presentModal(PGB_Modal_new("Really load state?", confirm_options,
+        unsigned timestamp = get_save_state_timestamp(gameScene, slot);
+        unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+        
+        char* text;
+        if (timestamp == 0 || timestamp > now)
+        {
+            text = strdup("Really load state?");
+        }
+        else
+        {
+            char* human_time = en_human_time(now - timestamp);
+            playdate->system->formatString(&text, "Really load state from %s ago?", human_time);
+            free(human_time);
+        }
+        
+        PGB_presentModal(PGB_Modal_new(text, confirm_options,
                                        (void *)settings_confirm_load_state,
                                        data)
                              ->scene);
+        free(text);
     }
     else
     {

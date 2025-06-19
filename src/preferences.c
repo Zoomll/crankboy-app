@@ -24,6 +24,7 @@ int preferences_lua_support = false;
 int preferences_dynamic_rate = 0;
 int preferences_sample_rate = 0;
 int preferences_uncap_fps = 0;
+int preferences_save_state_slot = 0;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -115,6 +116,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_dither_pattern = pref.data.intval;
             }
+            KEY("save-state-slot")
+            {
+                preferences_save_state_slot = pref.data.intval;
+            }
         }
     }
 
@@ -128,7 +133,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 10
+#define NUM_PREFS 11
 
     union
     {
@@ -179,6 +184,10 @@ int preferences_save_to_disk(void)
     data.obj.data[9].key = "dither";
     data.obj.data[9].value.type = kJSONInteger;
     data.obj.data[9].value.data.intval = preferences_dither_pattern;
+    
+    data.obj.data[10].key = "save-state-slot";
+    data.obj.data[10].value.type = kJSONInteger;
+    data.obj.data[10].value.data.intval = preferences_save_state_slot;
 
     int error = write_json_to_disk(pref_filename, j);
 

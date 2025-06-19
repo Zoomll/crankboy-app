@@ -146,4 +146,6 @@ typedef struct PGB_GameScene
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
 void PGB_GameScene_apply_settings(PGB_GameScene *gameScene);
 
+unsigned get_save_state_timestamp(PGB_GameScene *gameScene, unsigned slot);
+
 #endif /* game_scene_h */

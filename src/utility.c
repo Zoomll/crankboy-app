@@ -91,7 +91,7 @@ char* en_human_time(unsigned secondsAgo)
     if (secondsAgo < 60)
     {
         playdate->system->formatString(
-            &tr, "%d second%s",
+            &tr, "%d  second%s",
             secondsAgo, en_plural(secondsAgo)
         );
         return tr;
@@ -100,7 +100,7 @@ char* en_human_time(unsigned secondsAgo)
     if (minutesAgo < 60)
     {
         playdate->system->formatString(
-            &tr, "%d minute%s",
+            &tr, "%d  minute%s",
             minutesAgo, en_plural(minutesAgo)
         );
         return tr;
@@ -109,7 +109,7 @@ char* en_human_time(unsigned secondsAgo)
     if (hoursAgo < 24)
     {
         playdate->system->formatString(
-            &tr, "%d hour%s",
+            &tr, "%d  hour%s",
             hoursAgo, en_plural(hoursAgo)
         );
         return tr;
@@ -126,7 +126,7 @@ char* en_human_time(unsigned secondsAgo)
     {
         // sure
         playdate->system->formatString(
-            &tr, "%d centur%s",
+            &tr, "%d  centur%s",
             centuriesAgo, en_pluraly(centuriesAgo)
         );
         return tr;
@@ -134,7 +134,7 @@ char* en_human_time(unsigned secondsAgo)
     if (decadesAgo)
     {
         playdate->system->formatString(
-            &tr, "%d decade%s",
+            &tr, "%d  decade%s",
             decadesAgo, en_plural(decadesAgo)
         );
         return tr;
@@ -142,7 +142,7 @@ char* en_human_time(unsigned secondsAgo)
     if (yearsAgo)
     {
         playdate->system->formatString(
-            &tr, "%d year%s",
+            &tr, "%d  year%s",
             yearsAgo, en_plural(yearsAgo)
         );
         return tr;
@@ -150,7 +150,7 @@ char* en_human_time(unsigned secondsAgo)
     if (monthsAgo)
     {
         playdate->system->formatString(
-            &tr, "%d month%s",
+            &tr, "%d  month%s",
             monthsAgo, en_plural(monthsAgo)
         );
         return tr;
@@ -158,14 +158,14 @@ char* en_human_time(unsigned secondsAgo)
     if (weeksAgo)
     {
         playdate->system->formatString(
-            &tr, "%d week%s",
+            &tr, "%d  week%s",
             weeksAgo, en_plural(weeksAgo)
         );
         return tr;
     }
     
     playdate->system->formatString(
-        &tr, "%d day%s",
+        &tr, "%d  day%s",
         daysAgo, en_plural(daysAgo)
     );
     return tr;

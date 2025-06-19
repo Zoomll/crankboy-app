@@ -153,4 +153,7 @@ static inline unsigned next_pow2(unsigned v)
      }){.u = (_u)})         \
          .f)
 
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+
 #endif /* utility_h */

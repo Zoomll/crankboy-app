@@ -23,6 +23,7 @@ extern int preferences_dynamic_rate;
 extern int preferences_sample_rate;
 extern int preferences_uncap_fps;
 extern int preferences_dither_pattern;
+extern int preferences_save_state_slot;
 
 void preferences_init(void);
 
