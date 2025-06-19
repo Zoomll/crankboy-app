@@ -122,4 +122,6 @@ void itcm_core_init(void);
 // don't exceed 60 fps
 #define CAP_FRAME_RATE 1
 
+#define SAVE_STATE_SLOT_COUNT 10
+
 #endif /* app_h */

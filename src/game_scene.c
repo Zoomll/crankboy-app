@@ -1861,25 +1861,10 @@ static void PGB_GameScene_menu(void *object)
         unsigned int last_state_save_time = 0;
         if (gameScene->save_states_supported)
         {
-            char *state_filename = NULL;
-
-            playdate->system->formatString(&state_filename, "%s/%s.%u.state",
-                                           PGB_statesPath,
-                                           gameScene->base_filename, 0);
-
-            SDFile *file = playdate->file->open(state_filename, kFileReadData);
-            if (file)
+            for (int i = 0; i < SAVE_STATE_SLOT_COUNT; ++i)
             {
-                struct StateHeader header;
-
-                if (playdate->file->read(file, &header, sizeof(header)) ==
-                    sizeof(header))
-                {
-                    last_state_save_time = header.timestamp;
-                }
-                playdate->file->close(file);
+                last_state_save_time = MAX(last_state_save_time, get_save_state_timestamp(gameScene, i));
             }
-            free(state_filename);
         }
 
         bool show_time_info = false;

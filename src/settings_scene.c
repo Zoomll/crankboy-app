@@ -41,7 +41,8 @@ typedef struct OptionsMenuEntry
     const char *description;
     int *pref_var;
     unsigned max_value;
-    bool locked;
+    bool locked : 1;
+    bool show_value_only_on_hover : 1;
     void (*on_press)(struct OptionsMenuEntry *,
                      PGB_SettingsScene *settingsScene);
     void *ud;
@@ -109,7 +110,7 @@ static void state_action_modal_callback(void *userdata, int option)
 static void settings_load_state(PGB_GameScene *gameScene,
                                 PGB_SettingsScene *settingsScene)
 {
-    if (!load_state(gameScene, 0))
+    if (!load_state(gameScene, preferences_save_state_slot))
     {
         const char *options[] = {"OK", NULL};
         PGB_presentModal(
@@ -177,6 +178,7 @@ static const char *crank_mode_labels[] = {"Start/Select", "Turbo A/B",
                                           "Turbo B/A"};
 static const char *sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char *dynamic_rate_labels[] = {"Off", "On", "Auto"};
+static const char *slot_labels[] = {"[0]", "[1]", "[2]", "[3]", "[4]", "[5]", "[6]", "[7]", "[8]", "[9]"};
 static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
                                               "Staggered (L)", "Grid (L)",
                                               "Staggered (D)", "Grid (D)"};
@@ -311,11 +313,12 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             // save state
             entries[++i] = (OptionsMenuEntry){
                 .name = "Save state",
-                .values = NULL,
+                .values = slot_labels,
                 .description =
                     "Create a snapshot of\nthis moment, which\ncan be resumed later.",
-                .pref_var = NULL,
-                .max_value = 0,
+                .pref_var = &preferences_save_state_slot,
+                .max_value = SAVE_STATE_SLOT_COUNT,
+                .show_value_only_on_hover = 1,
                 .on_press = settings_action_save_state,
                 .ud = gameScene,
             };
@@ -323,12 +326,13 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
             // load state
             entries[++i] = (OptionsMenuEntry){
                 .name = "Load state",
-                .values = NULL,
+                .values = slot_labels,
                 .description =
                     "Restore the previously-\ncreated snapshot."
                 ,
-                .pref_var = NULL,
-                .max_value = 0,
+                .pref_var = &preferences_save_state_slot,
+                .max_value = SAVE_STATE_SLOT_COUNT,
+                .show_value_only_on_hover = 1,
                 .on_press = settings_action_load_state,
                 .ud = gameScene,
             };
@@ -632,7 +636,11 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
     OptionsMenuEntry *cursor_entry =
         &settingsScene->entries[settingsScene->cursorIndex];
 
-    if (cursor_entry->pref_var && cursor_entry->max_value > 0 &&
+    if (cursor_entry->on_press && a_pressed)
+    {
+        cursor_entry->on_press(cursor_entry, settingsScene);
+    }
+    else if (cursor_entry->pref_var && cursor_entry->max_value > 0 &&
         !cursor_entry->locked)
     {
         if (direction == 0)
@@ -662,10 +670,6 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                 }
             }
         }
-    }
-    else if (cursor_entry->on_press && a_pressed)
-    {
-        cursor_entry->on_press(cursor_entry, settingsScene);
     }
 
     playdate->graphics->clear(kColorWhite);
@@ -706,6 +710,8 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
             current_entry->values
                 ? current_entry->values[*current_entry->pref_var]
                 : "";
+        if (current_entry->show_value_only_on_hover && itemIndex != settingsScene->cursorIndex)
+            stateText = "";
 
         int nameWidth = playdate->graphics->getTextWidth(
             PGB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0);
