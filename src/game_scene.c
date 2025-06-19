@@ -2311,13 +2311,22 @@ cleanup:
                 
                 for (unsigned x = 0; x < SAVE_STATE_THUMBNAIL_W; ++x)
                 {
+                    // very bespoke dithering algorithm lol
                     u8 p0 = __gb_get_pixel(line0, x);
                     u8 p1 = __gb_get_pixel(line0, x ^ 1);
                     
-                    u8 pattern = dither_pattern[(p0 + p1/2)];
+                    u8 val = p0;
+                    if (val >= 2) val++;
+                    if (val == 1 && p1 >= 2) ++val;
+                    if (val == 3 && p1 < 2) --val;
+                    
+                    u8 pattern = dither_pattern[val];
                     if (y % 2 == 1)
                     {
-                        pattern = (pattern >> 2) | (pattern << 6);
+                        if (val == 2)
+                            pattern = (pattern >> 1) | (pattern << 7);
+                        else
+                            pattern = (pattern >> 2) | (pattern << 6);
                     }
                     
                     u8 pix = (pattern >> (x%8)) & 1;
