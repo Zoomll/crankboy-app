@@ -9,16 +9,16 @@
 #ifndef game_scene_h
 #define game_scene_h
 
-#include <math.h>
-#include <stdio.h>
-
 #include "peanut_gb.h"
 #include "scene.h"
+
+#include <math.h>
+#include <stdio.h>
 
 typedef struct PGB_GameSceneContext PGB_GameSceneContext;
 typedef struct PGB_GameScene PGB_GameScene;
 
-extern PGB_GameScene *audioGameScene;
+extern PGB_GameScene* audioGameScene;
 
 typedef enum
 {
@@ -69,23 +69,21 @@ struct gb_s;
 
 typedef struct PGB_GameSceneContext
 {
-    PGB_GameScene *scene;
-    struct gb_s *gb;
+    PGB_GameScene* scene;
+    struct gb_s* gb;
     uint8_t wram[WRAM_SIZE];
     uint8_t vram[VRAM_SIZE];
-    uint8_t *rom;
-    uint8_t *cart_ram;
-    uint8_t
-        previous_lcd[LCD_HEIGHT *
-                     LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
+    uint8_t* rom;
+    uint8_t* cart_ram;
+    uint8_t previous_lcd[LCD_HEIGHT * LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
 } PGB_GameSceneContext;
 
 typedef struct PGB_GameScene
 {
-    PGB_Scene *scene;
-    char *save_filename;
-    char *rom_filename;
-    char *base_filename;  // rom filename with extension stripped
+    PGB_Scene* scene;
+    char* save_filename;
+    char* rom_filename;
+    char* base_filename;  // rom filename with extension stripped
 
     bool audioEnabled;
     bool audioLocked;

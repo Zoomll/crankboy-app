@@ -9,16 +9,15 @@
 #ifndef app_h
 #define app_h
 
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-
 #include "pd_api.h"
 #include "scene.h"
 #include "utility.h"
 
-#if defined(TARGET_PLAYDATE) && !defined(TARGET_SIMULATOR) && \
-    !defined(TARGET_DEVICE)
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#if defined(TARGET_PLAYDATE) && !defined(TARGET_SIMULATOR) && !defined(TARGET_DEVICE)
 #define TARGET_DEVICE 1
 #endif
 
@@ -38,35 +37,35 @@ typedef struct PGB_Application
 {
     float dt;
     float crankChange;
-    PGB_Scene *scene;
-    PGB_Scene *pendingScene;
-    LCDFont *bodyFont;
-    LCDFont *titleFont;
-    LCDFont *subheadFont;
-    LCDFont *labelFont;
-    LCDBitmapTable *selectorBitmapTable;
-    LCDBitmap *startSelectBitmap;
-    SoundSource *soundSource;
+    PGB_Scene* scene;
+    PGB_Scene* pendingScene;
+    LCDFont* bodyFont;
+    LCDFont* titleFont;
+    LCDFont* subheadFont;
+    LCDFont* labelFont;
+    LCDBitmapTable* selectorBitmapTable;
+    LCDBitmap* startSelectBitmap;
+    SoundSource* soundSource;
     PDButtons buttons_down;
     PDButtons buttons_pressed;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
 } PGB_Application;
 
-extern PGB_Application *PGB_App;
+extern PGB_Application* PGB_App;
 
 void PGB_init(void);
 void PGB_event(PDSystemEvent event, uint32_t arg);
 void PGB_update(float dt);
-void PGB_present(PGB_Scene *scene);
+void PGB_present(PGB_Scene* scene);
 void PGB_quit(void);
 void PGB_goToLibrary(void);
-void PGB_presentModal(PGB_Scene *scene);
-void PGB_dismiss(PGB_Scene *scene);
+void PGB_presentModal(PGB_Scene* scene);
+void PGB_dismiss(PGB_Scene* scene);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.
-void *dtcm_alloc(size_t size);
+void* dtcm_alloc(size_t size);
 
 #define PLAYDATE_ROW_STRIDE 52
 
@@ -78,15 +77,12 @@ void *dtcm_alloc(size_t size);
 #else
 #define __space __attribute__((optimize("Os")))
 #ifdef ITCM_CORE
-#define __core                                                        \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm"))) \
-    __attribute__((short_call))
-#define __core_section(x)                                                \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm." x))) \
-    __attribute__((short_call))
-#else
 #define __core \
-    __attribute__((optimize("Os"))) __attribute__((section(".text.itcm")))
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm"))) __attribute__((short_call))
+#define __core_section(x) \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm." x))) __attribute__((short_call))
+#else
+#define __core __attribute__((optimize("Os"))) __attribute__((section(".text.itcm")))
 #define __core_section(x) __core
 #endif
 #endif
@@ -100,7 +96,8 @@ void *dtcm_alloc(size_t size);
 #define __shell                                                     \
     __attribute__((long_call)) __attribute((noinline)) __section__( \
         ".text."                                                    \
-        "pgb")
+        "pgb"                                                       \
+    )
 #else
 #define __shell __attribute((noinline)) __section__(".text.pgb")
 #endif
@@ -109,11 +106,10 @@ void *dtcm_alloc(size_t size);
 #ifdef ITCM_CORE
 extern char __itcm_start[];
 extern char __itcm_end[];
-extern void *core_itcm_reloc;
+extern void* core_itcm_reloc;
 #define itcm_core_size ((uintptr_t)&__itcm_end - (uintptr_t)&__itcm_start)
-#define ITCM_CORE_FN(fn)                                                \
-    ((typeof(fn) *)((uintptr_t)(void *)&fn - (uintptr_t)&__itcm_start + \
-                    core_itcm_reloc))
+#define ITCM_CORE_FN(fn) \
+    ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_start + core_itcm_reloc))
 void itcm_core_init(void);
 #else
 #define ITCM_CORE_FN(fn) fn

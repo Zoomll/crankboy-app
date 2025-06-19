@@ -8,18 +8,18 @@
 #ifndef settings_scene_h
 #define settings_scene_h
 
-#include <stdio.h>
-
 #include "game_scene.h"
 #include "scene.h"
+
+#include <stdio.h>
 
 struct OptionsMenuEntry;
 struct PDSynth;
 
 typedef struct PGB_SettingsScene
 {
-    PGB_Scene *scene;
-    PGB_GameScene *gameScene;
+    PGB_Scene* scene;
+    PGB_GameScene* gameScene;
 
     int cursorIndex;
     int topVisibleIndex;
@@ -28,12 +28,12 @@ typedef struct PGB_SettingsScene
     bool shouldDismiss : 1;
     bool wasAudioLocked : 1;
 
-    struct OptionsMenuEntry *entries;
-    struct PDSynth *clickSynth;
-    
+    struct OptionsMenuEntry* entries;
+    struct PDSynth* clickSynth;
+
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
 } PGB_SettingsScene;
 
-PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene);
+PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene);
 
 #endif /* settings_scene_h */

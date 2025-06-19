@@ -12,20 +12,20 @@ struct PGB_Modal;
 
 // option is -1 if cancelled;
 // otherwise, option is index in options[]
-typedef void (*PGB_ModalCallback)(void *ud, int option);
+typedef void (*PGB_ModalCallback)(void* ud, int option);
 
 typedef struct PGB_Modal
 {
-    PGB_Scene *scene;
-    void *ud;
+    PGB_Scene* scene;
+    void* ud;
 
     int cursorIndex;
     uint8_t lcd[LCD_ROWS * LCD_ROWSIZE];
 
-    char *text;
+    char* text;
     int options_count;
     int option_selected;
-    char *options[MODAL_MAX_OPTIONS];
+    char* options[MODAL_MAX_OPTIONS];
     PGB_ModalCallback callback;
     int timer;
     int droptimer;
@@ -33,8 +33,9 @@ typedef struct PGB_Modal
     bool setup : 1;
     int result;
 
-    LCDBitmap *dissolveMask;
+    LCDBitmap* dissolveMask;
 } PGB_Modal;
 
-PGB_Modal *PGB_Modal_new(char *text, char const *const *options,
-                         PGB_ModalCallback callback, void *ud);
+PGB_Modal* PGB_Modal_new(
+    char* text, char const* const* options, PGB_ModalCallback callback, void* ud
+);

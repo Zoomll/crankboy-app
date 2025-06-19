@@ -93,31 +93,30 @@ typedef struct audio_data
 {
     int vol_l : 4;
     int vol_r : 4;
-    uint8_t *audio_mem;
+    uint8_t* audio_mem;
     struct chan chans[4];
 } audio_data;
 
 /**
  * Read audio register at given address "addr".
  */
-uint8_t audio_read(struct audio_data *audio, const uint16_t addr);
+uint8_t audio_read(struct audio_data* audio, const uint16_t addr);
 
 /**
  * Write "val" to audio register at given address "addr".
  */
-void audio_write(struct audio_data *audio, const uint16_t addr,
-                 const uint8_t val);
+void audio_write(struct audio_data* audio, const uint16_t addr, const uint8_t val);
 
 /**
  * Initialise audio driver.
  */
-void audio_init(audio_data *audio);
+void audio_init(audio_data* audio);
 
 /**
  * Playdate audio callback function.
  */
-int audio_callback(void *context, int16_t *left, int16_t *right, int len);
+int audio_callback(void* context, int16_t* left, int16_t* right, int len);
 
 unsigned audio_get_state_size(void);
-void audio_state_save(void *buff);
-void audio_state_load(const void *buff);
+void audio_state_save(void* buff);
+void audio_state_load(const void* buff);

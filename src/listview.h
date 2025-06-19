@@ -9,10 +9,10 @@
 #ifndef listview_h
 #define listview_h
 
-#include <stdio.h>
-
 #include "array.h"
 #include "utility.h"
+
+#include <stdio.h>
 
 typedef struct
 {
@@ -52,23 +52,23 @@ typedef enum
 typedef struct
 {
     PGB_ListItemType type;
-    void *object;
+    void* object;
     int height;
     int offsetY;
 } PGB_ListItem;
 
 typedef struct
 {
-    PGB_ListItem *item;
-    char *title;
-    LCDBitmap *coverImage;
+    PGB_ListItem* item;
+    char* title;
+    LCDBitmap* coverImage;
     float textScrollOffset;
     bool needsTextScroll;
 } PGB_ListItemButton;
 
 typedef struct
 {
-    PGB_Array *items;
+    PGB_Array* items;
     PGB_ListViewModel model;
     int selectedItem;
 
@@ -89,17 +89,17 @@ typedef struct
     float textScrollPause;
 } PGB_ListView;
 
-PGB_ListView *PGB_ListView_new(void);
+PGB_ListView* PGB_ListView_new(void);
 
-void PGB_ListView_update(PGB_ListView *listView);
-void PGB_ListView_draw(PGB_ListView *listView);
+void PGB_ListView_update(PGB_ListView* listView);
+void PGB_ListView_draw(PGB_ListView* listView);
 
-void PGB_ListView_reload(PGB_ListView *listView);
+void PGB_ListView_reload(PGB_ListView* listView);
 
-void PGB_ListView_free(PGB_ListView *listView);
+void PGB_ListView_free(PGB_ListView* listView);
 
-PGB_ListItemButton *PGB_ListItemButton_new(char *title);
+PGB_ListItemButton* PGB_ListItemButton_new(char* title);
 
-void PGB_ListItem_free(PGB_ListItem *item);
+void PGB_ListItem_free(PGB_ListItem* item);
 
 #endif /* listview_h */

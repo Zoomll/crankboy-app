@@ -22,8 +22,8 @@ __attribute__((constructor)) void pd_revcheck(void)
 #ifdef TARGET_SIMULATOR
     pd_rev = PD_REV_SIMULATOR;
 #else
-    volatile uintptr_t bss = (uintptr_t)(void *)&pd_rev;
-    uintptr_t stack = (uintptr_t)(void *)&bss;
+    volatile uintptr_t bss = (uintptr_t)(void*)&pd_rev;
+    uintptr_t stack = (uintptr_t)(void*)&bss;
 
     int i = 0;
     for (i = 0; i < sizeof(rev_bss) / sizeof(rev_bss[0]); ++i)
@@ -38,7 +38,7 @@ __attribute__((constructor)) void pd_revcheck(void)
 #endif
 
 set_description:
-    switch(pd_rev)
+    switch (pd_rev)
     {
     case PD_REV_A:
         pd_rev_description = "Rev A";

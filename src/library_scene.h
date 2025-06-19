@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include <stdio.h>
-
 #include "array.h"
 #include "listview.h"
 #include "scene.h"
+
+#include <stdio.h>
 
 typedef enum
 {
@@ -28,27 +28,27 @@ typedef struct
 
 typedef struct
 {
-    char *filename;
-    char *fullpath;
-    char *coverPath;
-    char *displayName;
+    char* filename;
+    char* fullpath;
+    char* coverPath;
+    char* displayName;
 } PGB_Game;
 
 typedef struct PGB_LibraryScene
 {
-    PGB_Scene *scene;
-    PGB_Array *games;
+    PGB_Scene* scene;
+    PGB_Array* games;
     PGB_LibrarySceneModel model;
-    PGB_ListView *listView;
+    PGB_ListView* listView;
     PGB_LibrarySceneTab tab;
 
     bool firstLoad;
     int lastSelectedItem;
 
-    LCDBitmap *missingCoverIcon;
+    LCDBitmap* missingCoverIcon;
 } PGB_LibraryScene;
 
-PGB_LibraryScene *PGB_LibraryScene_new(void);
+PGB_LibraryScene* PGB_LibraryScene_new(void);
 
-PGB_Game *PGB_Game_new(const char *filename);
-void PGB_Game_free(PGB_Game *game);
+PGB_Game* PGB_Game_new(const char* filename);
+void PGB_Game_free(PGB_Game* game);

@@ -3,9 +3,9 @@
 #include "pd_api.h"
 #include "utility.h"
 
-__section__(".rare") void SI_willDecodeSublist(json_decoder *decoder,
-                                               const char *name,
-                                               json_value_type type)
+__section__(".rare") void SI_willDecodeSublist(
+    json_decoder* decoder, const char* name, json_value_type type
+)
 {
     if (type == kJSONArray)
     {
@@ -19,18 +19,16 @@ __section__(".rare") void SI_willDecodeSublist(json_decoder *decoder,
     }
 }
 
-__section__(".rare") void SI_didDecodeArrayValue(json_decoder *decoder, int pos,
-                                                 json_value value)
+__section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos, json_value value)
 {
     --pos;  // one-indexed (!!)
-    JsonArray *array = decoder->userdata;
+    JsonArray* array = decoder->userdata;
     int n = array ? array->n : 0;
     if (pos >= n)
         n = pos + 1;
     size_t p2n = next_pow2(n);
 
-    array = playdate->system->realloc(
-        array, sizeof(JsonArray) + p2n * sizeof(json_value));
+    array = playdate->system->realloc(array, sizeof(JsonArray) + p2n * sizeof(json_value));
 
     if (value.type == kJSONString)
     {
@@ -44,18 +42,17 @@ __section__(".rare") void SI_didDecodeArrayValue(json_decoder *decoder, int pos,
     return;
 }
 
-__section__(".rare") void SI_didDecodeTableValue(json_decoder *decoder,
-                                                 const char *key,
-                                                 json_value value)
+__section__(".rare") void SI_didDecodeTableValue(
+    json_decoder* decoder, const char* key, json_value value
+)
 {
-    JsonObject *obj = decoder->userdata;
+    JsonObject* obj = decoder->userdata;
 
     int n = 1 + (obj ? obj->n : 0);
 
     size_t p2n = next_pow2(n);
 
-    obj = playdate->system->realloc(
-        obj, sizeof(JsonObject) + p2n * sizeof(TableKeyPair));
+    obj = playdate->system->realloc(obj, sizeof(JsonObject) + p2n * sizeof(TableKeyPair));
 
     if (value.type == kJSONString)
     {
@@ -70,9 +67,9 @@ __section__(".rare") void SI_didDecodeTableValue(json_decoder *decoder,
     return;
 }
 
-__section__(".rare") void *SI_didDecodeSublist(json_decoder *decoder,
-                                               const char *name,
-                                               json_value_type type)
+__section__(".rare") void* SI_didDecodeSublist(
+    json_decoder* decoder, const char* name, json_value_type type
+)
 {
     return decoder->userdata;
 }
@@ -81,7 +78,7 @@ __section__(".rare") void free_json_data(json_value v)
 {
     if (v.type == kJSONArray)
     {
-        JsonArray *array = (JsonArray *)v.data.arrayval;
+        JsonArray* array = (JsonArray*)v.data.arrayval;
         for (size_t i = 0; i < array->n; i++)
         {
             free_json_data(array->data[i]);
@@ -90,7 +87,7 @@ __section__(".rare") void free_json_data(json_value v)
     }
     else if (v.type == kJSONTable)
     {
-        JsonObject *obj = (JsonObject *)v.data.tableval;
+        JsonObject* obj = (JsonObject*)v.data.tableval;
         for (size_t i = 0; i < obj->n; i++)
         {
             free(obj->data[i].key);
@@ -104,19 +101,20 @@ __section__(".rare") void free_json_data(json_value v)
     }
 }
 
-__section__(".rare") static void decodeError(struct json_decoder *decoder,
-                                             const char *error, int linenum)
+__section__(".rare") static void decodeError(
+    struct json_decoder* decoder, const char* error, int linenum
+)
 {
     playdate->system->logToConsole("Error decoding json: %s", error);
 }
 
-__section__(".rare") int parse_json(const char *path, json_value *out, FileOptions opts)
+__section__(".rare") int parse_json(const char* path, json_value* out, FileOptions opts)
 {
     if (!out)
         return 0;
     out->type = kJSONNull;
 
-    SDFile *file = playdate->file->open(path, opts);
+    SDFile* file = playdate->file->open(path, opts);
     if (!file)
     {
         return 0;
@@ -132,12 +130,13 @@ __section__(".rare") int parse_json(const char *path, json_value *out, FileOptio
         .didDecodeSublist = SI_didDecodeSublist,
         .userdata = NULL,
         .returnString = 0,
-        .path = NULL};
+        .path = NULL
+    };
 
     // (gets binary data for json file)
     json_reader reader = {
-        .read = (int (*)(void *, uint8_t *, int))playdate->file->read,
-        .userdata = file};
+        .read = (int (*)(void*, uint8_t*, int))playdate->file->read, .userdata = file
+    };
 
     int ok = playdate->json->decode(&decoder, reader, out);
     playdate->file->close(file);
@@ -153,7 +152,7 @@ __section__(".rare") int parse_json(const char *path, json_value *out, FileOptio
 
 __section__(".rare") void encode_json(json_encoder* e, json_value j)
 {
-    switch(j.type)
+    switch (j.type)
     {
     case kJSONNull:
         e->writeNull(e);
@@ -173,7 +172,8 @@ __section__(".rare") void encode_json(json_encoder* e, json_value j)
     case kJSONString:
         e->writeString(e, j.data.stringval, strlen(j.data.stringval));
         break;
-    case kJSONTable: {
+    case kJSONTable:
+    {
         e->startTable(e);
         JsonObject* obj = j.data.tableval;
         for (size_t i = 0; i < obj->n; ++i)
@@ -182,7 +182,8 @@ __section__(".rare") void encode_json(json_encoder* e, json_value j)
             encode_json(e, obj->data[i].value);
         }
         e->endTable(e);
-    } break;
+    }
+    break;
     case kJSONArray:
         e->startArray(e);
         JsonArray* obj = j.data.tableval;
@@ -197,18 +198,19 @@ __section__(".rare") void encode_json(json_encoder* e, json_value j)
     }
 }
 
-__section__(".rare")
-static void writefile(void* userdata, const char* str, int len) {
-	playdate->file->write((SDFile*)userdata, str, len);
+__section__(".rare") static void writefile(void* userdata, const char* str, int len)
+{
+    playdate->file->write((SDFile*)userdata, str, len);
 }
 
 __section__(".rare") int write_json_to_disk(const char* path, json_value out)
 {
     json_encoder encoder;
-    
+
     SDFile* file = playdate->file->open(path, kFileWrite);
-    if (!file) return -1;
-    
+    if (!file)
+        return -1;
+
     playdate->json->initEncoder(&encoder, writefile, file, 1);
     encode_json(&encoder, out);
     playdate->file->close(file);
@@ -217,10 +219,12 @@ __section__(".rare") int write_json_to_disk(const char* path, json_value out)
 
 __section__(".rare") json_value json_get_table_value(json_value j, const char* key)
 {
-    if (j.type != kJSONTable) goto ret_null;
+    if (j.type != kJSONTable)
+        goto ret_null;
     JsonObject* obj = j.data.tableval;
-    if (!obj) goto ret_null;
-    
+    if (!obj)
+        goto ret_null;
+
     for (size_t i = 0; i < obj->n; ++i)
     {
         if (!strcmp(obj->data[i].key, key))
@@ -228,7 +232,7 @@ __section__(".rare") json_value json_get_table_value(json_value j, const char* k
             return obj->data[i].value;
         }
     }
-    
+
 ret_null:
     j.type = kJSONNull;
     return j;

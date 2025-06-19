@@ -9,9 +9,9 @@
 #ifndef preferences_h
 #define preferences_h
 
-#include <stdio.h>
-
 #include "utility.h"
+
+#include <stdio.h>
 
 extern int preferences_display_fps;
 extern int preferences_frame_skip;

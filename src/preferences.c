@@ -13,7 +13,7 @@
 
 static const int pref_version = 1;
 
-static const char *pref_filename = "preferences.json";
+static const char* pref_filename = "preferences.json";
 
 int preferences_sound_mode = 2;
 int preferences_crank_mode = 0;
@@ -28,20 +28,20 @@ int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
 int preferences_dynamic_level = 0;
 
-static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
-                                     size_t size, size_t len);
+static void cpu_endian_to_big_endian(
+    unsigned char* src, unsigned char* buffer, size_t size, size_t len
+);
 
-static uint8_t preferences_read_uint8(SDFile *file);
-static void preferences_write_uint8(SDFile *file, uint8_t value);
-static uint32_t preferences_read_uint32(SDFile *file);
-static void preferences_write_uint32(SDFile *file, uint32_t value);
+static uint8_t preferences_read_uint8(SDFile* file);
+static void preferences_write_uint8(SDFile* file, uint8_t value);
+static uint32_t preferences_read_uint32(SDFile* file);
+static void preferences_write_uint32(SDFile* file, uint32_t value);
 
 void preferences_init(void)
 {
     // default values which depend on device hardware (not available statically)
     preferences_itcm = (pd_rev == PD_REV_A);
-    preferences_sample_rate = (pd_rev == PD_REV_A)
-        ? 1 : 0;
+    preferences_sample_rate = (pd_rev == PD_REV_A) ? 1 : 0;
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
@@ -68,7 +68,7 @@ void preferences_read_from_disk(void)
 
     if (j.type == kJSONTable)
     {
-        JsonObject *obj = j.data.tableval;
+        JsonObject* obj = j.data.tableval;
         for (size_t i = 0; i < obj->n; ++i)
         {
             json_value pref = obj->data[i].value;
@@ -208,39 +208,39 @@ int preferences_save_to_disk(void)
     return !error;
 }
 
-static uint8_t preferences_read_uint8(SDFile *file)
+static uint8_t preferences_read_uint8(SDFile* file)
 {
     uint8_t buffer[1];
     playdate->file->read(file, buffer, sizeof(uint8_t));
     return buffer[0];
 }
 
-static void preferences_write_uint8(SDFile *file, uint8_t value)
+static void preferences_write_uint8(SDFile* file, uint8_t value)
 {
     playdate->file->write(file, &value, sizeof(uint8_t));
 }
 
-static uint32_t preferences_read_uint32(SDFile *file)
+static uint32_t preferences_read_uint32(SDFile* file)
 {
     unsigned char buffer[sizeof(uint32_t)];
     playdate->file->read(file, buffer, sizeof(uint32_t));
     return buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3];
 }
 
-static void preferences_write_uint32(SDFile *file, uint32_t value)
+static void preferences_write_uint32(SDFile* file, uint32_t value)
 {
     unsigned char buffer[sizeof(uint32_t)];
-    cpu_endian_to_big_endian((unsigned char *)&value, buffer, sizeof(uint32_t),
-                             1);
+    cpu_endian_to_big_endian((unsigned char*)&value, buffer, sizeof(uint32_t), 1);
     playdate->file->write(file, buffer, sizeof(uint32_t));
 }
 
-static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
-                                     size_t size, size_t len)
+static void cpu_endian_to_big_endian(
+    unsigned char* src, unsigned char* buffer, size_t size, size_t len
+)
 {
     int x = 1;
 
-    if (*((char *)&x) == 1)
+    if (*((char*)&x) == 1)
     {
         // little endian machine, swap
         for (size_t i = 0; i < len; i++)

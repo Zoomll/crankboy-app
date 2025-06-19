@@ -10,12 +10,12 @@
 
 #include "app.h"
 
-static void PGB_Scene_menu_callback(void *object);
-static void PGB_Scene_event(void *object, PDSystemEvent event, uint32_t arg);
+static void PGB_Scene_menu_callback(void* object);
+static void PGB_Scene_event(void* object, PDSystemEvent event, uint32_t arg);
 
-PGB_Scene *PGB_Scene_new(void)
+PGB_Scene* PGB_Scene_new(void)
 {
-    PGB_Scene *scene = pgb_malloc(sizeof(PGB_Scene));
+    PGB_Scene* scene = pgb_malloc(sizeof(PGB_Scene));
     memset(scene, 0, sizeof(PGB_Scene));
 
     scene->update = PGB_Scene_update;
@@ -33,26 +33,26 @@ PGB_Scene *PGB_Scene_new(void)
     return scene;
 }
 
-void PGB_Scene_update(void *object, uint32_t u32enc_dt)
+void PGB_Scene_update(void* object, uint32_t u32enc_dt)
 {
 }
 
-static void PGB_Scene_menu_callback(void *object)
+static void PGB_Scene_menu_callback(void* object)
 {
 }
 
-static void PGB_Scene_event(void *object, PDSystemEvent event, uint32_t arg)
+static void PGB_Scene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
 }
 
-void PGB_Scene_refreshMenu(PGB_Scene *scene)
+void PGB_Scene_refreshMenu(PGB_Scene* scene)
 {
     playdate->system->removeAllMenuItems();
     scene->menu(PGB_App->scene->managedObject);
 }
 
-void PGB_Scene_free(void *object)
+void PGB_Scene_free(void* object)
 {
-    PGB_Scene *scene = object;
+    PGB_Scene* scene = object;
     pgb_free(scene);
 }

@@ -6,9 +6,6 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include <stdio.h>
-#include <time.h>
-
 #include "./src/app.h"
 #include "app.h"
 #include "dtcm.h"
@@ -17,30 +14,31 @@
 #include "userstack.h"
 #include "version.h"
 
+#include <stdio.h>
+#include <time.h>
+
 #ifdef _WINDLL
 #define DllExport __declspec(dllexport)
 #else
 #define DllExport
 #endif
 
-static int update(void *userdata);
-int eventHandler_pdnewlib(PlaydateAPI *, PDSystemEvent event, uint32_t arg);
+static int update(void* userdata);
+int eventHandler_pdnewlib(PlaydateAPI*, PDSystemEvent event, uint32_t arg);
 
-__section__(".rare") static void *user_stack_test(void *p)
+__section__(".rare") static void* user_stack_test(void* p)
 {
-    if (p == (void *)(uintptr_t)0x103)
-        playdate->system->logToConsole("User stack accessible (%p)",
-                                       __builtin_frame_address(0));
+    if (p == (void*)(uintptr_t)0x103)
+        playdate->system->logToConsole("User stack accessible (%p)", __builtin_frame_address(0));
     else
-        playdate->system->error("Error from user stack: unexpected arg p=%p",
-                                p);
-    return (void *)0x784;
+        playdate->system->error("Error from user stack: unexpected arg p=%p", p);
+    return (void*)0x784;
 }
 
-int eventHandlerShim(PlaydateAPI *playdate, PDSystemEvent event, uint32_t arg);
+int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 
 __section__(".text.main") DllExport
-    int eventHandler(PlaydateAPI *pd, PDSystemEvent event, uint32_t arg)
+    int eventHandler(PlaydateAPI* pd, PDSystemEvent event, uint32_t arg)
 {
     eventHandler_pdnewlib(pd, event, arg);
 
@@ -57,19 +55,18 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
-        
+
         srand(time(NULL));
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
-        void *result =
-            call_with_user_stack_1(user_stack_test, (void *)(uintptr_t)0x103);
+        void* result = call_with_user_stack_1(user_stack_test, (void*)(uintptr_t)0x103);
         PGB_ASSERT(result == 0x784);
         playdate->system->logToConsole("User stack validated");
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
-        
+
         PGB_init();
 
         pd->system->setUpdateCallback(update, pd);
@@ -84,14 +81,14 @@ __section__(".text.main") DllExport
     return 0;
 }
 
-__section__(".text.main") int update(void *userdata)
+__section__(".text.main") int update(void* userdata)
 {
-    PlaydateAPI *pd = userdata;
+    PlaydateAPI* pd = userdata;
 
 #if DTCM_DEBUG
-    const char *dtcm_verify_context = "main update";
+    const char* dtcm_verify_context = "main update";
 #else
-    const char *dtcm_verify_context = "main update (debug with -DDTCM_DEBUG=1)";
+    const char* dtcm_verify_context = "main update (debug with -DDTCM_DEBUG=1)";
 #endif
 
     if (!dtcm_verify(dtcm_verify_context))
