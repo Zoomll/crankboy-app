@@ -26,7 +26,7 @@ int preferences_sample_rate = 1;
 int preferences_uncap_fps = 0;
 int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
-int preferences_dynamic_level = 0;
+int preferences_dynamic_level = 6;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
