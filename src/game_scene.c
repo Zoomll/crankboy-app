@@ -170,10 +170,19 @@ void itcm_core_init(void)
 }
 #endif
 
+static LCDBitmap* numbers_bmp = NULL;
+static uint32_t last_fps_digits;
+static uint8_t fps_draw_timer;
+
 PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 {
     playdate->system->logToConsole("ROM: %s", rom_filename);
     playdate->system->setCrankSoundsDisabled(true);
+    
+    if (!numbers_bmp)
+    {
+        numbers_bmp = playdate->graphics->loadBitmap("fonts/numbers", NULL);
+    }
 
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
@@ -957,6 +966,78 @@ __core_section("fb") void update_fb_dirty_lines(
 
 static void save_check(struct gb_s* gb);
 
+static __section__(".text.tick")
+void display_fps(void)
+{
+    if (!numbers_bmp) return;
+    
+    if (++fps_draw_timer % 4 != 0) return;
+    
+    float fps;
+    if (PGB_App->avg_dt <= 1.0f/98.5f)
+    {
+        fps = 99.9;
+    }
+    else
+    {
+        fps = 1.0f / PGB_App->avg_dt;
+    }
+    
+    // for rounding
+    fps += 0.004f;
+    
+    uint8_t* lcd = playdate->graphics->getFrame();
+    
+    uint8_t* data;
+    int width, height, rowbytes;
+    playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
+    
+    if (!data || !lcd) return;
+    
+    char buff[5];
+    snprintf(buff, sizeof(buff), "%04.1f", (double)fps);
+    
+    uint32_t digits4 = *(uint32_t*)&buff[0];
+    if (digits4 == last_fps_digits) return;
+    last_fps_digits = digits4;
+    
+    for (int y = 0; y < height; ++y)
+    {
+        uint32_t out = 0;
+        unsigned x = 0;
+        uint8_t* rowdata = data + y*rowbytes;
+        for (int i = 0; i < sizeof(buff); ++i)
+        {
+            char c = buff[i];
+            int cidx = 11, advance = 0;
+            if (c == '.')
+            {
+                cidx = 10;
+                advance = 3;
+            }
+            else if (c >= '0' && c <= '9')
+            {
+                cidx = c - '0';
+                advance = 7;
+            }
+            
+            unsigned cdata = (rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
+            out |= cdata << (32 - x - 8);
+            x += advance;
+        }
+        
+        uint32_t mask = ((1 << (30 - x)) - 1);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            lcd[y*LCD_ROWSIZE + i] &= (mask >> ((3 - i)*8));
+            lcd[y*LCD_ROWSIZE + i] |= (out >> ((3 - i)*8));
+        }
+    }
+    
+    playdate->graphics->markUpdatedRows(0, height - 1);
+}
+
 __section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
 {
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -1293,6 +1374,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         }
 
         gameScene->playtime += 1 + preferences_frame_skip;
+        PGB_App->avg_dt_mult = (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
             context->gb->direct.frame_skip = preferences_frame_skip != frame;
@@ -1648,7 +1730,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
         if (preferences_display_fps)
         {
-            playdate->system->drawFPS(0, 0);
+            display_fps();
         }
     }
     else if (gameScene->state == PGB_GameSceneStateError)

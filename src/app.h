@@ -33,9 +33,13 @@ extern pthread_mutex_t audio_mutex;
 // TODO: is this safe? should we lower it?
 #define PLAYDATE_STACK_SIZE 0x2280
 
+#define FPS_AVG_DECAY 0.8f
+
 typedef struct PGB_Application
 {
     float dt;
+    float avg_dt; // for fps calculation
+    float avg_dt_mult; // reciprocal number of emulated frames last frame
     float crankChange;
     PGB_Scene* scene;
     PGB_Scene* pendingScene;

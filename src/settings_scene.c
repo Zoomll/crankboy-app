@@ -179,6 +179,7 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
+static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
 static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
@@ -476,12 +477,13 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Show FPS",
-        .values = off_on_labels,
+        .values = fps_labels,
         .description =
-            "Displays the current\nframes-per-second\non screen."
+            "Displays the current\nframes-per-second\non screen.\n \n"
+            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)"
         ,
         .pref_var = &preferences_display_fps,
-        .max_value = 2,
+        .max_value = 3,
         .on_press = NULL
     };
 

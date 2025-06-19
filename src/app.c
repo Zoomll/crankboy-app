@@ -24,6 +24,7 @@ pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 void PGB_init(void)
 {
     PGB_App = pgb_malloc(sizeof(PGB_Application));
+    memset(PGB_App, 0, sizeof(PGB_App));
 
     PGB_App->scene = NULL;
 
@@ -73,6 +74,8 @@ __section__(".rare") static void switchToPendingScene(void)
 __section__(".text.main") void PGB_update(float dt)
 {
     PGB_App->dt = dt;
+    PGB_App->avg_dt = (PGB_App->avg_dt * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt * PGB_App->avg_dt_mult;
+    PGB_App->avg_dt_mult = 1.0f;
 
     PGB_App->crankChange = playdate->system->getCrankChange();
 

@@ -17,7 +17,7 @@ static const char* pref_filename = "preferences.json";
 
 int preferences_sound_mode = 2;
 int preferences_crank_mode = 0;
-int preferences_display_fps = false;
+int preferences_display_fps = 0;
 int preferences_frame_skip = true;
 int preferences_itcm = false;
 int preferences_lua_support = false;
