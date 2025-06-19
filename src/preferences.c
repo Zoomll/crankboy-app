@@ -26,6 +26,7 @@ int preferences_sample_rate = 1;
 int preferences_uncap_fps = 0;
 int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
+int preferences_dynamic_level = 0;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -119,6 +120,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_overclock = pref.data.intval;
             }
+            KEY("dynamic_level")
+            {
+                preferences_dynamic_level = pref.data.intval;
+            }
         }
     }
 
@@ -132,7 +137,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 12
+#define NUM_PREFS 13
 
     union
     {
@@ -175,22 +180,26 @@ int preferences_save_to_disk(void)
     data.obj.data[7].key = "sample_rate";
     data.obj.data[7].value.type = kJSONInteger;
     data.obj.data[7].value.data.intval = preferences_sample_rate;
-    
+
     data.obj.data[8].key = "uncap_fps";
     data.obj.data[8].value.type = kJSONInteger;
     data.obj.data[8].value.data.intval = preferences_uncap_fps;
-    
+
     data.obj.data[9].key = "dither";
     data.obj.data[9].value.type = kJSONInteger;
     data.obj.data[9].value.data.intval = preferences_dither_pattern;
-    
+
     data.obj.data[10].key = "save-state-slot";
     data.obj.data[10].value.type = kJSONInteger;
     data.obj.data[10].value.data.intval = preferences_save_state_slot;
-    
+
     data.obj.data[11].key = "overclock";
     data.obj.data[11].value.type = kJSONInteger;
     data.obj.data[11].value.data.intval = preferences_overclock;
+
+    data.obj.data[12].key = "dynamic_level";
+    data.obj.data[12].value.type = kJSONInteger;
+    data.obj.data[12].value.data.intval = preferences_dynamic_level;
 
     int error = write_json_to_disk(pref_filename, j);
 

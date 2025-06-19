@@ -140,7 +140,9 @@ typedef struct PGB_GameScene
     unsigned playtime;
 
     bool isCurrentlySaving;
-    bool next_frame_should_interlace;
+
+    int interlace_tendency_counter;
+    int interlace_lock_frames_remaining;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);

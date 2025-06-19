@@ -27,10 +27,26 @@
 #include "game_scene.h"
 // clang-format on
 
-// If the number of updated Playdate lines exceeds this,
-// activate interlace for the next frame.
-// The maximum lines that can be updated is 208.
-#define INTERLACE_LINE_COUNT_THRESHOLD 95
+// The maximum Playdate screen lines that can be updated (seems to be 208).
+#define PLAYDATE_LINE_COUNT_MAX 208
+
+// --- Parameters for the "Tendency Counter" Auto-Interlace System ---
+
+// The tendency counter's ceiling. Higher values add more inertia.
+#define INTERLACE_TENDENCY_MAX 10
+
+// Counter threshold to activate interlacing. Lower is more reactive.
+#define INTERLACE_TENDENCY_TRIGGER_ON 5
+
+// Hysteresis floor; interlacing stays on until the counter drops below this.
+#define INTERLACE_TENDENCY_TRIGGER_OFF 3
+
+// --- Parameters for the Adaptive "Grace Period Lock" ---
+
+// Defines the [min, max] frame range for the adaptive lock.
+// A lower user sensitivity setting results in a longer lock duration (closer to MAX).
+#define INTERLACE_LOCK_DURATION_MAX 90
+#define INTERLACE_LOCK_DURATION_MIN 1
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -199,7 +215,8 @@ PGB_GameScene *PGB_GameScene_new(const char *rom_filename)
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
-    gameScene->next_frame_should_interlace = false;
+    gameScene->interlace_tendency_counter = 0;
+    gameScene->interlace_lock_frames_remaining = 0;
 
     gameScene->isCurrentlySaving = false;
 
@@ -975,33 +992,69 @@ __section__(".text.tick") __space
      * Dynamic Rate Control with Adaptive Interlacing
      * =========================================================================
      *
-     * This system aims to maintain a smooth 60 FPS by dynamically skipping the
-     * rendering of some screen lines (interlacing) if the previous frame took
-     * too long to render.
+     * This system maintains a smooth 60 FPS by dynamically skipping screen
+     * lines (interlacing) based on the rendering workload. The "Auto" mode
+     * uses a smart, two-stage system to provide both stability and responsiveness.
      *
-     * This entire feature is DISABLED in 30 FPS mode
-     * (`preferences_frame_skip`), as the visual disturbance from interlacing is
-     * much higher at a low framerate, and other performance tweaks (e.g. sound
-     * quality) are less distracting for the user.
+     * Stage 1: The Tendency Counter
+     * This counter tracks recent frame activity. It increases when the number of
+     * updated lines exceeds a user-settable threshold (indicating a busy
+     * scene) and decreases when the scene is calm. When the counter passes a
+     * 'trigger-on' value, it activates Stage 2.
+     *
+     * Stage 2: The Adaptive Grace Period Lock
+     * Once activated, interlacing is "locked on" for a set duration to
+     * guarantee stable performance during sustained action. This lock's duration
+     * is adaptive, linked directly to the user's sensitivity preference:
+     *  - Low Sensitivity: Long lock, ideal for racing games.
+     *  - High Sensitivity: Minimal/no lock, ideal for brief screen transitions.
+     *
+     * This dual approach provides stability during high-motion sequences while
+     * remaining highly responsive to brief bursts of activity.
+     *
+     * This entire feature is DISABLED in 30 FPS mode (`preferences_frame_skip`),
+     * as the visual disturbance is more pronounced at a lower framerate.
      */
 
     bool activate_dynamic_rate = false;
+    bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
     if (!preferences_frame_skip)
     {
         if (preferences_dynamic_rate == 1)  // "On"
         {
             activate_dynamic_rate = true;
+            gameScene->interlace_lock_frames_remaining = 0;
         }
         else if (preferences_dynamic_rate == 2)  // "Auto"
         {
-            activate_dynamic_rate = gameScene->next_frame_should_interlace;
+            if (gameScene->interlace_lock_frames_remaining > 0) {
+                activate_dynamic_rate = true;
+                gameScene->interlace_lock_frames_remaining--;
+            }
+            else {
+                if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_ON) {
+                    activate_dynamic_rate = true;
+                }
+                else if (was_interlaced_last_frame && gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_OFF) {
+                    activate_dynamic_rate = true;
+                }
+            }
         }
+    }
+
+    if (activate_dynamic_rate && !was_interlaced_last_frame) {
+        float inverted_level_normalized = (10.0f - preferences_dynamic_level) / 10.0f;
+
+        int adaptive_lock_duration = INTERLACE_LOCK_DURATION_MIN +
+            (int)((INTERLACE_LOCK_DURATION_MAX - INTERLACE_LOCK_DURATION_MIN) * inverted_level_normalized);
+
+        gameScene->interlace_lock_frames_remaining = adaptive_lock_duration;
     }
 
     if (preferences_dynamic_rate != 2 || preferences_frame_skip)
     {
-        gameScene->next_frame_should_interlace = false;
+        gameScene->interlace_tendency_counter = 0;
     }
 
     context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
@@ -1221,7 +1274,7 @@ __section__(".text.tick") __space
             !(current_pd_buttons & kButtonRight);
         context->gb->direct.joypad_bits.down =
             !(current_pd_buttons & kButtonDown);
-            
+
         context->gb->overclock = (unsigned)(preferences_overclock);
 
         if (gbScreenRequiresFullRefresh)
@@ -1340,8 +1393,20 @@ __section__(".text.tick") __space
                 }
             }
 
-            gameScene->next_frame_should_interlace =
-                (updated_playdate_lines > INTERLACE_LINE_COUNT_THRESHOLD);
+            int percentage_threshold = 25 + (preferences_dynamic_level * 5);
+            int line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
+
+            if (updated_playdate_lines > line_threshold)
+            {
+                gameScene->interlace_tendency_counter += 2;
+            }
+            else
+            {
+                gameScene->interlace_tendency_counter--;
+            }
+
+            if (gameScene->interlace_tendency_counter < 0) gameScene->interlace_tendency_counter = 0;
+            if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX) gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
         }
 
 #if LOG_DIRTY_LINES
@@ -2143,16 +2208,16 @@ __section__(".rare") static unsigned get_save_state_timestamp_(PGB_GameScene *ga
         &path, "%s/%s.%u.state", PGB_statesPath,
         gameScene->base_filename, slot
     );
-    
+
     SDFile *file = playdate->file->open(path, kFileReadData);
-    
+
     free(path);
-    
+
     if (!file)
     {
         return 0;
     }
-    
+
     struct StateHeader header;
     int read =
                             playdate->file->read(file, &header, sizeof(header));
@@ -2281,7 +2346,7 @@ cleanup:
         free(tmp_name);
     if (bak_name)
         free(bak_name);
-        
+
     // we check playtime nonzero so that LCD has been updated at least once
     uint8_t* lcd = context->gb->lcd;
     if (success && lcd && gameScene->playtime > 1)
@@ -2289,7 +2354,7 @@ cleanup:
         // save thumbnail, too
         // (inessential, so we don't take safety precautions)
         SDFile* file = playdate->file->open(thumb_name, kFileWrite);
-        
+
         static const uint8_t dither_pattern[5] = {
             0b00000000 ^ 0xFF,
             0b01000100 ^ 0xFF,
@@ -2297,27 +2362,27 @@ cleanup:
             0b11011101 ^ 0xFF,
             0b11111111 ^ 0xFF,
         };
-        
+
         if (file)
         {
             for (unsigned y = 0; y < SAVE_STATE_THUMBNAIL_H; ++y)
             {
                 uint8_t* line0 = lcd + y*LCD_WIDTH_PACKED;
-                
+
                 u8 thumbline[(SAVE_STATE_THUMBNAIL_W+7)/8];
                 memset(thumbline, 0, sizeof(thumbline));
-                
+
                 for (unsigned x = 0; x < SAVE_STATE_THUMBNAIL_W; ++x)
                 {
                     // very bespoke dithering algorithm lol
                     u8 p0 = __gb_get_pixel(line0, x);
                     u8 p1 = __gb_get_pixel(line0, x ^ 1);
-                    
+
                     u8 val = p0;
                     if (val >= 2) val++;
                     if (val == 1 && p1 >= 2) ++val;
                     if (val == 3 && p1 < 2) --val;
-                    
+
                     u8 pattern = dither_pattern[val];
                     if (y % 2 == 1)
                     {
@@ -2326,19 +2391,19 @@ cleanup:
                         else
                             pattern = (pattern >> 2) | (pattern << 6);
                     }
-                    
+
                     u8 pix = (pattern >> (x%8)) & 1;
-                    
+
                     thumbline[x/8] |= pix << (7 - (x%8));
                 }
-                
+
                 playdate->file->write(file, thumbline, sizeof(thumbline));
             }
         }
-        
+
         playdate->file->close(file);
     }
-    
+
     if (thumb_name)
         free(thumb_name);
 
@@ -2360,20 +2425,20 @@ __section__(".rare") bool load_state_thumbnail_(PGB_GameScene *gameScene, unsign
         &path, "%s/%s.%u.thumb", PGB_statesPath,
         gameScene->base_filename, slot
     );
-    
+
     SDFile *file = playdate->file->open(path, kFileReadData);
-    
+
     free(path);
-    
+
     if (!file)
     {
         return 0;
     }
-    
+
     int count = SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7)/8);
     int read = playdate->file->read(file, out, count);
     playdate->file->close(file);
-    
+
     return read == count;
 }
 

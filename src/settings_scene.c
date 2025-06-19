@@ -99,7 +99,7 @@ PGB_SettingsScene *PGB_SettingsScene_new(PGB_GameScene *gameScene)
     settingsScene->scene = scene;
 
     PGB_Scene_refreshMenu(scene);
-    
+
     update_thumbnail(settingsScene);
 
     return settingsScene;
@@ -191,16 +191,17 @@ static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
                                               "Staggered (L)", "Grid (L)",
                                               "Staggered (D)", "Grid (D)"};
 static const char *overclock_labels[] = {"Off", "x2", "x4"};
+static const char *dynamic_level_labels[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"};
 
 static void update_thumbnail(PGB_SettingsScene *settingsScene)
 {
     int slot = preferences_save_state_slot;
     PGB_GameScene *gameScene = settingsScene->gameScene;
-    
+
     if (!gameScene) return;
-    
+
     bool result = load_state_thumbnail(gameScene, slot, settingsScene->thumbnail);
-    
+
     if (!result)
     {
         memset(settingsScene->thumbnail, 0xFF, sizeof(settingsScene->thumbnail));
@@ -211,7 +212,7 @@ static void confirm_save_state(PGB_SettingsScene *settingsScene, int option)
 {
     // must select 'yes'
     if (option != 1) return;
-    
+
     PGB_GameScene *gameScene = settingsScene->gameScene;
     int slot = preferences_save_state_slot;
     if (!save_state(gameScene, slot))
@@ -234,7 +235,7 @@ static void confirm_save_state(PGB_SettingsScene *settingsScene, int option)
                                        settingsScene)
                              ->scene);
     }
-    
+
     update_thumbnail(settingsScene);
 }
 
@@ -243,10 +244,10 @@ static void settings_action_save_state(OptionsMenuEntry *e,
 {
     PGB_GameScene *gameScene = e->ud;
     int slot = preferences_save_state_slot;
-    
+
     unsigned timestamp = get_save_state_timestamp(gameScene, slot);
     unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-    
+
     // warn if overwriting an old save state
     if (timestamp != 0 && timestamp <= now)
     {
@@ -254,10 +255,10 @@ static void settings_action_save_state(OptionsMenuEntry *e,
         char *msg;
         playdate->system->formatString(&msg, "Overwrite state which is %s old?", human_time);
         free(human_time);
-        
+
         const char *options[] = {"Cancel", "Yes", NULL};
         PGB_presentModal(PGB_Modal_new(msg, options, (PGB_ModalCallback)confirm_save_state, settingsScene)->scene);
-        
+
         free(msg);
     }
     else
@@ -271,7 +272,7 @@ static void settings_action_load_state(OptionsMenuEntry *e,
 {
     PGB_GameScene *gameScene = e->ud;
     int slot = preferences_save_state_slot;
-    
+
     // confirmation needed if more than 2 minutes of progress made
     if (gameScene->playtime >= 60 * 120)
     {
@@ -281,7 +282,7 @@ static void settings_action_load_state(OptionsMenuEntry *e,
         data->settingsScene = settingsScene;
         unsigned timestamp = get_save_state_timestamp(gameScene, slot);
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-        
+
         char* text;
         if (timestamp == 0 || timestamp > now)
         {
@@ -293,7 +294,7 @@ static void settings_action_load_state(OptionsMenuEntry *e,
             playdate->system->formatString(&text, "Really load state from %s ago?", human_time);
             free(human_time);
         }
-        
+
         PGB_presentModal(PGB_Modal_new(text, confirm_options,
                                        (void *)settings_confirm_load_state,
                                        data)
@@ -435,6 +436,35 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         };
     }
 
+    // dynamic level
+    if (preferences_dynamic_rate == 2 && !preferences_frame_skip)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing Level",
+            .values = dynamic_level_labels,
+            .description =
+                "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
+                "Higher values are less\nsensitive and require more\n"
+                "change to activate\ninterlacing.",
+            .pref_var = &preferences_dynamic_level,
+            .max_value = 11,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing Level",
+            .values = dynamic_level_labels,
+            .description =
+                "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
+                "Higher values are less\nsensitive and require more\n"
+                "change to activate\ninterlacing.",
+            .pref_var = &preferences_dynamic_level,
+            .max_value = 0,
+            .on_press = NULL,
+        };
+    }
     // dither
     entries[++i] = (OptionsMenuEntry){
         .name = "Dither",
@@ -531,7 +561,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .max_value = 2,
         .on_press = NULL
     };
-    
+
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Overclock",
@@ -539,7 +569,7 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         .description =
             "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
             "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
-            "Not a guaranteed way to\nimprove performance.\n \nMay introduce inaccuracies."
+            "Not a guaranteed way to\nimprove performance,\nand may introduce\ninaccuracies."
         ,
         .pref_var = &preferences_overclock,
         .max_value = 3,
@@ -703,14 +733,15 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                                                      1480.0f - (rand() % 32), 0.2f, 0.1f, 0);
                 }
 
-                if (strcmp(cursor_entry->name, "30 FPS mode") == 0)
+                if (strcmp(cursor_entry->name, "30 FPS mode") == 0 ||
+                    strcmp(cursor_entry->name, "Interlacing") == 0)
                 {
                     PGB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry =
                         &settingsScene->entries[settingsScene->cursorIndex];
                 }
             }
-            
+
             if (cursor_entry->thumbnail) update_thumbnail(settingsScene);
         }
     }
@@ -849,43 +880,43 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
             descY += descLineHeight;
             line = strtok(NULL, "\n");
         }
-        
+
         // draw save state thumbnail
         if (cursor_entry->thumbnail)
         {
             int thumbx = kDividerX + (LCD_COLUMNS - kDividerX)/2 - (SAVE_STATE_THUMBNAIL_W/2);
             thumbx /= 8; // for memcpy
             int thumby = LCD_ROWS - (LCD_COLUMNS - kDividerX)/2 + (SAVE_STATE_THUMBNAIL_W/2) - SAVE_STATE_THUMBNAIL_H;
-            
+
             uint8_t* frame = playdate->graphics->getFrame();
-            
+
             const int rowsize = ((SAVE_STATE_THUMBNAIL_W + 7) / 8);
             for (size_t i = 0; i < SAVE_STATE_THUMBNAIL_H; ++i)
             {
                 uint8_t *frame_row_start = frame + (thumby+i)*LCD_ROWSIZE + thumbx;
                 memcpy(frame_row_start, &settingsScene->thumbnail[i*rowsize], rowsize);
             }
-            
+
             playdate->graphics->markUpdatedRows(
                 thumby, thumby + SAVE_STATE_THUMBNAIL_H
             );
         }
-        
+
         // graphics test
         if (cursor_entry->graphics_test)
         {
             uint16_t d0 = PGB_dither_lut_c0[preferences_dither_pattern];
             uint16_t d1 = PGB_dither_lut_c1[preferences_dither_pattern];
-            
+
             int cwidth = 4 * 8;
-            
+
             int total_width = (cwidth * 4);
             int total_height = 64;
             int start = kDividerX + (LCD_COLUMNS - kDividerX)/2 - (total_width/2);
             start = (start + 6)/8;
-            
+
             uint8_t* frame = playdate->graphics->getFrame();
-            
+
             for (int k = 0; k < total_height; ++k)
             {
                 int y = LCD_ROWS - 24 - total_height + k;
@@ -893,12 +924,12 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                 for (int i = 0; i < 4; ++i)
                 {
                     bool double_size = (k > total_height / 2);
-                    
+
                     uint16_t d = ((double_size ? (k/2) : k) % 2)
                         ? d0
                         : d1;
                     uint8_t col = (d >> (4*(3 - i))) & 0x0F;
-                    
+
                     if (k == total_height/2 || k == total_height/2 + 1)
                         col = 0xFF;
                     else if (double_size)
@@ -915,10 +946,10 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                     {
                         col |= col << 4;
                     }
-                    
+
                     if (k <= 1 || k >= total_height - 2)
                         col = 0; // border
-                    
+
                     for (int j = 0; j < cwidth/8; ++j)
                     {
                         pix[j + (cwidth/8)*i] = col;
@@ -933,13 +964,13 @@ static void PGB_SettingsScene_update(void *object, uint32_t u32enc_dt)
                     }
                 }
             }
-            
+
             playdate->graphics->markUpdatedRows(
                 100, 250
             );
         }
     }
-    
+
     // Draw the 60/40 vertical divider line
     playdate->graphics->drawLine(kDividerX, 0, kDividerX, kScreenHeight, 1,
                                  kColorBlack);
