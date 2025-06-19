@@ -24,6 +24,7 @@ extern int preferences_sample_rate;
 extern int preferences_uncap_fps;
 extern int preferences_dither_pattern;
 extern int preferences_save_state_slot;
+extern int preferences_overclock;
 
 void preferences_init(void);
 

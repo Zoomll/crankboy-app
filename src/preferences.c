@@ -15,16 +15,17 @@ static const int pref_version = 1;
 
 static const char *pref_filename = "preferences.json";
 
-int preferences_sound_mode = 0;
+int preferences_sound_mode = 2;
 int preferences_crank_mode = 0;
 int preferences_display_fps = false;
 int preferences_frame_skip = true;
 int preferences_itcm = false;
 int preferences_lua_support = false;
 int preferences_dynamic_rate = 0;
-int preferences_sample_rate = 0;
+int preferences_sample_rate = 1;
 int preferences_uncap_fps = 0;
 int preferences_save_state_slot = 0;
+int preferences_overclock = 1;
 
 static void cpu_endian_to_big_endian(unsigned char *src, unsigned char *buffer,
                                      size_t size, size_t len);
@@ -36,16 +37,10 @@ static void preferences_write_uint32(SDFile *file, uint32_t value);
 
 void preferences_init(void)
 {
-    // default values
-    preferences_sound_mode = 2;
-    preferences_crank_mode = 0;
-    preferences_display_fps = false;
-    preferences_frame_skip = true;
+    // default values which depend on device hardware (not available statically)
     preferences_itcm = (pd_rev == PD_REV_A);
-    preferences_lua_support = false;
-    preferences_dynamic_rate = 0;
-    preferences_sample_rate = 1;
-    preferences_uncap_fps = 0;
+    preferences_sample_rate = (pd_rev == PD_REV_A)
+        ? 1 : 0;
 
     if (playdate->file->stat(pref_filename, NULL) != 0)
     {
@@ -120,6 +115,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_save_state_slot = pref.data.intval;
             }
+            KEY("overclock")
+            {
+                preferences_overclock = pref.data.intval;
+            }
         }
     }
 
@@ -133,7 +132,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 11
+#define NUM_PREFS 12
 
     union
     {
@@ -188,6 +187,10 @@ int preferences_save_to_disk(void)
     data.obj.data[10].key = "save-state-slot";
     data.obj.data[10].value.type = kJSONInteger;
     data.obj.data[10].value.data.intval = preferences_save_state_slot;
+    
+    data.obj.data[11].key = "overclock";
+    data.obj.data[11].value.type = kJSONInteger;
+    data.obj.data[11].value.data.intval = preferences_overclock;
 
     int error = write_json_to_disk(pref_filename, j);
 

@@ -187,6 +187,7 @@ static const char *slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3
 static const char *dither_pattern_labels[] = {"Staggered",     "Grid",
                                               "Staggered (L)", "Grid (L)",
                                               "Staggered (D)", "Grid (D)"};
+static const char *overclock_labels[] = {"Off", "x2", "x4"};
 
 static void update_thumbnail(PGB_SettingsScene *settingsScene)
 {
@@ -246,7 +247,8 @@ static void settings_action_save_state(OptionsMenuEntry *e,
     
     #define MIN_TIME_CONFIRM (300)
     
-    if (timestamp != 0 && timestamp + MIN_TIME_CONFIRM <= now)
+    // warn if overwriting an old save state, or if we haven't been playing long
+    if (timestamp != 0 && (timestamp + MIN_TIME_CONFIRM <= now || gameScene->playtime < 60 * 30))
     {
         char* human_time = en_human_time(now - timestamp);
         char *msg;
@@ -526,6 +528,20 @@ OptionsMenuEntry *getOptionsEntries(PGB_GameScene *gameScene)
         ,
         .pref_var = &preferences_uncap_fps,
         .max_value = 2,
+        .on_press = NULL
+    };
+    
+    // show fps
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Overclock",
+        .values = overclock_labels,
+        .description =
+            "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
+            "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
+            "Not a guaranteed way to\nimprove performance."
+        ,
+        .pref_var = &preferences_overclock,
+        .max_value = 3,
         .on_press = NULL
     };
 

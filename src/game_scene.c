@@ -1221,6 +1221,8 @@ __section__(".text.tick") __space
             !(current_pd_buttons & kButtonRight);
         context->gb->direct.joypad_bits.down =
             !(current_pd_buttons & kButtonDown);
+            
+        context->gb->overclock = (unsigned)(preferences_overclock);
 
         if (gbScreenRequiresFullRefresh)
         {

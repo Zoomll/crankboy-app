@@ -439,6 +439,8 @@ struct gb_s
     // state flags for cart ram
     uint8_t enable_cart_ram : 1;
     uint8_t cart_mode_select : 1;  // 1 if ram mode
+    
+    uint8_t overclock : 2;
 
     uint8_t *selected_cart_bank_addr;
 
@@ -5280,6 +5282,12 @@ __core void __gb_step_cpu(struct gb_s *gb)
         }
     }
 #endif
+
+    // cycles are halved/quartered during overclocked vblank
+    if (gb->lcd_mode == LCD_VBLANK)
+    {
+        inst_cycles >>= gb->overclock;
+    }
 
 done_instr:
 {
