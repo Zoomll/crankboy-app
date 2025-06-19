@@ -241,14 +241,11 @@ static void settings_action_save_state(OptionsMenuEntry *e,
     PGB_GameScene *gameScene = e->ud;
     int slot = preferences_save_state_slot;
     
-    // confirmation if slot is >= 5 minutes old
     unsigned timestamp = get_save_state_timestamp(gameScene, slot);
     unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
     
-    #define MIN_TIME_CONFIRM (300)
-    
-    // warn if overwriting an old save state, or if we haven't been playing long
-    if (timestamp != 0 && (timestamp + MIN_TIME_CONFIRM <= now || gameScene->playtime < 60 * 30))
+    // warn if overwriting an old save state
+    if (timestamp != 0 && timestamp <= now)
     {
         char* human_time = en_human_time(now - timestamp);
         char *msg;
