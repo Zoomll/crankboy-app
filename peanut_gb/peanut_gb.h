@@ -1354,19 +1354,46 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         {
         /* Joypad */
         case 0x00:
-            /* Only bits 5 and 4 are R/W.
-             * The lower bits are overwritten later, and the two most
-             * significant bits are unused. */
-            gb->gb_reg.P1 = val;
+        {
+            /*
+             * The joypad interrupt is requested on a falling edge of P10-P13.
+             * This check happens when the game polls the P1 register. We detect
+             * a falling edge by comparing the previous and new states of the
+             * readable input lines.
+             */
+            uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
 
-            /* Direction keys selected */
-            if ((gb->gb_reg.P1 & 0b010000) == 0)
-                gb->gb_reg.P1 |= (gb->direct.joypad >> 4);
-            /* Button keys selected */
-            else
-                gb->gb_reg.P1 |= (gb->direct.joypad & 0x0F);
+            /* The game writes to bits 4 & 5 to select an input group. We update
+             * P1 with this selection and then determine the new input state. */
+            gb->gb_reg.P1 = val & 0x30;
+
+            uint8_t new_input_state = 0x0F;
+
+            // If Direction keys are selected (bit 4 is low), read their state.
+            if ((gb->gb_reg.P1 & 0x10) == 0)
+            {
+                new_input_state &= (gb->direct.joypad >> 4);
+            }
+
+            // If Button keys are selected (bit 5 is low), read their state.
+            if ((gb->gb_reg.P1 & 0x20) == 0)
+            {
+                new_input_state &= (gb->direct.joypad & 0x0F);
+            }
+
+            /* Check for any line that transitioned from high (1) to low (0).
+             * A non-zero result means a falling edge occurred. */
+            if (old_input_state & (~new_input_state))
+            {
+                gb->gb_reg.IF |= CONTROL_INTR;
+            }
+
+            /* The final P1 register value combines the selection bits with the
+             * new input state. The upper 2 bits always read as high. */
+            gb->gb_reg.P1 |= new_input_state | 0xC0;
 
             return;
+        }
 
         /* Serial */
         case 0x01:
