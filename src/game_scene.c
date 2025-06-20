@@ -2881,6 +2881,21 @@ static void PGB_GameScene_free(void* object)
 #endif
 
 #if SDK_AUDIO
+    // Free the persistent sample object for the wave channel.
+    if (gameScene->context->gb->sdk_audio.wave_sample)
+    {
+        playdate->sound->sample->freeSample(gameScene->context->gb->sdk_audio.wave_sample);
+        gameScene->context->gb->sdk_audio.wave_sample = NULL;
+    }
+
+    // Free the persistent buffer for the wave channel's wavetable data.
+    if (gameScene->context->gb->sdk_audio.wave_wavetable_data)
+    {
+        playdate->system->realloc(gameScene->context->gb->sdk_audio.wave_wavetable_data, 0);
+        gameScene->context->gb->sdk_audio.wave_wavetable_data = NULL;
+    }
+
+    // Free all the synth objects.
     for (int i = 0; i < 4; ++i)
     {
         if (gameScene->context->gb->sdk_audio.synth[i])

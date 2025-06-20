@@ -56,6 +56,10 @@ typedef struct
     PDSynth* synth[4];
     sdk_channel_state channels[4];  // Per-channel state tracking.
 
+    // --- Wave Channel Specific ---
+    AudioSample* wave_sample;      // A persistent sample for the wavetable.
+    int16_t* wave_wavetable_data;  // A persistent buffer for the 16-bit sample data.
+
     // Sweep state is unique to channel 1.
     struct
     {
@@ -172,4 +176,5 @@ void audio_state_load(const void* buff);
 
 #if SDK_AUDIO
 void sdk_trigger_channel(struct gb_s* gb, int i);
+void sdk_update_wave_wavetable(struct gb_s* gb);
 #endif

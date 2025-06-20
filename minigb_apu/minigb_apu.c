@@ -519,13 +519,38 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 // =============================================================================
 
 #if SDK_AUDIO
-void free_transient_sample_callback(SoundSource* source, void* userdata)
+
+// This new helper function will be called to update the synth's wavetable
+// whenever the Game Boy's wave RAM changes.
+void sdk_update_wave_wavetable(struct gb_s* gb)
 {
-    AudioSample* sample_to_free = (AudioSample*)userdata;
-    if (sample_to_free)
+    sdk_audio_data* sdk_audio = &gb->sdk_audio;
+
+    // Ensure our buffer and sample exist before trying to update them.
+    if (!sdk_audio->wave_wavetable_data || !sdk_audio->wave_sample)
     {
-        playdate->sound->sample->freeSample(sample_to_free);
+        return;
     }
+
+    // Unpack the 16 bytes (32 4-bit nibbles) from Game Boy RAM
+    // into our 32-sample, 16-bit signed wavetable buffer.
+    for (int i = 0; i < 16; i++)
+    {
+        uint8_t wave_byte = gb->hram[(0xFF30 + i) - 0xFF00];
+        uint8_t nibble1 = wave_byte >> 4;    // High nibble
+        uint8_t nibble2 = wave_byte & 0x0F;  // Low nibble
+
+        // Convert 4-bit unsigned [0, 15] to 16-bit signed [-32768, 32767].
+        // (nibble - 8) gives a signed value [-8, 7].
+        // Multiplying by 4096 scales this to the 16-bit range.
+        sdk_audio->wave_wavetable_data[i * 2] = (nibble1 - 8) * 4096;
+        sdk_audio->wave_wavetable_data[i * 2 + 1] = (nibble2 - 8) * 4096;
+    }
+
+    // Set the synth to use our updated wavetable sample.
+    // log2size = 5 (because 2^5 = 32 samples in our waveform)
+    // columns = 1, rows = 1 (it's a simple 1D wavetable)
+    playdate->sound->synth->setWavetable(sdk_audio->synth[2], sdk_audio->wave_sample, 5, 1, 1);
 }
 
 void sdk_trigger_channel(struct gb_s* gb, int i)
@@ -551,14 +576,12 @@ void sdk_trigger_channel(struct gb_s* gb, int i)
     uint16_t gb_freq = ((freq_hi_byte & 0x07) << 8) | freq_lo;
 
     // --- Per-channel trigger logic ---
-    if (i == 2)  // Wave Channel
+    if (i == 2)  // Wave Channel (Refactored to use Wavetable)
     {
-        // --- Step 1: Stop any currently playing note. ---
-        // This is the crucial step. It ensures the finish callback for the *previous*
-        // sample is triggered, preventing a memory leak and race conditions.
+        // Stop any currently playing note to ensure it retriggers correctly.
         playdate->sound->synth->noteOff(sdk_audio->synth[2], 0);
 
-        // --- Step 2: Calculate volume and frequency parameters (same as before) ---
+        // --- Calculate volume ---
         uint8_t volume_code = (gb->hram[0xFF1C - 0xFF00] >> 5) & 0x03;
         float initial_volume = 0.0f;
         switch (volume_code)
@@ -577,70 +600,25 @@ void sdk_trigger_channel(struct gb_s* gb, int i)
             break;
         }
 
+        // --- Calculate frequency ---
+        // The frequency at which the GB hardware steps through one 32-sample cycle.
         float cycle_freq_hz = 65536.0f / (2048.0f - gb_freq);
         if (gb_freq >= 2048)
-        {  // Prevent division by zero or negative rates
+        {
             return;
-        }
-        float playback_rate_hz = cycle_freq_hz * 32.0f;
+        }  // Prevent division by zero
 
-        // DEBUG LOGS
 #if WAVE_CHANNEL_DEBUG > 0
         playdate->system->logToConsole("--- Wave Channel Trigger ---");
-        uint8_t nr30 = gb->hram[0xFF1A - 0xFF00];
-        uint8_t nr32 = gb->hram[0xFF1C - 0xFF00];
         playdate->system->logToConsole(
-            "NR30 (DAC Power): 0x%02X, NR32 (Volume): 0x%02X, GB Freq: %d", nr30, nr32, gb_freq
+            "GB Freq: %d, Volume Code: %d -> %.2f, Cycle Freq: %.2f Hz", gb_freq, volume_code,
+            (double)initial_volume, (double)cycle_freq_hz
         );
 #endif
 
-        // --- Step 3: Create the new sample data (same as before) ---
-        uint8_t* wave_audio_data = playdate->system->realloc(NULL, 32);
-        if (!wave_audio_data)
-        {
-            playdate->system->error("Waveform malloc failed");
-            return;
-        }
-        for (int j = 0; j < 16; j++)
-        {
-            uint8_t wave_byte = gb->hram[(0xFF30 + j) - 0xFF00];
-            wave_audio_data[j * 2] = (((wave_byte >> 4)) - 8) * 16 + 128;
-            wave_audio_data[j * 2 + 1] = (((wave_byte & 0x0F)) - 8) * 16 + 128;
-        }
-
-        // --- Step 4: Create and play the new note using the callback method ---
-        AudioSample* sample = playdate->sound->sample->newSampleFromData(
-            wave_audio_data, kSound8bitMono, playback_rate_hz, 32, 1  // 1 = free data with sample
-        );
-
-        playdate->sound->synth->setSample(sdk_audio->synth[2], sample, 0, 31);
-
-        // Set the callback to safely free the sample when the note is done.
-        // The sample itself is passed as the userdata to be freed.
-        playdate->sound->source->setFinishCallback(
-            (SoundSource*)sdk_audio->synth[2], free_transient_sample_callback, sample
-        );
-
-        // Play with full velocity, then set the actual volume.
-        playdate->sound->synth->playNote(sdk_audio->synth[2], 1.0f, 1.0f, -1, 0);
-        playdate->sound->synth->setVolume(sdk_audio->synth[2], initial_volume, initial_volume);
-
-#if WAVE_CHANNEL_DEBUG > 0
-        char wave_ram_str[128] = "Wave RAM: ";
-        for (int k = 0; k < 16; ++k)
-        {
-            char byte_str[6];
-            snprintf(byte_str, sizeof(byte_str), " %02X", gb->hram[(0xFF30 + k) - 0xFF00]);
-            strcat(wave_ram_str, byte_str);
-        }
-        playdate->system->logToConsole(wave_ram_str);
-#endif
-
-#if WAVE_CHANNEL_DEBUG > 0
-        playdate->system->logToConsole(
-            "Volume: %.2f, Playback Rate: %.2f Hz", (double)initial_volume, (double)playback_rate_hz
-        );
-#endif
+        // Play the synth using the pre-loaded wavetable.
+        // The frequency determines how fast the 32-sample wavetable is played.
+        playdate->sound->synth->playNote(sdk_audio->synth[2], cycle_freq_hz, initial_volume, -1, 0);
     }
     else  // --- Logic for Square and Noise Channels ---
     {
@@ -793,6 +771,12 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     if (addr >= 0xFF10 && addr <= 0xFF3F)
     {
         gb->hram[addr - 0xFF00] = val;
+    }
+
+    // If the wave pattern RAM was written to, we must update our wavetable.
+    if (addr >= 0xFF30 && addr <= 0xFF3F)
+    {
+        sdk_update_wave_wavetable(gb);
     }
 
     // Determine channel index for most registers.
@@ -1081,27 +1065,44 @@ void audio_init(audio_data* audio)
 #if SDK_AUDIO
     sdk_audio_data* sdk_audio = (sdk_audio_data*)audio;
     memset(sdk_audio, 0, sizeof(sdk_audio_data));
+    struct gb_s* gb = (struct gb_s*)((uint8_t*)sdk_audio - offsetof(struct gb_s, sdk_audio));
 
     for (int i = 0; i < 4; ++i)
     {
         sdk_audio->synth[i] = playdate->sound->synth->newSynth();
     }
+
     playdate->sound->synth->setWaveform(sdk_audio->synth[0], kWaveformSquare);
     playdate->sound->synth->setWaveform(sdk_audio->synth[1], kWaveformSquare);
     playdate->sound->synth->setWaveform(sdk_audio->synth[3], kWaveformNoise);
 
-    // --- Wave Channel Synth Pre-configuration ---
-    // The synth needs to be told it's a sample player. We do this by setting
-    // a sample on it. It doesn't matter what the sample is, this just sets the mode.
-    // We'll create a single silent sample here and use it for this purpose.
-    uint8_t silent_data[1] = {128};
-    AudioSample* initial_sample =
-        playdate->sound->sample->newSampleFromData(silent_data, kSound8bitMono, 44100, 1, 0);
-    if (initial_sample)
+    // --- Wave Channel Synth (synth[2]) Configuration ---
+
+    // 1. Allocate our persistent buffer for the 16-bit wavetable data.
+    sdk_audio->wave_wavetable_data = playdate->system->realloc(NULL, 32 * sizeof(int16_t));
+    if (sdk_audio->wave_wavetable_data == NULL)
     {
-        playdate->sound->synth->setSample(sdk_audio->synth[2], initial_sample, 0, 0);
-        playdate->sound->sample->freeSample(initial_sample);
+        playdate->system->error("Failed to allocate wave channel buffer.");
+        return;
     }
+
+    // 2. Create a persistent AudioSample that points to our buffer.
+    // The sample rate doesn't matter for a wavetable.
+    // The final '0' means we are responsible for freeing the data buffer, not the sample.
+    sdk_audio->wave_sample = playdate->sound->sample->newSampleFromData(
+        (uint8_t*)sdk_audio->wave_wavetable_data,
+        kSound16bitMono,  // Use the correct 16-bit format
+        44100, 32 * sizeof(int16_t), 0
+    );
+    if (sdk_audio->wave_sample == NULL)
+    {
+        playdate->system->error("Failed to create wave channel sample.");
+        playdate->system->realloc(sdk_audio->wave_wavetable_data, 0);  // free the buffer
+        return;
+    }
+
+    // 3. Load the initial wave RAM data and set the wavetable for the first time.
+    sdk_update_wave_wavetable(gb);
 #else
     struct chan* chans = audio->chans;
     memset(chans, 0, 4 * sizeof(struct chan));
