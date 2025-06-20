@@ -109,6 +109,7 @@ typedef struct PGB_GameScene
 
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;
+    unsigned interlace_frame;
 
     PGB_GameSceneState state;
     PGB_GameSceneContext *context;

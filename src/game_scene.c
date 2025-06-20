@@ -874,6 +874,10 @@ static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16
     return;
 }
 
+// 1 in n rows are 1-px tall.
+// because the playdate's screen is taller than the gameboy's by a ratio of 5:3, we are forced to choose n=3.
+#define ROW_SCALING_PATTERN_PERIOD 3
+
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
 __core_section("fb") void update_fb_dirty_lines(
@@ -892,7 +896,7 @@ __core_section("fb") void update_fb_dirty_lines(
     for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)  // y_gb is Game Boy line index from top, 143 down to 0
     {
         int row_height_on_playdate = 2;
-        if (scale_index++ == 2)
+        if (scale_index++ == ROW_SCALING_PATTERN_PERIOD - 1)
         {
             scale_index = 0;
             row_height_on_playdate = 1;
@@ -1411,7 +1415,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         uint8_t* previous_lcd = context->previous_lcd;
         uint16_t line_has_changed[LCD_HEIGHT / 16];
         memset(line_has_changed, 0, sizeof(line_has_changed));
+        int playdate_line_changed_count = 0;
 
+        int row_y_scaling_pattern_idx = 0;
         for (int y = 0; y < LCD_HEIGHT; y++)
         {
             if (memcmp(
@@ -1420,8 +1426,49 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 ) != 0)
             {
                 line_has_changed[y / 16] |= (1 << (y % 16));
+                
+                // counts as a 1 or 2 px change depending on index in the row scaling pattern
+                playdate_line_changed_count += 1 + (row_y_scaling_pattern_idx != 0);
+            }
+            
+            if (++row_y_scaling_pattern_idx == ROW_SCALING_PATTERN_PERIOD)
+            {
+                row_y_scaling_pattern_idx = 0;
             }
         }
+        
+        uint16_t interlace_mask = 0xFFFF;
+        
+        #if !TENDENCY_BASED_ADAPTIVE_INTERLACING
+        // decide how to do interlacing; what interlace pattern to use
+        if (preferences_frame_skip == 0)
+        {
+            ++gameScene->interlace_frame;
+            if (preferences_dynamic_rate == DYNAMIC_RATE_ON)
+            {
+                // skip every other line
+                interlace_mask = (0b10101010101010101) >> (gameScene->interlace_frame % 2);
+            }
+            else if (preferences_dynamic_rate != DYNAMIC_RATE_AUTO)
+            {
+                if (playdate_line_changed_count >= 225)
+                {
+                    // 50% interlace
+                    interlace_mask = (0b10101010101010101) >> (gameScene->interlace_frame % 2);
+                }
+                else if (playdate_line_changed_count >= 200)
+                {
+                    // 25% interlace
+                    interlace_mask = (0b10111011101110111011) >> (gameScene->interlace_frame % 4);
+                }
+            }
+            
+            if (gameScene->interlace_frame % 16 == 0)
+            {
+                printf("if %u\n", playdate_line_changed_count);
+            }
+        }
+        #endif
 
         #if TENDENCY_BASED_ADAPTIVE_INTERLACING
         // --- Decide if the *next* frame needs interlacing ---
@@ -1561,15 +1608,30 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                     line_has_changed[i] = 0xFFFF;
                 }
             }
+            else if (interlace_mask != 0xFFFF)
+            {
+                for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                {
+                    line_has_changed[i] &= interlace_mask;
+                }
+            }
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows
             );
-
-            ITCM_CORE_FN(gb_fast_memcpy_64)(
-                context->previous_lcd, current_lcd, LCD_WIDTH_PACKED * LCD_HEIGHT
-            );
+        
+            // update previous-lcd only with changed rows, so that we
+            // know on future frames that old unchanged rows are still dirty
+            for (int i = 0; i < LCD_HEIGHT; ++i)
+            {
+                if (line_has_changed[i/16] & (1 << (i%16)))
+                {
+                    ITCM_CORE_FN(gb_fast_memcpy_32)(
+                        &context->previous_lcd[LCD_WIDTH_PACKED*i], &current_lcd[LCD_WIDTH_PACKED*i], LCD_WIDTH_PACKED
+                    );
+                }
+            }
         }
 
         // Always request the update loop to run at 30 FPS.
