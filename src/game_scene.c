@@ -1426,6 +1426,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 context->gb->direct.frame_skip = false;
             }
             
+            // DEBUGGING -- just to prove that frame_skip being false doesn't explain
+            // why frame-skip-auto is slow
             context->gb->direct.frame_skip = false;
             
 #ifdef DTCM_ALLOC
