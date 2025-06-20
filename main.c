@@ -101,5 +101,6 @@ __section__(".text.main") int update(void* userdata)
 
     DTCM_VERIFY_DEBUG();
 
-    return 1;
+    // we manually flush display in app.c
+    return 0;
 }

@@ -99,6 +99,8 @@ __section__(".text.main") void PGB_update(float dt)
         }
         DTCM_VERIFY_DEBUG();
     }
+    
+    playdate->graphics->display();
 
     if (PGB_App->pendingScene)
     {
