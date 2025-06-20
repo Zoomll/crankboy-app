@@ -55,6 +55,7 @@
 PGB_GameScene* audioGameScene = NULL;
 
 static void PGB_GameScene_selector_init(PGB_GameScene* gameScene);
+static void PGB_GameScene_update_sdk_audio(PGB_GameScene* gameScene, float dt);
 static void PGB_GameScene_update(void* object, uint32_t u32enc_dt);
 static void PGB_GameScene_menu(void* object);
 static void PGB_GameScene_generateBitmask(void);
@@ -419,7 +420,12 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 
             DTCM_VERIFY();
 
+#if SDK_AUDIO
+            audio_init((audio_data*)&gb->sdk_audio);
+#else
             audio_init(&gb->audio);
+#endif
+
             if (gameScene->audioEnabled)
             {
                 playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.2f);
@@ -966,15 +972,162 @@ __core_section("fb") void update_fb_dirty_lines(
 
 static void save_check(struct gb_s* gb);
 
-static __section__(".text.tick")
-void display_fps(void)
+static void PGB_GameScene_update_sdk_audio(PGB_GameScene* gameScene, float dt)
 {
-    if (!numbers_bmp) return;
+#if SDK_AUDIO
+    PGB_GameSceneContext* context = gameScene->context;
+    sdk_audio_data* sdk_audio = &context->gb->sdk_audio;
 
-    if (++fps_draw_timer % 4 != 0) return;
+    // --- Channel 1 Frequency Sweep Logic ---
+    if (sdk_audio->channels[0].note_is_on && sdk_audio->sweep_state.period > 0)
+    {
+        sdk_audio->sweep_state.timer += dt;
+
+        float sweep_interval_s = sdk_audio->sweep_state.period * (1.0f / 128.0f);
+
+        if (sdk_audio->sweep_state.timer >= sweep_interval_s)
+        {
+            sdk_audio->sweep_state.timer -= sweep_interval_s;
+
+            uint16_t old_freq = sdk_audio->sweep_state.shadow_freq;
+            // The frequency change is zero if the shift amount is zero.
+            uint16_t freq_change =
+                (sdk_audio->sweep_state.shift > 0) ? (old_freq >> sdk_audio->sweep_state.shift) : 0;
+
+            uint16_t new_freq =
+                sdk_audio->sweep_state.negate ? (old_freq - freq_change) : (old_freq + freq_change);
+
+            if (new_freq > 2047)
+            {
+                // Frequency overflow, disable channel.
+                playdate->sound->synth->noteOff(sdk_audio->synth[0], 0);
+                sdk_audio->channels[0].note_is_on = false;
+            }
+            else
+            {
+                sdk_audio->sweep_state.shadow_freq = new_freq;
+
+                // Write the new frequency back to the emulated HRAM
+                // registers.
+                context->gb->hram[0xFF13 - 0xFF00] = new_freq & 0xFF;
+                uint8_t old_nr14 = context->gb->hram[0xFF14 - 0xFF00];
+                context->gb->hram[0xFF14 - 0xFF00] = (old_nr14 & 0xF8) | ((new_freq >> 8) & 0x07);
+
+                // --- Re-trigger the note with the new frequency and current
+                // state ---
+                sdk_channel_state* channel = &sdk_audio->channels[0];
+
+                // 1. Get the current volume from the envelope simulation.
+                float current_velocity = channel->current_volume_step / 15.0f;
+
+                // 2. Get the remaining time from the length counter.
+                //    If length is disabled, timer is < 0, which correctly
+                //    results in an infinite duration note.
+                float remaining_duration = channel->length_timer;
+
+                // 3. Calculate the new frequency in Hz for the Playdate synth.
+                float new_freq_hz = 131072.0f / (2048.0f - new_freq);
+
+                // 4. Stop the old note and immediately start a new one with the
+                //    updated parameters. This creates a seamless frequency
+                //    slide.
+                playdate->sound->synth->noteOff(sdk_audio->synth[0], 0);
+                playdate->sound->synth->playNote(
+                    sdk_audio->synth[0], new_freq_hz, current_velocity, remaining_duration, 0
+                );
+            }
+        }
+    }
+
+    // --- Per-Channel Update Logic (Length and Volume) ---
+    for (int i = 0; i < 4; ++i)
+    {
+        sdk_channel_state* channel = &sdk_audio->channels[i];
+        if (!channel->note_is_on)
+        {
+            continue;
+        }
+
+        // Check for Channel 3 (Wave) DAC power being turned off mid-note
+        if (i == 2)
+        {
+            uint8_t nr30 = context->gb->hram[0xFF1A - 0xFF00];  // NR30
+            if (!(nr30 & 0x80))
+            {  // If DAC is now off
+                playdate->sound->synth->noteOff(sdk_audio->synth[2], 0);
+                channel->note_is_on = false;
+                continue;  // Note is off, skip to next channel
+            }
+        }
+
+        // --- Length Counter Logic ---
+        uint16_t nrX4_addr;
+        switch (i)
+        {
+        case 0:
+            nrX4_addr = 0xFF14;
+            break;  // NR14
+        case 1:
+            nrX4_addr = 0xFF19;
+            break;  // NR24
+        case 2:
+            nrX4_addr = 0xFF1E;
+            break;  // NR34
+        case 3:
+            nrX4_addr = 0xFF23;
+            break;  // NR44
+        }
+        uint8_t nrX4 = context->gb->hram[nrX4_addr - 0xFF00];
+        bool length_enabled = nrX4 & 0x40;
+
+        if (length_enabled && channel->length_timer >= 0)
+        {
+            channel->length_timer -= dt;
+            if (channel->length_timer <= 0)
+            {
+                playdate->sound->synth->noteOff(sdk_audio->synth[i], 0);
+                channel->note_is_on = false;
+                continue;
+            }
+        }
+
+        // --- Volume Envelope Logic ---
+        // (Applies to channels 0, 1, and 3)
+        if (i != 2 && channel->envelope_period > 0.0f)
+        {
+            channel->envelope_timer += dt;
+            if (channel->envelope_timer >= channel->envelope_period)
+            {
+                channel->envelope_timer -= channel->envelope_period;
+
+                int new_vol = channel->current_volume_step + channel->envelope_direction;
+
+                if (new_vol >= 0 && new_vol <= 15)
+                {
+                    channel->current_volume_step = new_vol;
+                    float sdk_volume = new_vol / 15.0f;
+                    playdate->sound->synth->setVolume(sdk_audio->synth[i], sdk_volume, sdk_volume);
+                }
+                else
+                {
+                    channel->envelope_period = 0.0f;
+                }
+            }
+        }
+    }
+#endif
+}
+
+static __section__(".text.tick") void display_fps(void)
+{
+    if (!numbers_bmp)
+        return;
+
+    if (++fps_draw_timer % 4 != 0)
+        return;
 
     float fps;
-    if (PGB_App->avg_dt <= 1.0f/98.5f)
+    if (PGB_App->avg_dt <= 1.0f / 98.5f)
     {
         fps = 99.9;
     }
@@ -992,20 +1145,22 @@ void display_fps(void)
     int width, height, rowbytes;
     playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
 
-    if (!data || !lcd) return;
+    if (!data || !lcd)
+        return;
 
     char buff[5];
     snprintf(buff, sizeof(buff), "%04.1f", (double)fps);
 
     uint32_t digits4 = *(uint32_t*)&buff[0];
-    if (digits4 == last_fps_digits) return;
+    if (digits4 == last_fps_digits)
+        return;
     last_fps_digits = digits4;
 
     for (int y = 0; y < height; ++y)
     {
         uint32_t out = 0;
         unsigned x = 0;
-        uint8_t* rowdata = data + y*rowbytes;
+        uint8_t* rowdata = data + y * rowbytes;
         for (int i = 0; i < sizeof(buff); ++i)
         {
             char c = buff[i];
@@ -1030,8 +1185,8 @@ void display_fps(void)
 
         for (int i = 0; i < 4; ++i)
         {
-            lcd[y*LCD_ROWSIZE + i] &= (mask >> ((3 - i)*8));
-            lcd[y*LCD_ROWSIZE + i] |= (out >> ((3 - i)*8));
+            lcd[y * LCD_ROWSIZE + i] &= (mask >> ((3 - i) * 8));
+            lcd[y * LCD_ROWSIZE + i] |= (out >> ((3 - i) * 8));
         }
     }
 
@@ -1048,7 +1203,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     float progress = 0.5f;
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
     /*
      * =========================================================================
      * Dynamic Rate Control with Adaptive Interlacing
@@ -1140,7 +1295,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     {
         context->gb->direct.interlace_mask = 0xFF;
     }
-    #endif
+#endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -1375,8 +1530,11 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             gameScene->audioLocked = 0;
         }
 
+        PGB_GameScene_update_sdk_audio(gameScene, dt);
+
         gameScene->playtime += 1 + preferences_frame_skip;
-        PGB_App->avg_dt_mult = (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
+        PGB_App->avg_dt_mult =
+            (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
             context->gb->direct.frame_skip = preferences_frame_skip != frame;
@@ -1423,7 +1581,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
         }
 
-        #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
         // --- Decide if the *next* frame needs interlacing ---
         if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
         {
@@ -1466,7 +1624,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
                 gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
         }
-        #endif
+#endif
 
 #if LOG_DIRTY_LINES
         playdate->system->logToConsole("--- Frame Update ---");
@@ -2719,6 +2877,16 @@ static void PGB_GameScene_free(void* object)
     {
         script_end(gameScene->script);
         gameScene->script = NULL;
+    }
+#endif
+
+#if SDK_AUDIO
+    for (int i = 0; i < 4; ++i)
+    {
+        if (gameScene->context->gb->sdk_audio.synth[i])
+        {
+            playdate->sound->synth->freeSynth(gameScene->context->gb->sdk_audio.synth[i]);
+        }
     }
 #endif
 

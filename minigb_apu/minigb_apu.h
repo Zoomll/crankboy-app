@@ -7,7 +7,18 @@
 
 #pragma once
 
+// use the Playdates SDK to generate sounds
+#define SDK_AUDIO 1
+#define WAVE_CHANNEL_DEBUG 1
+
+#include <stdbool.h>
 #include <stdint.h>
+
+#if SDK_AUDIO
+#include "pd_api.h"
+#endif
+
+struct gb_s;
 
 /* Calculating VSYNC. */
 #ifndef DMG_CLOCK_FREQ
@@ -19,6 +30,44 @@
 #endif
 
 #define VERTICAL_SYNC (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES)
+
+#if SDK_AUDIO
+/**
+ * @brief Holds the state for an individual SDK-emulated audio channel.
+ */
+typedef struct
+{
+    // Note State
+    bool note_is_on;  // Tracks if the synth is currently playing a note.
+
+    // Length Counter State
+    float length_timer;  // Countdown timer for note length.
+
+    // Volume Envelope State
+    float envelope_timer;     // Timer for the next volume step.
+    float envelope_period;    // Duration of one envelope step (0 if disabled).
+    int envelope_direction;   // 1 for increase, -1 for decrease.
+    int current_volume_step;  // Current volume level (0-15).
+
+} sdk_channel_state;
+
+typedef struct
+{
+    PDSynth* synth[4];
+    sdk_channel_state channels[4];  // Per-channel state tracking.
+
+    // Sweep state is unique to channel 1.
+    struct
+    {
+        uint16_t shadow_freq;
+        uint8_t period;
+        uint8_t shift;
+        bool negate;
+        float timer;  // Sweep-specific timer.
+    } sweep_state;
+
+} sdk_audio_data;
+#endif
 
 // master audio control
 extern int audio_enabled;
@@ -120,3 +169,7 @@ int audio_callback(void* context, int16_t* left, int16_t* right, int len);
 unsigned audio_get_state_size(void);
 void audio_state_save(void* buff);
 void audio_state_load(const void* buff);
+
+#if SDK_AUDIO
+void sdk_trigger_channel(struct gb_s* gb, int i);
+#endif

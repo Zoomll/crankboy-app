@@ -599,7 +599,11 @@ struct gb_s
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
     // audio.
+#if SDK_AUDIO
+    sdk_audio_data sdk_audio;
+#else
     audio_data audio;
+#endif
 };
 
 #ifdef PGB_IMPL
@@ -890,7 +894,11 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
         {
             if (gb->direct.sound)
             {
+#if SDK_AUDIO
+                return 0xFF;
+#else
                 return audio_read(&gb->audio, addr);
+#endif
             }
             else
             { /* clang-format off */
@@ -1338,7 +1346,11 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         {
             if (gb->direct.sound)
             {
+#if SDK_AUDIO
+                audio_write((audio_data*)&gb->sdk_audio, addr, val);
+#else
                 audio_write(&gb->audio, addr, val);
+#endif
             }
             else
             {
@@ -5157,6 +5169,7 @@ __core void __gb_step_cpu(struct gb_s* gb)
             goto printregs;
         }
 
+#if !SDK_AUDIO
         // assert audio data is final member of gb_s
         PGB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
         if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
@@ -5165,6 +5178,7 @@ __core void __gb_step_cpu(struct gb_s* gb)
             playdate->system->error("difference in gb struct on opcode %x", opcode);
             goto printregs;
         }
+#endif
 
         if (false)
         {
