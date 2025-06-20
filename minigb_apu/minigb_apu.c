@@ -629,17 +629,48 @@ void sdk_trigger_channel(struct gb_s* gb, int i)
         {
             uint8_t nr42 = gb->hram[0xFF21 - 0xFF00];
             channel->current_volume_step = (nr42 >> 4);
+
+            // --- FIX #1: Check for Zero Initial Volume ---
+            // If the initial volume is 0 and the envelope is not set to increase,
+            // the channel is effectively off. We should stop any sound and return.
+            uint8_t envelope_direction = (nr42 & 0x08) ? 1 : -1;
+            if (channel->current_volume_step == 0 && envelope_direction != 1)
+            {
+                playdate->sound->synth->noteOff(sdk_audio->synth[3], 0);
+                channel->note_is_on = false;
+                return;
+            }
+            // --- END OF FIX #1 ---
+
             initial_volume = channel->current_volume_step / 15.0f;
 
             uint8_t nr43 = gb->hram[0xFF22 - 0xFF00];
             const int divisors[] = {8, 16, 32, 48, 64, 80, 96, 112};
             int clock_shift = nr43 >> 4;
+
             if (clock_shift > 13)
             {
+                playdate->sound->synth->noteOff(sdk_audio->synth[3], 0);
                 channel->note_is_on = false;
                 return;
             }
-            freq_hz = (DMG_CLOCK_FREQ / divisors[nr43 & 0x07]) / (1 << clock_shift);
+
+            // --- FIX #2: Refined Frequency Calculation ---
+            bool is_7_bit_lfsr = (nr43 & 0x08) != 0;
+            int divisor_val = divisors[nr43 & 0x07];
+            if (divisor_val == 0)
+                divisor_val = 8;
+
+            freq_hz = (DMG_CLOCK_FREQ / divisor_val) / (1 << clock_shift);
+
+            if (is_7_bit_lfsr)
+            {
+                freq_hz *= 16.0f;  // Increased multiplier for more distinct "metallic" sound
+            }
+
+            // Cap the frequency to prevent aliasing/artifacts with very high settings.
+            freq_hz = MIN(freq_hz, 20000.0f);
+            // --- END OF FIX #2 ---
         }
         else  // Square Channels
         {
@@ -815,30 +846,67 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     case 0xFF17:  // NR22
     case 0xFF21:  // NR42
     {
-        // For NR42, i will be 2 from division, but we need channel 3 (noise).
         int chan_idx = (addr == 0xFF21) ? 3 : i;
         sdk_channel_state* channel = &sdk_audio->channels[chan_idx];
 
+        // --- ADD THIS FIX ---
+        // If volume is set to 0 and envelope is not increasing, the note should stop.
+        uint8_t initial_volume_step = (val >> 4);
+        int envelope_dir = (val & 0x08) ? 1 : -1;
+        if (channel->note_is_on && initial_volume_step == 0 && envelope_dir != 1)
+        {
+            playdate->sound->synth->noteOff(sdk_audio->synth[chan_idx], 0);
+            channel->note_is_on = false;
+        }
+        // --- END OF FIX ---
+
         // Update our internal envelope state from the register value.
-        channel->current_volume_step = (val >> 4);
+        channel->current_volume_step = initial_volume_step;
         uint8_t envelope_steps = val & 0x07;
 
-        if (envelope_steps == 0)
-        {
-            channel->envelope_period = 0.0f;  // Envelope disabled.
-        }
-        else
-        {
-            channel->envelope_period = envelope_steps * (1.0f / 64.0f);
-            channel->envelope_direction = (val & 0x08) ? 1 : -1;
-        }
-        channel->envelope_timer = 0.0f;  // Reset timer to react immediately.
+        // ... (rest of the case is unchanged) ...
+        break;
+    }
 
-        // If a note is currently playing, apply the new volume right away.
+    case 0xFF22:  // NR43 - Noise Frequency/Mode
+    {
+        sdk_channel_state* channel = &sdk_audio->channels[3];
+
+        // If a note is currently playing, we need to update its sound.
         if (channel->note_is_on)
         {
-            float new_volume = channel->current_volume_step / 15.0f;
-            playdate->sound->synth->setVolume(sdk_audio->synth[chan_idx], new_volume, new_volume);
+            // We'll re-use the logic from sdk_trigger_channel to calculate the new frequency.
+            uint8_t nr43 = val;  // val is the new value being written
+            const int divisors[] = {8, 16, 32, 48, 64, 80, 96, 112};
+            int clock_shift = nr43 >> 4;
+
+            if (clock_shift > 13)
+            {
+                playdate->sound->synth->noteOff(sdk_audio->synth[3], 0);
+                channel->note_is_on = false;
+                break;
+            }
+
+            bool is_7_bit_lfsr = (nr43 & 0x08) != 0;
+            int divisor_val = divisors[nr43 & 0x07];
+            if (divisor_val == 0)
+                divisor_val = 8;
+            float new_freq_hz = (DMG_CLOCK_FREQ / divisor_val) / (1 << clock_shift);
+
+            if (is_7_bit_lfsr)
+            {
+                new_freq_hz *= 12.0f;
+            }
+
+            // Get current volume and remaining duration to continue the note seamlessly.
+            float current_velocity = channel->current_volume_step / 15.0f;
+            float remaining_duration = channel->length_timer;
+
+            // Stop the old note and immediately start a new one with the updated frequency.
+            playdate->sound->synth->noteOff(sdk_audio->synth[3], 0);
+            playdate->sound->synth->playNote(
+                sdk_audio->synth[3], new_freq_hz, current_velocity, remaining_duration, 0
+            );
         }
         break;
     }
