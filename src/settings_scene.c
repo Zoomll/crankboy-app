@@ -393,19 +393,19 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     // frame skip
     entries[++i] = (OptionsMenuEntry){
         .name = "30 FPS mode",
-        .values = off_on_labels,
+        .values = dynamic_rate_labels,
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \nDespite appearing to be\n30 FPS, the game "
             "itself\nstill runs at full speed.\n \nEnabling this mode\ndisables "
             "the Interlacing\nsettings.",
         .pref_var = &preferences_frame_skip,
-        .max_value = 2,
+        .max_value = 3,
         .on_press = NULL,
     };
 
     // dynamic rate adjustment
-    if (preferences_frame_skip)
+    if (preferences_frame_skip != FRAME_SKIP_OFF)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing",

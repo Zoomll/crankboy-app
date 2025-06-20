@@ -970,7 +970,7 @@ __core_section("fb") void update_fb_dirty_lines(
 
 static void save_check(struct gb_s* gb);
 
-static __section__(".text.tick")
+static __section__(".text.tick") __space
 void display_fps(void)
 {
     if (!numbers_bmp) return;
@@ -1040,6 +1040,38 @@ void display_fps(void)
     }
 
     playdate->graphics->markUpdatedRows(0, height - 1);
+}
+
+// returns number of playdate lines that have changed
+__section__(".text.tick") __space
+unsigned getLinesChanged(PGB_GameSceneContext* context, uint16_t* line_has_changed)
+{
+    uint8_t* current_lcd = context->gb->lcd;
+    uint8_t* previous_lcd = context->previous_lcd;
+    memset(line_has_changed, 0, sizeof(uint16_t) * (LCD_HEIGHT / 16));
+    int playdate_line_changed_count = 0;
+
+    int row_y_scaling_pattern_idx = 0;
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        if (memcmp(
+                &current_lcd[y * LCD_WIDTH_PACKED], &previous_lcd[y * LCD_WIDTH_PACKED],
+                LCD_WIDTH_PACKED
+            ) != 0)
+        {
+            line_has_changed[y / 16] |= (1 << (y % 16));
+            
+            // counts as a 1 or 2 px change depending on index in the row scaling pattern
+            playdate_line_changed_count += 1 + (row_y_scaling_pattern_idx != 0);
+        }
+        
+        if (++row_y_scaling_pattern_idx == ROW_SCALING_PATTERN_PERIOD)
+        {
+            row_y_scaling_pattern_idx = 0;
+        }
+    }
+    
+    return playdate_line_changed_count;
 }
 
 __section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
@@ -1378,12 +1410,24 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             context->gb = (void*)stack_gb_data;
             gameScene->audioLocked = 0;
         }
+        
+        uint16_t line_has_changed[LCD_HEIGHT / 16];
 
-        gameScene->playtime += 1 + preferences_frame_skip;
-        PGB_App->avg_dt_mult = (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
-        for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+        PGB_App->avg_dt_mult = 2.0f;
+        int playdate_line_changed_count = 0;
+        int frame;
+        for (frame = 0; frame <= 1; ++frame)
         {
             context->gb->direct.frame_skip = preferences_frame_skip != frame;
+            
+            if (preferences_frame_skip == FRAME_SKIP_AUTO)
+            {
+                // we have to render the first frame to know if we should render the next frame
+                context->gb->direct.frame_skip = false;
+            }
+            
+            context->gb->direct.frame_skip = false;
+            
 #ifdef DTCM_ALLOC
             DTCM_VERIFY_DEBUG();
             ITCM_CORE_FN(gb_run_frame)(context->gb);
@@ -1391,6 +1435,32 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 #else
             gb_run_frame(context->gb);
 #endif
+            if (preferences_frame_skip == FRAME_SKIP_AUTO)
+            {
+                playdate_line_changed_count = getLinesChanged(context, line_has_changed);
+                
+                // if not many lines changed, go ahead render this frame instead of 
+                // computing two-in-one
+                if (playdate_line_changed_count < 200)
+                {
+                    ++frame;
+                    break;
+                }
+            }
+            else if (preferences_frame_skip == FRAME_SKIP_ON)
+            {
+                ++frame;
+                break;
+            }
+        }
+        
+        PGB_App->avg_dt_mult = (frame == 2) ? 0.5f : 1.0f;
+        gameScene->playtime += frame;
+        
+        // if counting playdate screen refreshes, we count all updates equal.
+        if (preferences_display_fps == 2)
+        {
+            PGB_App->avg_dt_mult = 1.0f;
         }
 
         if (!dtcm_enabled())
@@ -1411,37 +1481,16 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         }
 
         // --- Conditional Screen Update (Drawing) Logic ---
-        uint8_t* current_lcd = context->gb->lcd;
-        uint8_t* previous_lcd = context->previous_lcd;
-        uint16_t line_has_changed[LCD_HEIGHT / 16];
-        memset(line_has_changed, 0, sizeof(line_has_changed));
-        int playdate_line_changed_count = 0;
-
-        int row_y_scaling_pattern_idx = 0;
-        for (int y = 0; y < LCD_HEIGHT; y++)
+        if (preferences_frame_skip != FRAME_SKIP_AUTO)
         {
-            if (memcmp(
-                    &current_lcd[y * LCD_WIDTH_PACKED], &previous_lcd[y * LCD_WIDTH_PACKED],
-                    LCD_WIDTH_PACKED
-                ) != 0)
-            {
-                line_has_changed[y / 16] |= (1 << (y % 16));
-                
-                // counts as a 1 or 2 px change depending on index in the row scaling pattern
-                playdate_line_changed_count += 1 + (row_y_scaling_pattern_idx != 0);
-            }
-            
-            if (++row_y_scaling_pattern_idx == ROW_SCALING_PATTERN_PERIOD)
-            {
-                row_y_scaling_pattern_idx = 0;
-            }
+            playdate_line_changed_count = getLinesChanged(context, line_has_changed);
         }
         
         uint16_t interlace_mask = 0xFFFF;
         
         #if !TENDENCY_BASED_ADAPTIVE_INTERLACING
         // decide how to do interlacing; what interlace pattern to use
-        if (preferences_frame_skip == 0)
+        if (preferences_frame_skip == FRAME_SKIP_OFF && preferences_dynamic_rate != DYNAMIC_RATE_OFF)
         {
             ++gameScene->interlace_frame;
             if (preferences_dynamic_rate == DYNAMIC_RATE_ON)
@@ -1615,6 +1664,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                     line_has_changed[i] &= interlace_mask;
                 }
             }
+            
+            uint8_t* const current_lcd = context->gb->lcd;
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
@@ -1637,7 +1688,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         // Always request the update loop to run at 30 FPS.
         // (60 gameboy frames per second.)
         // This ensures gb_run_frame() is called at a consistent rate.
-        gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
+        gameScene->scene->preferredRefreshRate = (frame == 2) ? 30 : 60;
 
         if (preferences_uncap_fps)
             gameScene->scene->preferredRefreshRate = -1;

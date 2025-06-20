@@ -17,6 +17,10 @@
 #define DYNAMIC_RATE_ON 1
 #define DYNAMIC_RATE_AUTO 2
 
+#define FRAME_SKIP_OFF 0
+#define FRAME_SKIP_AUTO 2
+#define FRAME_SKIP_ON 1
+
 extern int preferences_display_fps;
 extern int preferences_frame_skip;
 extern int preferences_itcm;
