@@ -480,6 +480,8 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
+
+    #if ENABLE_BGCACHE
     // transparency
     entries[++i] = (OptionsMenuEntry){
         .name = "Transparency",
@@ -492,6 +494,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 2,
         .on_press = NULL
     };
+    #endif
 
     // show fps
     entries[++i] = (OptionsMenuEntry){

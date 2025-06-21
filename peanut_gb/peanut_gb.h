@@ -58,10 +58,6 @@ typedef int16_t s16;
 #define ENABLE_SOUND 1
 #endif
 
-#ifndef ENABLE_BGCACHE
-#define ENABLE_BGCACHE 0
-#endif
-
 #ifndef ENABLE_BGCACHE_DEFERRED
 #define ENABLE_BGCACHE_DEFERRED 1
 #endif
@@ -2163,7 +2159,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         }
         else
         {
-            // is this right? Works for link's awakening.
             wx = 0;
         }
         if (wx >= LCD_WIDTH)
@@ -2315,62 +2310,72 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
             *dest_low_plane = (*dest_low_plane & ~bit_mask) | (src_low_bit << dest_bit_in_chunk);
             *dest_high_plane = (*dest_high_plane & ~bit_mask) | (src_high_bit << dest_bit_in_chunk);
         }
-
-        gb->display.window_clear++;
 #else
-        uint8_t wx_reg = gb->gb_reg.WX;
+        uint8_t bg_x = 256 - wx;
+        uint8_t bg_y = gb->display.window_clear;
+        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
+        int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
+        int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
-        // Determine the starting pixel on the screen and the starting pixel
-        // to read from within the window's own data. This handles the
-        // special hardware case where WX is between 0 and 6, which clips
-        // the left side of the window.
-        int screen_x_start = (wx_reg >= 7) ? (wx_reg - 7) : 0;
-        int win_x_start = (wx_reg >= 7) ? 0 : (7 - wx_reg);
-
-        uint8_t win_y = gb->display.window_clear;
-
-        const uint16_t map_base = (gb->gb_reg.LCDC & LCDC_WINDOW_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1;
-        const uint8_t* tile_map = &gb->vram[map_base + (win_y / 8) * 32];
-
-        uint16_t* line_pixels = (uint16_t*)(void*)pixels;
-
-        for (int screen_x = screen_x_start; screen_x < LCD_WIDTH; screen_x++)
+        uint8_t* vram = gb->vram;
+        
+        // tiles on this line
+        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32*(bg_y/8))];
+        
+        // points to line data for pixel offset
+        uint16_t* vram_tile_data = (void*)&vram[2*(bg_y % 8)];
+        
+        // prefetch each tile's data
+        for (int x = wx / 8; x <= LCD_WIDTH/8; ++x)
         {
-            int win_x = win_x_start + (screen_x - screen_x_start);
-
-            uint8_t tile_index = tile_map[win_x / 8];
-
-            uint16_t tile_data_addr;
-            if (gb->gb_reg.LCDC & LCDC_TILE_SELECT)
-            {
-                tile_data_addr = VRAM_TILES_1 + (uint16_t)tile_index * 16;
-            }
-            else
-            {
-                tile_data_addr = VRAM_TILES_2 + (((int8_t)tile_index) + 128) * 16;
-            }
-
-            uint8_t py = win_y % 8;
-            uint8_t p1 = gb->vram[tile_data_addr + py * 2];
-            uint8_t p2 = gb->vram[tile_data_addr + py * 2 + 1];
-
-            uint8_t px = win_x % 8;
-            uint8_t c1 = (p1 >> px) & 1;
-            uint8_t c2 = (p2 >> px) & 1;
-
-            if (!gb->direct.transparency_enabled && c1 == 0 && c2 == 0)
-                continue;
-
-            int dest_bit_in_chunk = screen_x % 16;
-            uint16_t bit_mask = (1 << dest_bit_in_chunk);
-            uint16_t* dest_plane = &line_pixels[(screen_x / 16) * 2];
-
-            dest_plane[0] = (dest_plane[0] & ~bit_mask) | (c1 << dest_bit_in_chunk);
-            dest_plane[1] = (dest_plane[1] & ~bit_mask) | (c2 << dest_bit_in_chunk);
+            uint8_t tile = vram_line_tiles[(bg_x/8) % 32];
+            __builtin_prefetch(&vram_line_tiles[(tile < 0x80
+                    ? addr_mode_vram_tiledata_offset
+                    : 0) | (8*(unsigned)tile)], 0);
         }
+        
+        uint8_t tile_hi = vram_line_tiles[(bg_x/8 + wx/8) % 32];
+        uint16_t vram_tile_data_hi = vram_tile_data[
+            (tile_hi < 0x80
+                ? addr_mode_vram_tiledata_offset
+                : 0) | (8*(unsigned)tile_hi)
+        ];
+        
+        int subx = bg_x % 8;
+        
+        // first part of window is obscured
+        vram_tile_data_hi &= (0xFFFF) << subx;
+        vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
+        uint32_t bgmask = 0xFF >> subx;
+        if (subx == 0) bgmask = 0; // (why?)
 
-        gb->display.window_clear++;
+        for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
+        {
+            uint8_t* out = pixels + (x%2) + (x/2)*4;
+            uint16_t vram_tile_data_lo = vram_tile_data_hi;
+            uint16_t tile_hi = vram_line_tiles[(bg_x/8 + x + 1) % 32];
+            vram_tile_data_hi = vram_tile_data[
+                (tile_hi < 0x80
+                    ? addr_mode_vram_tiledata_offset
+                    : 0) | (8*(unsigned)tile_hi)
+            ];
+            
+            uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
+            uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx|8);
+            raw1 |= (vram_tile_data_hi & 0x00FF) << (8 - subx);
+            raw2 |= ((vram_tile_data_hi & 0xFF00) >> subx) & 0xFF;
+            
+            uint32_t combined_mask = 0xFF00FF00 | (bgmask) | (bgmask << 16);
+            uint32_t combined_planes = (uint32_t)(raw1) | ((uint32_t)raw2 << 16);
+            
+            *(uint32_t*)&out[0] &= combined_mask;
+            *(uint32_t*)&out[0] |= combined_planes;
+            
+            // all further chunks should completely mask out the background
+            bgmask = 0;
+        }
 #endif
+        gb->display.window_clear++;
     }
 
     // remap background pixel by palette,
