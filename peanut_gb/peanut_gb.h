@@ -2036,11 +2036,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
             uint16_t src_low_bit = (src_chunk_data >> bit_in_chunk) & 1;
             uint16_t src_high_bit = (src_chunk_data >> (bit_in_chunk + 16)) & 1;
 
-            if (src_low_bit == 0 && src_high_bit == 0)
-            {
-                continue;
-            }
-
             int dest_chunk_idx = screen_x / 16;
             int dest_bit_in_chunk = screen_x % 16;
 
@@ -2094,9 +2089,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
             uint8_t px = win_x % 8;
             uint8_t c1 = (p1 >> px) & 1;
             uint8_t c2 = (p2 >> px) & 1;
-
-            if (c1 == 0 && c2 == 0)
-                continue;
 
             int dest_bit_in_chunk = screen_x % 16;
             uint16_t bit_mask = (1 << dest_bit_in_chunk);
