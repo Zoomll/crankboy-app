@@ -28,7 +28,7 @@ int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
 int preferences_dynamic_level = 6;
 int preferences_transparency = 0;
-int preferences_joypad_interrupts = 1;
+int preferences_joypad_interrupts = 0;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
