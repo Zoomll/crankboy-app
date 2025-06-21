@@ -560,6 +560,7 @@ struct gb_s
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
         uint8_t crank_docked : 1;
+        uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
 
         // where this is 0, skip the line
@@ -1561,42 +1562,77 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         /* Joypad */
         case 0x00:
         {
-            /*
-             * The joypad interrupt is requested on a falling edge of P10-P13.
-             * This check happens when the game polls the P1 register. We detect
-             * a falling edge by comparing the previous and new states of the
-             * readable input lines.
-             */
-            uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
-
-            /* The game writes to bits 4 & 5 to select an input group. We update
-             * P1 with this selection and then determine the new input state. */
-            gb->gb_reg.P1 = val & 0x30;
-
-            uint8_t new_input_state = 0x0F;
-
-            // If Direction keys are selected (bit 4 is low), read their state.
-            if ((gb->gb_reg.P1 & 0x10) == 0)
+            if (gb->direct.joypad_interrupts)
             {
-                new_input_state &= (gb->direct.joypad >> 4);
-            }
+                /****************************************************************
+                 * ACCURACY MODE: Correctly handles interrupts on button press.
+                 * Crucial for games that use HALT to wait for input.
+                 ****************************************************************/
 
-            // If Button keys are selected (bit 5 is low), read their state.
-            if ((gb->gb_reg.P1 & 0x20) == 0)
+                /* We need the P1 state before the game writes to it to detect a falling edge. */
+                uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
+
+                /* The game writes to bits 4 & 5 to select an input group. */
+                gb->gb_reg.P1 = val & 0x30;
+
+                /* Start with all input lines high (unpressed). */
+                uint8_t new_input_state = 0x0F;
+
+                /* If Direction keys are selected (bit 4 is low), read their state. */
+                if ((gb->gb_reg.P1 & 0x10) == 0)
+                {
+                    new_input_state &= (gb->direct.joypad >> 4);
+                }
+
+                /* If Button keys are selected (bit 5 is low), read their state. */
+                if ((gb->gb_reg.P1 & 0x20) == 0)
+                {
+                    new_input_state &= (gb->direct.joypad & 0x0F);
+                }
+
+                /*
+                 * An interrupt is triggered if any input line transitions from high (1) to low (0).
+                 * We find these lines by seeing which bits were 1 in the old state
+                 * AND are now 0 in the new state (which is represented by ~new_input_state).
+                 */
+                if (old_input_state & (~new_input_state))
+                {
+                    gb->gb_reg.IF |= CONTROL_INTR; /* Request a Joypad interrupt */
+                }
+
+                /* Combine the selection bits with the new input state. The upper 2 bits are unused
+                   and read high. */
+                gb->gb_reg.P1 |= new_input_state | 0xC0;
+            }
+            else
             {
-                new_input_state &= (gb->direct.joypad & 0x0F);
-            }
+                /****************************************************************
+                 * PERFORMANCE MODE: Faster, but will fail in games that
+                 * rely on joypad interrupts to wake the CPU from HALT.
+                 ****************************************************************/
 
-            /* Check for any line that transitioned from high (1) to low (0).
-             * A non-zero result means a falling edge occurred. */
-            if (old_input_state & (~new_input_state))
-            {
-                gb->gb_reg.IF |= CONTROL_INTR;
-            }
+                /* The game writes to bits 4 & 5 to select an input group. */
+                gb->gb_reg.P1 = val & 0x30;
 
-            /* The final P1 register value combines the selection bits with the
-             * new input state. The upper 2 bits always read as high. */
-            gb->gb_reg.P1 |= new_input_state | 0xC0;
+                /* Start with all input lines high (unpressed). */
+                uint8_t input_state = 0x0F;
+
+                /* If Direction keys are selected (bit 4 is low), read their state. */
+                if ((gb->gb_reg.P1 & 0x10) == 0)
+                {
+                    input_state &= (gb->direct.joypad >> 4);
+                }
+
+                /* If Button keys are selected (bit 5 is low), read their state. */
+                if ((gb->gb_reg.P1 & 0x20) == 0)
+                {
+                    input_state &= (gb->direct.joypad & 0x0F);
+                }
+
+                /* Combine the selection bits with the input state. The upper 2 bits are unused and
+                   read high. */
+                gb->gb_reg.P1 |= input_state | 0xC0;
+            }
 
             return;
         }

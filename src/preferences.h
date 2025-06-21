@@ -31,6 +31,7 @@ extern int preferences_save_state_slot;
 extern int preferences_overclock;
 extern int preferences_dynamic_level;
 extern int preferences_transparency;
+extern int preferences_joypad_interrupts;
 
 void preferences_init(void);
 

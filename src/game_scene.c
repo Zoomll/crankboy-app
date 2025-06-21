@@ -1147,6 +1147,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     }
 #endif
 
+    context->gb->direct.joypad_interrupts = preferences_joypad_interrupts;
+
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
 

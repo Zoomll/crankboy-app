@@ -519,6 +519,22 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
+    // joypad_interrupts
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Joypad Interrupts",
+        .values = off_on_labels,
+        .description =
+            "Enable joypad interrupts.\n \n"
+            "Improves compatibility\n"
+            "with certain games at a\n"
+            "minor performance cost.\n \n"
+            "It is recommended to leave\n"
+            "this enabled.\n",
+        .pref_var = &preferences_joypad_interrupts,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
 

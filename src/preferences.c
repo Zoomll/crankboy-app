@@ -28,6 +28,7 @@ int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
 int preferences_dynamic_level = 6;
 int preferences_transparency = 0;
+int preferences_joypad_interrupts = 1;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
@@ -129,6 +130,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_transparency = pref.data.intval;
             }
+            KEY("joypad_interrupts")
+            {
+                preferences_joypad_interrupts = pref.data.intval;
+            }
         }
     }
 
@@ -142,7 +147,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 14
+#define NUM_PREFS 15
 
     union
     {
@@ -209,6 +214,10 @@ int preferences_save_to_disk(void)
     data.obj.data[13].key = "transparency";
     data.obj.data[13].value.type = kJSONInteger;
     data.obj.data[13].value.data.intval = preferences_transparency;
+
+    data.obj.data[14].key = "joypad_interrupts";
+    data.obj.data[14].value.type = kJSONInteger;
+    data.obj.data[14].value.data.intval = preferences_joypad_interrupts;
 
     int error = write_json_to_disk(pref_filename, j);
 
