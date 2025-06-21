@@ -1050,6 +1050,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     float progress = 0.5f;
 
+    // Check whether drawing transparent pixels is enabled.
+    context->gb->direct.transparency_enabled = preferences_transparency;
+
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
     /*
      * =========================================================================

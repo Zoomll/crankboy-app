@@ -27,6 +27,7 @@ int preferences_uncap_fps = 0;
 int preferences_save_state_slot = 0;
 int preferences_overclock = 1;
 int preferences_dynamic_level = 6;
+int preferences_transparency = 0;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
@@ -124,6 +125,10 @@ void preferences_read_from_disk(void)
             {
                 preferences_dynamic_level = pref.data.intval;
             }
+            KEY("transparency")
+            {
+                preferences_transparency = pref.data.intval;
+            }
         }
     }
 
@@ -137,7 +142,7 @@ int preferences_save_to_disk(void)
     playdate->system->logToConsole("Save preferences...");
 
 // number of prefs to save
-#define NUM_PREFS 13
+#define NUM_PREFS 14
 
     union
     {
@@ -200,6 +205,10 @@ int preferences_save_to_disk(void)
     data.obj.data[12].key = "dynamic_level";
     data.obj.data[12].value.type = kJSONInteger;
     data.obj.data[12].value.data.intval = preferences_dynamic_level;
+
+    data.obj.data[13].key = "transparency";
+    data.obj.data[13].value.type = kJSONInteger;
+    data.obj.data[12].value.data.intval = preferences_transparency;
 
     int error = write_json_to_disk(pref_filename, j);
 

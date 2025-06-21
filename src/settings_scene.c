@@ -480,6 +480,19 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
+    // transparency
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Transparency",
+        .values = off_on_labels,
+        .description =
+            "Enables drawing of\ntransparent pixels.\n \n"
+            "Increses visual fidelity\nbut comes at the cost\n"
+            "of performance.",
+        .pref_var = &preferences_transparency,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Show FPS",
