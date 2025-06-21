@@ -208,7 +208,7 @@ int preferences_save_to_disk(void)
 
     data.obj.data[13].key = "transparency";
     data.obj.data[13].value.type = kJSONInteger;
-    data.obj.data[12].value.data.intval = preferences_transparency;
+    data.obj.data[13].value.data.intval = preferences_transparency;
 
     int error = write_json_to_disk(pref_filename, j);
 
