@@ -27,8 +27,6 @@
 
 #define REGISTRY_GAME_SCENE_KEY "PGB_GameScene"
 
-void PGB_GameScene_didSelectLibrary(struct PGB_GameScene* scene);
-
 static bool lua_check_args(lua_State* L, int min, int max)
 {
     int argc = lua_gettop(L);

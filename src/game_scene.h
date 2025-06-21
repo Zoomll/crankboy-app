@@ -145,6 +145,7 @@ typedef struct PGB_GameScene
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
 void PGB_GameScene_apply_settings(PGB_GameScene *gameScene, bool audio_settings_changed);
+void PGB_GameScene_didSelectLibrary(void* userdata);
 
 unsigned get_save_state_timestamp(PGB_GameScene *gameScene, unsigned slot);
 bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out);

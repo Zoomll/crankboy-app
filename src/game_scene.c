@@ -1741,6 +1741,16 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     }
     else if (gameScene->state == PGB_GameSceneStateError)
     {
+        // Check for pushed A or B button to return to the library
+        PDButtons pushed;
+        playdate->system->getButtonState(NULL, &pushed, NULL);
+
+        if ((pushed & kButtonA) || (pushed & kButtonB))
+        {
+            PGB_GameScene_didSelectLibrary(gameScene);
+            return;
+        }
+
         gameScene->scene->preferredRefreshRate = 30;
 
         if (gbScreenRequiresFullRefresh)
@@ -1767,6 +1777,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             {
                 errorMessages[0] = "A fatal error occurred";
             }
+
+            errorMessages[errorMessagesCount++] = "";
+            errorMessages[errorMessagesCount++] = "Press A or B to return to Library";
 
             playdate->graphics->clear(kColorWhite);
 
@@ -1937,6 +1950,12 @@ static void PGB_GameScene_menu(void* object)
     gameScene->scene->forceFullRefresh = true;
 
     playdate->system->removeAllMenuItems();
+
+    if (gameScene->state == PGB_GameSceneStateError)
+    {
+        playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+        return;
+    }
 
     if (gameScene->menuImage == NULL)
     {
