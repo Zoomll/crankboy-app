@@ -381,7 +381,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     // sample rate
     entries[++i] = (OptionsMenuEntry){
-        .name = "Sample Rate",
+        .name = "Sample rate",
         .values = sample_rate_labels,
         .description =
             "Adjusts audio quality.\nHigher values may impact\nperformance.\n \n"
@@ -440,7 +440,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO && !preferences_frame_skip)
     {
         entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing Level",
+            .name = "Interlacing level",
             .values = dynamic_level_labels,
             .description =
                 "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
@@ -454,7 +454,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     else
     {
         entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing Level",
+            .name = "Interlacing level",
             .values = dynamic_level_labels,
             .description =
                 "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
@@ -521,7 +521,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     // joypad_interrupts
     entries[++i] = (OptionsMenuEntry){
-        .name = "Joypad Interrupts",
+        .name = "Joypad interrupts",
         .values = off_on_labels,
         .description =
             "Enable joypad interrupts.\n \n"
