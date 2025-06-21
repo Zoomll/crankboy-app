@@ -95,6 +95,9 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 
     settingsScene->scene = scene;
 
+    settingsScene->initial_sound_mode = preferences_sound_mode;
+    settingsScene->initial_sample_rate = preferences_sample_rate;
+
     PGB_Scene_refreshMenu(scene);
 
     update_thumbnail(settingsScene);
@@ -431,7 +434,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
-    
+
     #if TENDENCY_BASED_ADAPTIVE_INTERLACING
     // dynamic level
     if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO && !preferences_frame_skip)
@@ -463,7 +466,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         };
     }
     #endif
-    
+
     // dither
     entries[++i] = (OptionsMenuEntry){
         .name = "Dither",
@@ -997,7 +1000,11 @@ static void PGB_SettingsScene_free(void* object)
 
     if (settingsScene->gameScene)
     {
-        PGB_GameScene_apply_settings(settingsScene->gameScene);
+        bool audio_settings_changed =
+            (settingsScene->initial_sound_mode != preferences_sound_mode) ||
+            (settingsScene->initial_sample_rate != preferences_sample_rate);
+
+        PGB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
 

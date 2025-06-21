@@ -28,6 +28,9 @@ typedef struct PGB_SettingsScene
     bool shouldDismiss : 1;
     bool wasAudioLocked : 1;
 
+    int initial_sound_mode;
+    int initial_sample_rate;
+
     struct OptionsMenuEntry* entries;
     struct PDSynth* clickSynth;
 

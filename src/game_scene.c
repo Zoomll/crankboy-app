@@ -466,12 +466,15 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     return gameScene;
 }
 
-void PGB_GameScene_apply_settings(PGB_GameScene* gameScene)
+void PGB_GameScene_apply_settings(PGB_GameScene* gameScene, bool audio_settings_changed)
 {
     PGB_GameSceneContext* context = gameScene->context;
 
     // Reset the audio system to ensure its state is consistent with the new settings.
-    audio_init(&context->gb->audio);
+    if (audio_settings_changed)
+    {
+        audio_init(&context->gb->audio);
+    }
 
     // Apply sound on/off and sound mode
     bool desiredAudioEnabled = (preferences_sound_mode > 0);
