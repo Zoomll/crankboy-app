@@ -471,6 +471,27 @@ struct gb_s
         } rtc_bits;
         uint8_t cart_rtc[5];
 
+        struct
+        {
+            /* RAM Enable Flags */
+            uint8_t ram_enable_1;
+            uint8_t ram_enable_2;
+
+            /* Accelerometer State */
+            uint8_t accel_latch_state;
+            uint16_t accel_x_latched;
+            uint16_t accel_y_latched;
+
+            /* EEPROM State */
+            uint8_t eeprom_pins;
+            uint8_t eeprom_state;
+            uint8_t eeprom_write_enabled;
+            uint16_t eeprom_shift_reg;
+            uint8_t eeprom_bits_shifted;
+            uint8_t eeprom_addr;
+            uint16_t eeprom_read_buffer;
+        } mbc7;
+
         // Put other MBC-specific data in this union.
     };
 
@@ -851,6 +872,30 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
                 // upper 4 bits are undefined and read as 1s.
                 return (gb->gb_cart_ram[ram_addr] & 0x0F) | 0xF0;
             }
+            else if (gb->mbc == 7)
+            {
+                if (gb->mbc7.ram_enable_1 && gb->mbc7.ram_enable_2)
+                {
+                    uint8_t reg = (addr >> 4) & 0x0F;
+                    switch (reg)
+                    {
+                    case 0x2:
+                        return gb->mbc7.accel_x_latched & 0xFF;
+                    case 0x3:
+                        return gb->mbc7.accel_x_latched >> 8;
+                    case 0x4:
+                        return gb->mbc7.accel_y_latched & 0xFF;
+                    case 0x5:
+                        return gb->mbc7.accel_y_latched >> 8;
+                    case 0x6:
+                        return 0x00;
+                    case 0x7:
+                        return 0xFF;
+                    case 0x8:
+                        return (gb->mbc7.eeprom_pins & 0x83) | 0x7C;
+                    }
+                }
+            }
 
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
             {
@@ -1150,6 +1195,110 @@ void __gb_write_vram(struct gb_s* gb, uint_fast16_t addr, const uint8_t val)
 #endif
 
 /**
+ * Handles a clock tick for the MBC7 EEPROM.
+ * This function is called on the rising edge of the EEPROM's CLK pin.
+ */
+__section__(".text.pgb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
+{
+    uint8_t di = (gb->mbc7.eeprom_pins & 0x02) >> 1;
+
+    /* Data is clocked in/out while CS is high. */
+    if ((gb->mbc7.eeprom_pins & 0x80) == 0)
+        return;
+
+    /* Default DO to high (ready) */
+    gb->mbc7.eeprom_pins |= 0x01;
+
+    switch (gb->mbc7.eeprom_state)
+    {
+    /* Idle state, waiting for a start bit. */
+    case 0: /* IDLE */
+        if (di)
+        {
+            gb->mbc7.eeprom_state = 1; /* COMMAND */
+            gb->mbc7.eeprom_bits_shifted = 0;
+            gb->mbc7.eeprom_shift_reg = 0;
+        }
+        break;
+
+    /* Receiving command and address. */
+    case 1: /* COMMAND */
+        gb->mbc7.eeprom_shift_reg = (gb->mbc7.eeprom_shift_reg << 1) | di;
+        gb->mbc7.eeprom_bits_shifted++;
+
+        /* All commands are 9 bits after start bit */
+        if (gb->mbc7.eeprom_bits_shifted == 9)
+        {
+            uint8_t opcode = (gb->mbc7.eeprom_shift_reg >> 7) & 0x03;
+            gb->mbc7.eeprom_addr = gb->mbc7.eeprom_shift_reg & 0x7F;
+
+            gb->mbc7.eeprom_state = 0; /* Default to IDLE */
+
+            switch (opcode)
+            {
+            case 0b00:                                          /* Control opcodes */
+                if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0011) /* EWEN */
+                    gb->mbc7.eeprom_write_enabled = 1;
+                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0000) /* EWDS */
+                    gb->mbc7.eeprom_write_enabled = 0;
+                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0010) /* ERAL */
+                {
+                    if (gb->mbc7.eeprom_write_enabled)
+                        for (int i = 0; i < 128; i++)
+                            ((uint16_t*)gb->gb_cart_ram)[i] = 0xFFFF;
+                }
+                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0001) /* WRAL */
+                {
+                    if (gb->mbc7.eeprom_write_enabled)
+                    {
+                        gb->mbc7.eeprom_state = 3;   /* WRITE */
+                        gb->mbc7.eeprom_addr = 0xFF; /* WRAL flag */
+                        gb->mbc7.eeprom_bits_shifted = 0;
+                    }
+                }
+                break;
+
+            case 0b01: /* WRITE */
+                if (gb->mbc7.eeprom_write_enabled)
+                {
+                    gb->mbc7.eeprom_state = 3; /* WRITE */
+                    gb->mbc7.eeprom_bits_shifted = 0;
+                }
+                break;
+
+            case 0b10:                     /* READ */
+                gb->mbc7.eeprom_state = 2; /* READ */
+                gb->mbc7.eeprom_read_buffer = ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr];
+                gb->mbc7.eeprom_bits_shifted = 0;
+                gb->mbc7.eeprom_pins &= ~0x01; /* Dummy 0 bit */
+                return;
+
+            case 0b11: /* ERASE */
+                if (gb->mbc7.eeprom_write_enabled)
+                    ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr] = 0xFFFF;
+                break;
+            }
+        }
+        break;
+
+    /* Shifting out data for a READ command. */
+    case 2: /* READ */
+        gb->mbc7.eeprom_bits_shifted++;
+        gb->mbc7.eeprom_pins =
+            (gb->mbc7.eeprom_pins & ~1) | ((gb->mbc7.eeprom_read_buffer >> 15) & 1);
+        gb->mbc7.eeprom_read_buffer <<= 1;
+        if (gb->mbc7.eeprom_bits_shifted >= 16)
+            gb->mbc7.eeprom_state = 0; /* IDLE */
+        break;
+
+    /* Shifting in data for a WRITE or WRAL command. */
+    case 3: /* WRITE */
+        /* Not implemented: Writing to EEPROM is currently not supported. */
+        break;
+    }
+}
+
+/**
  * Internal function used to write bytes.
  */
 __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const uint8_t val)
@@ -1174,10 +1323,15 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
                     gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
             }
         }
-        // Handle other MBCs (MBC1, 3, 5) which have distinct register ranges.
+        // Handle other MBCs (MBC1, 3, 5,) which have distinct register ranges.
         else if (addr < 0x2000)  // Address is 0000-1FFF (RAM Enable)
         {
-            if (gb->mbc > 0 && gb->cart_ram)
+
+            if (gb->mbc == 7)
+            {
+                gb->mbc7.ram_enable_1 = ((val & 0x0F) == 0x0A);
+            }
+            else if (gb->mbc > 0 && gb->cart_ram)
                 gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
         }
         else if (addr < 0x4000)  // Address is 2000-3FFF (ROM Bank Lower Bits)
@@ -1205,6 +1359,12 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
                     gb->selected_rom_bank = ((val & 0x01) << 8) | (gb->selected_rom_bank & 0xFF);
                 }
             }
+            else if (gb->mbc == 7)
+            {
+                gb->selected_rom_bank = val & 0x7F;
+                if (!gb->selected_rom_bank)
+                    gb->selected_rom_bank = 1;
+            }
         }
 
         if (gb->mbc > 0)
@@ -1227,6 +1387,9 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             gb->cart_ram_bank = val;
         else if (gb->mbc == 5)
             gb->cart_ram_bank = (val & 0x0F);
+        else if (gb->mbc == 7)
+            gb->mbc7.ram_enable_2 = (val == 0x40);
+
         __gb_update_selected_cart_bank_addr(gb);
         return;
 
@@ -1284,6 +1447,44 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
                 size_t idx = gb->cart_ram_bank - 0x08;
                 PGB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
                 gb->cart_rtc[idx] = val;
+            }
+            else if (gb->mbc == 7)
+            {
+                if (gb->mbc7.ram_enable_1 && gb->mbc7.ram_enable_2)
+                {
+                    uint8_t reg = (addr >> 4) & 0x0F;
+                    uint8_t old_pins = gb->mbc7.eeprom_pins;
+                    switch (reg)
+                    {
+                    case 0x0: /* Latch Accelerometer */
+                        if (val == 0x55)
+                            gb->mbc7.accel_latch_state = 1;
+                        break;
+
+                    case 0x1: /* Latch Accelerometer */
+                        if (gb->mbc7.accel_latch_state == 1 && val == 0xAA)
+                        {
+                            /* Center value is 0x81D0. Gravity is ~0x70. */
+                            gb->mbc7.accel_x_latched = 0x81D0 + (int16_t)gb->direct.accel_x;
+                            gb->mbc7.accel_y_latched = 0x81D0 + (int16_t)gb->direct.accel_y;
+                            gb->mbc7.accel_latch_state = 0;
+                        }
+                        break;
+
+                    case 0x8: /* EEPROM Control */
+                        gb->mbc7.eeprom_pins = val;
+                        if (!(old_pins & 0x80) && (val & 0x80))
+                        {
+                            gb->mbc7.eeprom_state = 0;
+                            gb->mbc7.eeprom_bits_shifted = 0;
+                        }
+                        if ((val & 0x80) && !(old_pins & 0x40) && (val & 0x40))
+                        {
+                            __gb_mbc7_eeprom_clock(gb);
+                        }
+                        break;
+                    }
+                }
             }
             else if ((gb->cart_mode_select || gb->mbc != 1) &&
                      gb->cart_ram_bank < gb->num_ram_banks)
@@ -5632,6 +5833,10 @@ uint_fast32_t gb_get_save_size(struct gb_s* gb)
     if (gb->mbc == 2)
         return 512;
 
+    /* MBC7 has a 256-byte EEPROM. */
+    if (gb->mbc == 7)
+        return 512;
+
     const uint_fast16_t ram_size_location = 0x0149;
     const uint_fast32_t ram_sizes[] = {0x00, 0x800, 0x2000, 0x8000, 0x20000, 0x10000};
     uint8_t ram_size = gb->gb_rom[ram_size_location];
@@ -5685,6 +5890,19 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     /* Initialize RTC latching values */
     gb->rtc_latch_s1 = 0;
     memset(gb->latched_rtc, 0, sizeof(gb->latched_rtc));
+
+    /* Initialise MBC7 values. */
+    if (gb->mbc == 7)
+    {
+        gb->mbc7.ram_enable_1 = 0;
+        gb->mbc7.ram_enable_2 = 0;
+        gb->mbc7.accel_latch_state = 0;
+        gb->mbc7.accel_x_latched = 0x8000;
+        gb->mbc7.accel_y_latched = 0x8000;
+        gb->mbc7.eeprom_state = 0;
+        gb->mbc7.eeprom_write_enabled = 0;
+        gb->mbc7.eeprom_pins = 0x01; /* DO is high by default */
+    }
 
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
@@ -5752,7 +5970,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
      * Table for cartridge type (MBC). -1 if invalid.
      * TODO: MMM01 is unsupported.
      * TODO: MBC6 is unsupported.
-     * TODO: MBC7 is unsupported.
      * TODO: POCKET CAMERA is unsupported.
      * TODO: BANDAI TAMA5 is unsupported.
      * TODO: HuC3 is unsupported.
@@ -5761,21 +5978,21 @@ __section__(".rare") enum gb_init_error_e gb_init(
     /* clang-format off */
     const uint8_t cart_mbc[] =
     {
-        0, 1, 1, 1, -1,  2,  2, -1,  0, 0, -1, 0, 0, 0, -1,  3,
-        3, 3, 3, 3, -1, -1, -1, -1, -1, 5,  5, 5, 5, 5,  5, -1
+        0, 1, 1, 1, -1, 2, 2, -1, 0, 0, -1, 0, 0, 0, -1, 3,  /* 00-0F */
+        3, 3, 3, 3, -1, -1, -1, -1, -1, 5, 5, 5, 5, 5, 5, 7, /* 10-1F */
+        7, -1, 7                                             /* 20-2F */
     };
     const uint8_t cart_ram[] =
     {
-        0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0,
-        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0
+        0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, /* 00-0F */
+        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, /* 10-1F */
+        1, 0, 1                                         /* 20-2F */
     };
     const uint8_t cart_battery[] =
     {
-        0, 0, 0, 1, 0, 0, 1, 0,
-        0, 1, 0, 0, 0, 1, 0, 1,
-        1, 0, 0, 1, 0, 0, 0, 0,
-        0, 0, 0, 1, 0, 0, 1, 0,
-        0, 0, 1,
+        0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, /* 00-0F */
+        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, /* 10-1F */
+        1, 0, 1                                         /* 20-2F */
     };
     const uint16_t num_rom_banks_mask[] =
     {
