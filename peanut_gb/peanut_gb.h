@@ -2318,59 +2318,56 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
         uint8_t* vram = gb->vram;
-        
+
         // tiles on this line
-        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32*(bg_y/8))];
-        
+        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32 * (bg_y / 8))];
+
         // points to line data for pixel offset
-        uint16_t* vram_tile_data = (void*)&vram[2*(bg_y % 8)];
-        
+        uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
+
         // prefetch each tile's data
-        for (int x = wx / 8; x <= LCD_WIDTH/8; ++x)
+        for (int x = wx / 8; x <= LCD_WIDTH / 8; ++x)
         {
-            uint8_t tile = vram_line_tiles[(bg_x/8) % 32];
-            __builtin_prefetch(&vram_line_tiles[(tile < 0x80
-                    ? addr_mode_vram_tiledata_offset
-                    : 0) | (8*(unsigned)tile)], 0);
+            uint8_t tile = vram_line_tiles[(bg_x / 8) % 32];
+            __builtin_prefetch(
+                &vram_line_tiles
+                    [(tile < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile)],
+                0
+            );
         }
-        
-        uint8_t tile_hi = vram_line_tiles[(bg_x/8 + wx/8) % 32];
-        uint16_t vram_tile_data_hi = vram_tile_data[
-            (tile_hi < 0x80
-                ? addr_mode_vram_tiledata_offset
-                : 0) | (8*(unsigned)tile_hi)
-        ];
-        
+
+        uint8_t tile_hi = vram_line_tiles[(bg_x / 8 + wx / 8) % 32];
+        uint16_t vram_tile_data_hi = vram_tile_data
+            [(tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
+
         int subx = bg_x % 8;
-        
+
         // first part of window is obscured
         vram_tile_data_hi &= (0xFFFF) << subx;
         vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
         uint32_t bgmask = 0xFF >> subx;
-        if (subx == 0) bgmask = 0; // (why?)
+        if (subx == 0)
+            bgmask = 0;  // (why?)
 
         for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
         {
-            uint8_t* out = pixels + (x%2) + (x/2)*4;
+            uint8_t* out = pixels + (x % 2) + (x / 2) * 4;
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
-            uint16_t tile_hi = vram_line_tiles[(bg_x/8 + x + 1) % 32];
-            vram_tile_data_hi = vram_tile_data[
-                (tile_hi < 0x80
-                    ? addr_mode_vram_tiledata_offset
-                    : 0) | (8*(unsigned)tile_hi)
-            ];
-            
+            uint16_t tile_hi = vram_line_tiles[(bg_x / 8 + x + 1) % 32];
+            vram_tile_data_hi = vram_tile_data
+                [(tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
+
             uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
-            uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx|8);
+            uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx | 8);
             raw1 |= (vram_tile_data_hi & 0x00FF) << (8 - subx);
             raw2 |= ((vram_tile_data_hi & 0xFF00) >> subx) & 0xFF;
-            
+
             uint32_t combined_mask = 0xFF00FF00 | (bgmask) | (bgmask << 16);
             uint32_t combined_planes = (uint32_t)(raw1) | ((uint32_t)raw2 << 16);
-            
+
             *(uint32_t*)&out[0] &= combined_mask;
             *(uint32_t*)&out[0] |= combined_planes;
-            
+
             // all further chunks should completely mask out the background
             bgmask = 0;
         }
@@ -6332,10 +6329,16 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         return 1 * 4;
     case 0xE8:
     {
-        int16_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.sp = __gb_add16(gb, gb->cpu_reg.sp, offset);
+        int8_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
+        uint16_t old_sp = gb->cpu_reg.sp;
+        gb->cpu_reg.sp += offset;
+
+        gb->cpu_reg.f_bits.z = 0;
+        gb->cpu_reg.f_bits.n = 0;
+        gb->cpu_reg.f_bits.h = ((old_sp & 0xF) + (offset & 0xF) > 0xF);
+        gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
     }
+        return 4 * 4;
         return 4 * 4;
     case 0xE9:
         gb->cpu_reg.pc = gb->cpu_reg.hl;
@@ -6345,10 +6348,16 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         return 1 * 4;
     case 0xF8:
     {
-        int16_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.hl = __gb_add16(gb, gb->cpu_reg.sp, offset);
+        int8_t offset = (int8_t)__gb_read(gb, gb->cpu_reg.pc++);
+        uint16_t sp = gb->cpu_reg.sp;
+        gb->cpu_reg.hl = sp + offset;
+
+        gb->cpu_reg.f_bits.z = 0;
+        gb->cpu_reg.f_bits.n = 0;
+        gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
+        gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
     }
+        return 3 * 4;
         return 3 * 4;
     case 0xF9:
         gb->cpu_reg.sp = gb->cpu_reg.hl;
