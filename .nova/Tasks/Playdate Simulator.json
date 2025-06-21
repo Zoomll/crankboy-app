@@ -16,7 +16,7 @@
   "extensionTemplate" : "simulator",
   "extensionValues" : {
     "playdate.build-type" : "make",
-    "playdate.debugRequest" : "attach",
+    "playdate.debugRequest" : "launch",
     "playdate.product-name" : "CrankBoy"
   },
   "openLogOnRun" : "fail"
