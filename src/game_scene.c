@@ -372,14 +372,11 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
             gameScene->rtc_time = now;
             gameScene->rtc_seconds_to_catch_up = 0;
 
-            uint8_t actual_cartridge_type = context->gb->gb_rom[0x0147];
-            if (actual_cartridge_type == 0x0F || actual_cartridge_type == 0x10)
+            gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
+
+            if (gameScene->cartridge_has_rtc)
             {
-                gameScene->cartridge_has_rtc = true;
-                playdate->system->logToConsole(
-                    "Cartridge Type 0x%02X (MBC: %d): RTC Enabled.", actual_cartridge_type,
-                    context->gb->mbc
-                );
+                playdate->system->logToConsole("Cartridge is MBC3 with battery: RTC Enabled.");
 
                 if (ram_load_result == 2)
                 {
@@ -408,11 +405,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
             }
             else
             {
-                gameScene->cartridge_has_rtc = false;
-                playdate->system->logToConsole(
-                    "Cartridge Type 0x%02X (MBC: %d): RTC Disabled.", actual_cartridge_type,
-                    context->gb->mbc
-                );
+                playdate->system->logToConsole("Cartridge does not have a battery-backed RTC.");
             }
 
             playdate->system->logToConsole("Initializing audio...");
@@ -966,15 +959,16 @@ __core_section("fb") void update_fb_dirty_lines(
 
 static void save_check(struct gb_s* gb);
 
-static __section__(".text.tick")
-void display_fps(void)
+static __section__(".text.tick") void display_fps(void)
 {
-    if (!numbers_bmp) return;
+    if (!numbers_bmp)
+        return;
 
-    if (++fps_draw_timer % 4 != 0) return;
+    if (++fps_draw_timer % 4 != 0)
+        return;
 
     float fps;
-    if (PGB_App->avg_dt <= 1.0f/98.5f)
+    if (PGB_App->avg_dt <= 1.0f / 98.5f)
     {
         fps = 99.9;
     }
@@ -992,20 +986,22 @@ void display_fps(void)
     int width, height, rowbytes;
     playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
 
-    if (!data || !lcd) return;
+    if (!data || !lcd)
+        return;
 
     char buff[5];
     snprintf(buff, sizeof(buff), "%04.1f", (double)fps);
 
     uint32_t digits4 = *(uint32_t*)&buff[0];
-    if (digits4 == last_fps_digits) return;
+    if (digits4 == last_fps_digits)
+        return;
     last_fps_digits = digits4;
 
     for (int y = 0; y < height; ++y)
     {
         uint32_t out = 0;
         unsigned x = 0;
-        uint8_t* rowdata = data + y*rowbytes;
+        uint8_t* rowdata = data + y * rowbytes;
         for (int i = 0; i < sizeof(buff); ++i)
         {
             char c = buff[i];
@@ -1030,8 +1026,8 @@ void display_fps(void)
 
         for (int i = 0; i < 4; ++i)
         {
-            lcd[y*LCD_ROWSIZE + i] &= (mask >> ((3 - i)*8));
-            lcd[y*LCD_ROWSIZE + i] |= (out >> ((3 - i)*8));
+            lcd[y * LCD_ROWSIZE + i] &= (mask >> ((3 - i) * 8));
+            lcd[y * LCD_ROWSIZE + i] |= (out >> ((3 - i) * 8));
         }
     }
 
@@ -1048,7 +1044,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     float progress = 0.5f;
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
     /*
      * =========================================================================
      * Dynamic Rate Control with Adaptive Interlacing
@@ -1140,7 +1136,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     {
         context->gb->direct.interlace_mask = 0xFF;
     }
-    #endif
+#endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -1376,7 +1372,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         }
 
         gameScene->playtime += 1 + preferences_frame_skip;
-        PGB_App->avg_dt_mult = (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
+        PGB_App->avg_dt_mult =
+            (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
             context->gb->direct.frame_skip = preferences_frame_skip != frame;
@@ -1423,7 +1420,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
         }
 
-        #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
         // --- Decide if the *next* frame needs interlacing ---
         if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
         {
@@ -1466,7 +1463,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
                 gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
         }
-        #endif
+#endif
 
 #if LOG_DIRTY_LINES
         playdate->system->logToConsole("--- Frame Update ---");

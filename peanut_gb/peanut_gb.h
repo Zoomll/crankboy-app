@@ -650,7 +650,13 @@ __section__(".text.pgb") void gb_set_rtc(struct gb_s* gb, const struct tm* const
     gb->cart_rtc[1] = time->tm_min;
     gb->cart_rtc[2] = time->tm_hour;
     gb->cart_rtc[3] = time->tm_yday & 0xFF; /* Low 8 bits of day counter. */
-    gb->cart_rtc[4] = time->tm_yday >> 8;   /* High 1 bit of day counter. */
+
+    // Preserve control flags (bits 7-1) and only set the day counter's high bit (bit 0).
+    uint8_t high_byte = gb->rtc_bits.high;
+    high_byte &= ~0x01;                       /* Clear the old 9th day bit. */
+    high_byte |= (time->tm_yday >> 8) & 0x01; /* Set the new 9th day bit. */
+
+    gb->rtc_bits.high = high_byte;
 }
 
 __section__(".text.pgb") static void __gb_update_tac(struct gb_s* gb)
