@@ -1923,6 +1923,10 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         }                                                 \
     } while (0)
 
+#if ENABLE_BGCACHE
+    int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
+#endif
+
     /* If background is enabled, draw it. */
     if ((gb->gb_reg.LCDC & LCDC_BG_ENABLE) && wx > 0)
     {
@@ -1933,7 +1937,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
 
 #if ENABLE_BGCACHE
         uint8_t bg_x = gb->gb_reg.SCX;
-        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
         int map2 = !!(gb->gb_reg.LCDC & LCDC_BG_MAP);
         uint32_t* bgcache =
             (uint32_t*)(gb->bgcache + (bg_y * BGCACHE_STRIDE) + addr_mode_2 * (BGCACHE_SIZE / 2) +
@@ -2017,7 +2020,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         int win_x_start = (wx_reg >= 7) ? 0 : (7 - wx_reg);
 
         uint8_t win_y = gb->display.window_clear;
-
+        int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
         uint32_t* win_cache_line =
             (uint32_t*)(gb->bgcache + (win_y * BGCACHE_STRIDE) + addr_mode_2 * (BGCACHE_SIZE / 2) +
                         map2 * (BGCACHE_SIZE / 4));
@@ -2049,15 +2052,6 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
             *dest_low_plane = (*dest_low_plane & ~bit_mask) | (src_low_bit << dest_bit_in_chunk);
             *dest_high_plane = (*dest_high_plane & ~bit_mask) | (src_high_bit << dest_bit_in_chunk);
         }
-
-        uint32_t* bgcache =
-            (uint32_t*)(gb->bgcache + (bg_y * BGCACHE_STRIDE) + addr_mode_2 * (BGCACHE_SIZE / 2) +
-                        map2 * (BGCACHE_SIZE / 4));
-        uint32_t hi = bgcache[(bg_x / 16) % 0x10];
-
-        // first part of window may be obscured
-        hi &= 0xFFFF0000 | (0x0000FFFF << obscure_x);
-        hi &= 0x0000FFFF | (0xFFFF0000 << obscure_x);
 
         gb->display.window_clear++;
 #else
