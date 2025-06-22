@@ -1321,6 +1321,26 @@ __section__(".text.pgb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
 }
 
 /**
+ * Internal function to check for LY=LYC coincidence and update STAT.
+ */
+__core static void __gb_check_lyc(struct gb_s* gb)
+{
+    if (gb->gb_reg.LY == gb->gb_reg.LYC)
+    {
+        gb->gb_reg.STAT |= STAT_LYC_COINC;
+
+        if (gb->gb_reg.STAT & STAT_LYC_INTR)
+        {
+            gb->gb_reg.IF |= LCDC_INTR;
+        }
+    }
+    else
+    {
+        gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+    }
+}
+
+/**
  * Internal function used to write bytes.
  */
 __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const uint8_t val)
@@ -1690,7 +1710,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             return;
 
         /* LCD Registers */
-        case 0x40:
+        case 0x40:  // LCDC
         {
             uint8_t old_lcdc = gb->gb_reg.LCDC;
             bool was_enabled = (old_lcdc & LCDC_ENABLE);
@@ -1700,43 +1720,44 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
             if (was_enabled && !is_enabled)
             {
-                // LCD is being turned OFF.
-                // LY resets to 0, and the PPU clock stops.
                 gb->gb_reg.LY = 0;
                 gb->counter.lcd_count = 0;
-
-                // Mode becomes HBLANK (mode 0) and STAT is updated.
                 gb->lcd_mode = LCD_HBLANK;
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
-
-                // The LY=LYC coincidence flag in STAT is cleared.
-                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
+                __gb_check_lyc(gb);
             }
             else if (!was_enabled && is_enabled)
             {
-                // LCD is being turned ON.
-                gb->counter.lcd_count = 0;
-                gb->lcd_blank = 1;  // From your original code
-
-                // When LCD turns on, LY is 0. An immediate LY=LYC check is
-                // needed.
-                if (gb->gb_reg.LY == gb->gb_reg.LYC)
-                {
-                    gb->gb_reg.STAT |= STAT_LYC_COINC;
-                    if (gb->gb_reg.STAT & STAT_LYC_INTR)
-                        gb->gb_reg.IF |= LCDC_INTR;
-                }
-                else
-                {
-                    gb->gb_reg.STAT &= ~STAT_LYC_COINC;
-                }
+                gb->counter.lcd_count = 4;
+                gb->gb_reg.LY = 0;
+                gb->lcd_mode = LCD_SEARCH_OAM;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
+                __gb_check_lyc(gb);
             }
             return;
         }
 
-        case 0x41:
-            gb->gb_reg.STAT = (val & 0b01111000);
+        case 0x41:  // STAT Register
+        {
+            gb->gb_reg.STAT = (val & STAT_USER_BITS) | (gb->gb_reg.STAT & ~STAT_USER_BITS);
+
+            if (gb->gb_reg.LCDC & LCDC_ENABLE)
+            {
+                bool mode_interrupt =
+                    (gb->gb_reg.STAT & STAT_MODE_0_INTR && gb->lcd_mode == LCD_HBLANK) ||
+                    (gb->gb_reg.STAT & STAT_MODE_1_INTR && gb->lcd_mode == LCD_VBLANK) ||
+                    (gb->gb_reg.STAT & STAT_MODE_2_INTR && gb->lcd_mode == LCD_SEARCH_OAM);
+
+                bool lyc_interrupt =
+                    (gb->gb_reg.STAT & STAT_LYC_INTR) && (gb->gb_reg.STAT & STAT_LYC_COINC);
+
+                if (mode_interrupt || lyc_interrupt)
+                {
+                    gb->gb_reg.IF |= LCDC_INTR;
+                }
+            }
             return;
+        }
 
         case 0x42:
             gb->gb_reg.SCY = val;
@@ -1752,22 +1773,12 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             return;
 
         /* LY (0xFF44) is read only. */
-        case 0x45:
+        case 0x45:  // LYC Register
             gb->gb_reg.LYC = val;
-
             // Perform an LY=LYC check immediately if the LCD is enabled.
             if (gb->gb_reg.LCDC & LCDC_ENABLE)
             {
-                if (gb->gb_reg.LY == gb->gb_reg.LYC)
-                {
-                    gb->gb_reg.STAT |= STAT_LYC_COINC;
-                    if (gb->gb_reg.STAT & STAT_LYC_INTR)
-                        gb->gb_reg.IF |= LCDC_INTR;
-                }
-                else
-                {
-                    gb->gb_reg.STAT &= ~STAT_LYC_COINC;
-                }
+                __gb_check_lyc(gb);
             }
             return;
 
@@ -5326,7 +5337,7 @@ __shell static uint16_t __gb_calc_halt_cycles(struct gb_s* gb)
 /**
  * Internal function used to step the CPU.
  */
-__core void __gb_step_cpu(struct gb_s* gb)
+__core unsigned int __gb_step_cpu(struct gb_s* gb)
 {
     unsigned inst_cycles = 16;
 
@@ -5571,153 +5582,124 @@ done_instr:
     gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
     gb->counter.div_count %= DIV_CYCLES;
 
-    // TODO: this is almost certainly a bad idea, since we never finish the
-    // frame.
-    if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
-        return;
-
-    /* LCD Timing */
-    gb->counter.lcd_count += inst_cycles;
-
-    switch (gb->lcd_mode)
+    if (gb->gb_reg.LCDC & LCDC_ENABLE)
     {
-    // Mode 2: OAM Search
-    case LCD_SEARCH_OAM:
-        if (gb->counter.lcd_count >= 80)
-        {
-            gb->counter.lcd_count -= 80;
-            gb->lcd_mode = LCD_TRANSFER;
-        }
-        break;
+        /* LCD Timing */
+        gb->counter.lcd_count += inst_cycles;
 
-    // Mode 3: Drawing pixels
-    case LCD_TRANSFER:
-        if (gb->counter.lcd_count >= 172)
+        switch (gb->lcd_mode)
         {
-            gb->counter.lcd_count -= 172;
-            gb->lcd_mode = LCD_HBLANK;
+        // Mode 2: OAM Search (80 cycles)
+        // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current line.
+        case LCD_SEARCH_OAM:
+            if (gb->counter.lcd_count >= 80)
+            {
+                gb->counter.lcd_count -= 80;
+                gb->lcd_mode = LCD_TRANSFER;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
+            }
+            break;
 
-            // H-Blank Interrupt fires here, at the END of the drawing phase.
-            if (gb->gb_reg.STAT & STAT_MODE_0_INTR)
-                gb->gb_reg.IF |= LCDC_INTR;
+        // Mode 3: Pixel Transfer (variable, avg. ~168-172 cycles)
+        case LCD_TRANSFER:
+            if (gb->counter.lcd_count >= 168)
+            {
+                gb->counter.lcd_count -= 168;
 
 #if ENABLE_LCD
-            if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip &&
-                (gb->gb_reg.LCDC & LCDC_ENABLE))
-                __gb_draw_line(gb);
+                if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip)
+                    __gb_draw_line(gb);
 #endif
+
+                gb->lcd_mode = LCD_HBLANK;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
+
+                if (gb->gb_reg.STAT & STAT_MODE_0_INTR)
+                    gb->gb_reg.IF |= LCDC_INTR;
+            }
+            break;
+
+        // Mode 0: H-Blank (remaining cycles of the 456 total)
+        // The PPU is idle until the end of the scanline.
+        case LCD_HBLANK:
+            if (gb->counter.lcd_count >= 208)  // 80 + 168 + 208 = 456 total cycles
+            {
+                gb->counter.lcd_count -= 208;
+                gb->gb_reg.LY++;
+
+                __gb_check_lyc(gb);
+
+                if (gb->gb_reg.LY == 144)
+                {
+                    gb->lcd_mode = LCD_VBLANK;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
+                    gb->gb_frame = 1;
+                    gb->gb_reg.IF |= VBLANK_INTR;
+                    gb->lcd_blank = 0;
+
+                    if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+                }
+                else
+                {
+                    gb->lcd_mode = LCD_SEARCH_OAM;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                    if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+                }
+            }
+            break;
+
+        // Mode 1: V-Blank (10 lines, 4560 cycles total)
+        // The PPU is idle, giving the CPU time to update VRAM.
+        case LCD_VBLANK:
+            if (gb->counter.lcd_count >= 456)
+            {
+                gb->counter.lcd_count -= 456;
+
+                // LY continues to increment during V-Blank from 144 up to 153.
+                if (gb->gb_reg.LY == 153)
+                {
+                    gb->gb_reg.LY = 0;
+                }
+                else
+                {
+                    gb->gb_reg.LY++;
+                }
+
+                __gb_check_lyc(gb);
+
+                if (gb->gb_reg.LY == 0)
+                {
+                    gb->lcd_mode = LCD_SEARCH_OAM;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                    if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+
+                    gb->display.window_clear = 0;
+                    gb->display.WY = gb->gb_reg.WY;
+                }
+            }
+            break;
         }
-        break;
-
-    // Mode 0: H-Blank
-    case LCD_HBLANK:
-        if (gb->counter.lcd_count >= 204)
-        {
-            gb->counter.lcd_count -= 204;
-
-            // End of H-Blank, advance to the next line
-            gb->gb_reg.LY++;
-
-            // Check for LY=LYC coincidence
-            if (gb->gb_reg.LY == gb->gb_reg.LYC)
-            {
-                gb->gb_reg.STAT |= STAT_LYC_COINC;
-                if (gb->gb_reg.STAT & STAT_LYC_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
-            }
-            else
-            {
-                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
-            }
-
-            // Check if we are entering V-Blank
-            if (gb->gb_reg.LY == 144)
-            {
-                gb->lcd_mode = LCD_VBLANK;
-                gb->gb_frame = 1;
-                gb->gb_reg.IF |= VBLANK_INTR;
-                gb->lcd_blank = 0;
-
-                if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
-            }
-            else
-            {
-                // Start the next scanline in Mode 2
-                gb->lcd_mode = LCD_SEARCH_OAM;
-                if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
-            }
-        }
-        break;
-
-    // Mode 1: V-Blank
-    case LCD_VBLANK:
-        if (gb->counter.lcd_count >= 456)
-        {
-            gb->counter.lcd_count -= 456;
-            gb->gb_reg.LY++;
-
-            if (gb->gb_reg.LY > 153)
-            {
-                // End of V-Blank, start a new frame
-                gb->gb_reg.LY = 0;
-                gb->lcd_mode = LCD_SEARCH_OAM;
-
-                if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
-
-                gb->display.window_clear = 0;
-                gb->display.WY = gb->gb_reg.WY;
-            }
-
-            // Check for LY=LYC coincidence during V-Blank
-            if (gb->gb_reg.LY == gb->gb_reg.LYC)
-            {
-                gb->gb_reg.STAT |= STAT_LYC_COINC;
-                if (gb->gb_reg.STAT & STAT_LYC_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
-            }
-            else
-            {
-                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
-            }
-        }
-        break;
     }
-    // Update the STAT register's mode bits
-    gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
-
-    // Handle LCD disable
-    if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
-    {
-        gb->counter.lcd_count = 0;
-        gb->gb_reg.LY = 0;
-        gb->lcd_mode = LCD_HBLANK;
-        return;
-    };
 }
+    return inst_cycles;
 }
 
 __core void gb_run_frame(struct gb_s* gb)
 {
     gb->gb_frame = 0;
+    unsigned int total_cycles = 0;
 
-    /*
-    // paranoid extra tile update
-    // if this does anything, indicates bgcache isn't being updated correctly
-    static int tick = 0;
-    tick = (tick+1) % 0x800;
-    int tile = gb->vram[0x1800 + tick];
-    __gb_update_bgcache_tile(gb, 0, tick, tile);
-    __gb_update_bgcache_tile(gb, 1, tick, tile);
-    */
-
-    while (!gb->gb_frame)
+    while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
     {
-        __gb_step_cpu(gb);
+        total_cycles += __gb_step_cpu(gb);
 #ifdef TRACE_LOG
         printf("%x:%04x %02x\n", gb->selected_rom_bank, gb->cpu_reg.pc, gb->cpu_reg.a);
+        f
 #endif
     }
 }
@@ -5872,9 +5854,9 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     // -- we're in the clear now --
 
     void* preserved_fields[] = {
-        &gb->gb_rom,  &gb->wram,        &gb->vram,     &gb->gb_cart_ram,  &gb->breakpoints,
-        &gb->lcd,     &gb->direct.priv, &gb->gb_error, &gb->gb_serial_tx, &gb->gb_serial_rx,
-        &gb->gb_boot_rom,
+        &gb->gb_rom,       &gb->wram,         &gb->vram,        &gb->gb_cart_ram,
+        &gb->breakpoints,  &gb->lcd,          &gb->direct.priv, &gb->gb_error,
+        &gb->gb_serial_tx, &gb->gb_serial_rx, &gb->gb_boot_rom,
 #if ENABLE_BGCACHE
         &gb->bgcache,
 #endif
