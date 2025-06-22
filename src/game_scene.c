@@ -300,8 +300,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         if (PGB_App->bootRomData)
         {
             gb_init_boot_rom(context->gb, PGB_App->bootRomData);
-            gb_reset(context->gb);
         }
+        
+        gb_reset(context->gb);
 
         if (gb_ret == GB_INIT_NO_ERROR)
         {
