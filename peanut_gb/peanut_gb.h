@@ -6408,7 +6408,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
     }
         return 4 * 4;
-        return 4 * 4;
     case 0xE9:
         gb->cpu_reg.pc = gb->cpu_reg.hl;
         return 4;
@@ -6426,7 +6425,6 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
         gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
     }
-        return 3 * 4;
         return 3 * 4;
     case 0xF9:
         gb->cpu_reg.sp = gb->cpu_reg.hl;
