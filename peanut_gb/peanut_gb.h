@@ -393,6 +393,7 @@ enum gb_serial_rx_ret_e
 struct gb_s
 {
     uint8_t* gb_rom;
+    uint8_t* gb_boot_rom;
     uint8_t* gb_cart_ram;
 
     /**
@@ -624,6 +625,10 @@ struct gb_s
 };
 
 #ifdef PGB_IMPL
+__section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
+{
+    gb->gb_boot_rom = boot_rom;
+}
 
 /**
  * Tick the internal RTC by one second.
@@ -820,11 +825,16 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
  */
 __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
 {
+    /* If BIOS is enabled and we are reading from the BIOS area (0x0000-0x00FF),
+     * read from our loaded Boot ROM data instead of the cartridge. */
+    if (gb->gb_bios_enable && addr < 0x0100)
+    {
+        return gb->gb_boot_rom[addr];
+    }
+
     switch (addr >> 12)
     {
     case 0x0:
-
-    /* TODO: BIOS support. */
     case 0x1:
     case 0x2:
     case 0x3:
@@ -1789,7 +1799,10 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
         /* Turn off boot ROM */
         case 0x50:
-            gb->gb_bios_enable = 0;
+            if (gb->gb_bios_enable)
+            {
+                gb->gb_bios_enable = 0;
+            }
             return;
         }
     }
@@ -1802,6 +1815,9 @@ __core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t
 {
     if likely (addr < 0x4000)
     {
+        if (gb->gb_bios_enable && addr < 0x0100)
+            return gb->gb_boot_rom[addr];
+
         return gb->gb_rom[addr];
     }
     if likely (addr < 0x8000)
@@ -1890,8 +1906,22 @@ __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
 
     if likely (addr < 0x3FFF)
     {
-        v = gb->gb_rom[addr];
-        v |= gb->gb_rom[addr + 1] << 8;
+        if (gb->gb_bios_enable && addr < 0x0100)
+        {
+            /*
+             * This block handles 16-bit immediate fetches and must select the correct
+             * memory source. If the boot ROM is active (`gb_bios_enable`) and the
+             * PC is within its range (`< 0x0100`), the value is read from the
+             * boot ROM data. Otherwise, it is read from the game cartridge's ROM.
+             */
+            v = gb->gb_boot_rom[addr];
+            v |= gb->gb_boot_rom[addr + 1] << 8;
+        }
+        else
+        {
+            v = gb->gb_rom[addr];
+            v |= gb->gb_rom[addr + 1] << 8;
+        }
     }
     else if likely (addr >= 0x4000 && addr < 0x7FFF)
     {
@@ -5939,6 +5969,11 @@ void gb_init_serial(
     gb->gb_serial_rx = gb_serial_rx;
 }
 
+/**
+ * Provides the emulator with the 256-byte boot ROM data.
+ */
+void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom);
+
 uint8_t gb_colour_hash(struct gb_s* gb)
 {
 #define ROM_TITLE_START_ADDR 0x0134
@@ -5959,7 +5994,6 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 {
     gb->gb_halt = 0;
     gb->gb_ime = 1;
-    gb->gb_bios_enable = 0;
     gb->lcd_mode = LCD_HBLANK;
 
     /* Initialise MBC values. */
@@ -5988,14 +6022,34 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
 
-    /* Initialise CPU registers as though a DMG. */
-    gb->cpu_reg.af = 0x01B0;
-    gb->cpu_reg.bc = 0x0013;
-    gb->cpu_reg.de = 0x00D8;
-    gb->cpu_reg.hl = 0x014D;
-    gb->cpu_reg.sp = 0xFFFE;
-    /* TODO: Add BIOS support. */
-    gb->cpu_reg.pc = 0x0100;
+    if (gb->gb_boot_rom)
+    {
+        /* With a boot ROM, we start from 0x0000 and enable the BIOS flag. */
+        gb->gb_bios_enable = 1;
+
+        /* Set registers to their power-on state. */
+        gb->cpu_reg.af = 0x0000;
+        gb->cpu_reg.bc = 0x0000;
+        gb->cpu_reg.de = 0x0000;
+        gb->cpu_reg.hl = 0x0000;
+        gb->cpu_reg.sp = 0x0000;
+        gb->cpu_reg.pc = 0x0000;
+        gb->gb_reg.DIV = 0x00;
+    }
+    else
+    {
+        /* Without a boot ROM, we use the old "skip-BIOS" method. */
+        gb->gb_bios_enable = 0;
+
+        /* Initialise CPU registers as though the boot ROM has just finished. */
+        gb->cpu_reg.af = 0x01B0;
+        gb->cpu_reg.bc = 0x0013;
+        gb->cpu_reg.de = 0x00D8;
+        gb->cpu_reg.hl = 0x014D;
+        gb->cpu_reg.sp = 0xFFFE;
+        gb->cpu_reg.pc = 0x0100;
+        gb->gb_reg.DIV = 0xAC;
+    }
 
     gb->counter.lcd_count = 0;
     gb->counter.div_count = 0;
@@ -6005,7 +6059,6 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     gb->gb_reg.TIMA = 0x00;
     gb->gb_reg.TMA = 0x00;
     gb->gb_reg.TAC = 0xF8;
-    gb->gb_reg.DIV = 0xAC;
 
     __gb_update_tac(gb);
 

@@ -46,6 +46,34 @@ void PGB_init(void)
     PGB_App->startSelectBitmap =
         playdate->graphics->loadBitmap("images/selector-start-select", NULL);
 
+    // --- Boot ROM data ---
+    const char* bootRomPath = "dmg_boot.bin";
+    SDFile* file = playdate->file->open(bootRomPath, kFileRead);
+    if (file)
+    {
+        PGB_App->bootRomData = pgb_malloc(256);
+        int bytesRead = playdate->file->read(file, PGB_App->bootRomData, 256);
+        playdate->file->close(file);
+        if (bytesRead != 256)
+        {
+            playdate->system->logToConsole(
+                "Error: Read %d bytes from dmg_boot.bin, expected 256.", bytesRead
+            );
+            pgb_free(PGB_App->bootRomData);
+            PGB_App->bootRomData = NULL;
+        }
+        else
+        {
+            playdate->system->logToConsole("Successfully loaded dmg_boot.bin");
+        }
+    }
+    else
+    {
+        playdate->system->logToConsole(
+            "Warning: Could not find %s. Skipping Boot ROM.", bootRomPath
+        );
+    }
+
     // add audio callback later
     PGB_App->soundSource = NULL;
 

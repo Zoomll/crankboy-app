@@ -297,6 +297,12 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         enum gb_init_error_e gb_ret =
             gb_init(context->gb, context->wram, context->vram, lcd, rom, gb_error, context);
 
+        if (PGB_App->bootRomData)
+        {
+            gb_init_boot_rom(context->gb, PGB_App->bootRomData);
+            gb_reset(context->gb);
+        }
+
         if (gb_ret == GB_INIT_NO_ERROR)
         {
             playdate->system->logToConsole("Initialized gb context.");

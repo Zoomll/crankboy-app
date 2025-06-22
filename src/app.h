@@ -40,9 +40,10 @@ extern pthread_mutex_t audio_mutex;
 typedef struct PGB_Application
 {
     float dt;
-    float avg_dt; // for fps calculation
-    float avg_dt_mult; // reciprocal number of emulated frames last frame
+    float avg_dt;       // for fps calculation
+    float avg_dt_mult;  // reciprocal number of emulated frames last frame
     float crankChange;
+    uint8_t* bootRomData;
     PGB_Scene* scene;
     PGB_Scene* pendingScene;
     LCDFont* bodyFont;
