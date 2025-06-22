@@ -1734,6 +1734,11 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             gb->gb_reg.SCX = val;
             return;
 
+        /* LY (0xFF44) is read-only. Writes are ignored on real hardware.
+         * The boot ROM attempts to write to this register. */
+        case 0x44:
+            return;
+
         /* LY (0xFF44) is read only. */
         case 0x45:
             gb->gb_reg.LYC = val;
