@@ -770,7 +770,7 @@ __section__(".rare.pgb") static void __gb_rare_write(
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
             return;
-            
+
         /* Turn off boot ROM */
         case 0x50:
             if (gb->gb_bios_enable)
@@ -1697,25 +1697,33 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             if (was_enabled && !is_enabled)
             {
                 // LCD is being turned OFF.
-                // LY resets to 0, and the PPU clock stops.
-                gb->gb_reg.LY = 0;
+                gb->gb_reg.LY = 0;  // LY is reset to 0.
                 gb->counter.lcd_count = 0;
 
                 // Mode becomes HBLANK (mode 0) and STAT is updated.
                 gb->lcd_mode = LCD_HBLANK;
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
 
-                // The LY=LYC coincidence flag in STAT is cleared.
-                gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+                if (gb->gb_reg.LY == gb->gb_reg.LYC)
+                {
+                    gb->gb_reg.STAT |= STAT_LYC_COINC;
+                    // A STAT interrupt can also be triggered here if enabled.
+                    if (gb->gb_reg.STAT & STAT_LYC_INTR)
+                        gb->gb_reg.IF |= LCDC_INTR;
+                }
+                else
+                {
+                    gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+                }
             }
             else if (!was_enabled && is_enabled)
             {
-                // LCD is being turned ON.
-                gb->counter.lcd_count = 0;
-                gb->lcd_blank = 1;  // From your original code
 
-                // When LCD turns on, LY is 0. An immediate LY=LYC check is
-                // needed.
+                gb->counter.lcd_count = 4;
+                gb->gb_reg.LY = 0;
+                gb->lcd_mode = LCD_SEARCH_OAM;
+                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
+
                 if (gb->gb_reg.LY == gb->gb_reg.LYC)
                 {
                     gb->gb_reg.STAT |= STAT_LYC_COINC;
@@ -5681,8 +5689,6 @@ done_instr:
         }
         break;
     }
-    // Update the STAT register's mode bits
-    gb->gb_reg.STAT = (gb->gb_reg.STAT & 0b11111100) | gb->lcd_mode;
 
     // Handle LCD disable
     if ((gb->gb_reg.LCDC & LCDC_ENABLE) == 0)
@@ -5868,9 +5874,9 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     // -- we're in the clear now --
 
     void* preserved_fields[] = {
-        &gb->gb_rom,  &gb->wram,        &gb->vram,     &gb->gb_cart_ram,  &gb->breakpoints,
-        &gb->lcd,     &gb->direct.priv, &gb->gb_error, &gb->gb_serial_tx, &gb->gb_serial_rx,
-        &gb->gb_boot_rom,
+        &gb->gb_rom,       &gb->wram,         &gb->vram,        &gb->gb_cart_ram,
+        &gb->breakpoints,  &gb->lcd,          &gb->direct.priv, &gb->gb_error,
+        &gb->gb_serial_tx, &gb->gb_serial_rx, &gb->gb_boot_rom,
 #if ENABLE_BGCACHE
         &gb->bgcache,
 #endif
@@ -5925,7 +5931,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     __gb_update_selected_cart_bank_addr(gb);
 
     // intentionally skipped: lcd; bgcache; rom
-    
+
     // update boot rom overlay state
     if (gb->gb_bios_enable)
     {
