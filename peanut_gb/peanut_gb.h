@@ -393,7 +393,6 @@ enum gb_serial_rx_ret_e
 struct gb_s
 {
     uint8_t* gb_rom;
-    uint8_t* gb_boot_rom;
     uint8_t* gb_cart_ram;
 
     /**
@@ -618,6 +617,8 @@ struct gb_s
 #endif
 #endif
 
+    uint8_t* gb_boot_rom;
+
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
     // audio.
@@ -628,6 +629,7 @@ struct gb_s
 __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
 {
     gb->gb_boot_rom = boot_rom;
+    memcpy(gb->gb_rom, boot_rom, 0x100);
 }
 
 /**
@@ -737,6 +739,10 @@ __core_section("short") u8 reverse_bits_u8(u8 b)
     return b;
 }
 
+// 256 bytes of rom that could be covered up by the bios
+static uint8_t gb_original_rom[0x100];
+
+// extended ram feature offered by crankboy
 static uint8_t xram[0x100 - 0xA0];
 
 __section__(".rare.pgb") static void __gb_rare_write(
@@ -763,6 +769,15 @@ __section__(".rare.pgb") static void __gb_rare_write(
         case 0x56:  // RP (CGB Infrared Port)
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
+            return;
+            
+        /* Turn off boot ROM */
+        case 0x50:
+            if (gb->gb_bios_enable)
+            {
+                gb->gb_bios_enable = 0;
+                memcpy(gb->gb_rom, gb_original_rom, sizeof(gb_original_rom));
+            }
             return;
 
         case 0x57:
@@ -825,13 +840,6 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
  */
 __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
 {
-    /* If BIOS is enabled and we are reading from the BIOS area (0x0000-0x00FF),
-     * read from our loaded Boot ROM data instead of the cartridge. */
-    if (gb->gb_bios_enable && addr < 0x0100)
-    {
-        return gb->gb_boot_rom[addr];
-    }
-
     switch (addr >> 12)
     {
     case 0x0:
@@ -1801,14 +1809,6 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         case 0x4B:
             gb->gb_reg.WX = val;
             return;
-
-        /* Turn off boot ROM */
-        case 0x50:
-            if (gb->gb_bios_enable)
-            {
-                gb->gb_bios_enable = 0;
-            }
-            return;
         }
     }
 
@@ -1820,9 +1820,6 @@ __core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t
 {
     if likely (addr < 0x4000)
     {
-        if (gb->gb_bios_enable && addr < 0x0100)
-            return gb->gb_boot_rom[addr];
-
         return gb->gb_rom[addr];
     }
     if likely (addr < 0x8000)
@@ -1911,22 +1908,8 @@ __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
 
     if likely (addr < 0x3FFF)
     {
-        if (gb->gb_bios_enable && addr < 0x0100)
-        {
-            /*
-             * This block handles 16-bit immediate fetches and must select the correct
-             * memory source. If the boot ROM is active (`gb_bios_enable`) and the
-             * PC is within its range (`< 0x0100`), the value is read from the
-             * boot ROM data. Otherwise, it is read from the game cartridge's ROM.
-             */
-            v = gb->gb_boot_rom[addr];
-            v |= gb->gb_boot_rom[addr + 1] << 8;
-        }
-        else
-        {
-            v = gb->gb_rom[addr];
-            v |= gb->gb_rom[addr + 1] << 8;
-        }
+        v = gb->gb_rom[addr];
+        v |= gb->gb_rom[addr + 1] << 8;
     }
     else if likely (addr >= 0x4000 && addr < 0x7FFF)
     {
@@ -5363,7 +5346,12 @@ __core void __gb_step_cpu(struct gb_s* gb)
 
     if (gb->cpu_reg.pc < 0x8000 && __gb_read_full(gb, gb->cpu_reg.pc) == PGB_HW_BREAKPOINT_OPCODE)
     {
-        // can't validate if breakpoint.
+        // can't validate if breakpoint
+        __gb_run_instruction_micro(gb);
+    }
+    else if (gb->gb_bios_enable)
+    {
+        // can't validate if bios
         __gb_run_instruction_micro(gb);
     }
     else
@@ -5733,6 +5721,8 @@ __core void gb_run_frame(struct gb_s* gb)
 #define ROM_HEADER_START 0x134
 #define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
 
+void gb_reset(struct gb_s* gb);
+
 struct StateHeader
 {
     char magic[8];
@@ -5880,6 +5870,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     void* preserved_fields[] = {
         &gb->gb_rom,  &gb->wram,        &gb->vram,     &gb->gb_cart_ram,  &gb->breakpoints,
         &gb->lcd,     &gb->direct.priv, &gb->gb_error, &gb->gb_serial_tx, &gb->gb_serial_rx,
+        &gb->gb_boot_rom,
 #if ENABLE_BGCACHE
         &gb->bgcache,
 #endif
@@ -5934,8 +5925,24 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     __gb_update_selected_cart_bank_addr(gb);
 
     // intentionally skipped: lcd; bgcache; rom
-
-    // TODO: audio
+    
+    // update boot rom overlay state
+    if (gb->gb_bios_enable)
+    {
+        if (gb->gb_boot_rom)
+        {
+            memcpy(gb->gb_rom, gb->gb_boot_rom, 0x100);
+        }
+        else
+        {
+            // best we can do if boot rom is no longer available
+            gb_reset(gb);
+        }
+    }
+    else
+    {
+        memcpy(gb->gb_rom, gb_original_rom, 0x100);
+    }
 
     return NULL;
 }
@@ -6155,6 +6162,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     memset(xram, 0, sizeof(xram));
     gb->lcd = lcd;
     gb->gb_rom = gb_rom;
+    memcpy(gb_original_rom, gb_rom, sizeof(gb_original_rom));
     gb->gb_error = gb_error;
     gb->direct.priv = priv;
     static gb_breakpoint breakpoints[MAX_BREAKPOINTS];
@@ -6196,8 +6204,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
-
-    gb_reset(gb);
 
     return GB_INIT_NO_ERROR;
 }
