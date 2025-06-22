@@ -394,6 +394,18 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
                     {
                         gameScene->rtc_seconds_to_catch_up = now - gameScene->last_save_time;
                     }
+
+                    if (gameScene->rtc_seconds_to_catch_up > 0)
+                    {
+                        playdate->system->logToConsole(
+                            "Catching up RTC by %u seconds...", gameScene->rtc_seconds_to_catch_up
+                        );
+                        for (unsigned int i = 0; i < gameScene->rtc_seconds_to_catch_up; ++i)
+                        {
+                            gb_tick_rtc(context->gb);
+                        }
+                        gameScene->rtc_seconds_to_catch_up = 0;
+                    }
                 }
                 else
                 {
@@ -408,10 +420,6 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
                         gb_set_rtc(context->gb, timeinfo);
                     }
                 }
-            }
-            else
-            {
-                playdate->system->logToConsole("Cartridge does not have a battery-backed RTC.");
             }
 
             playdate->system->logToConsole("Initializing audio...");
