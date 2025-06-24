@@ -180,7 +180,7 @@ __audio static void update_sweep(struct chan* c, int sample_rate)
 }
 
 __audio static void update_square(
-    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
+    audio_data* restrict audio, int16_t* buffer, const bool ch2, int len
 )
 {
     struct chan* c = audio->chans + ch2;
@@ -231,8 +231,10 @@ __audio static void update_square(
             sample *= c->volume;
             sample /= 4;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
@@ -253,8 +255,10 @@ __audio static void update_square(
             sample *= c->volume;
             sample >>= 2;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
     }
 }
@@ -277,7 +281,7 @@ __audio static uint8_t wave_sample(
     return volume ? (sample >> (volume - 1)) : 0;
 }
 
-__audio static void update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+__audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int len)
 {
     struct chan* chans = audio->chans;
     struct chan* c = chans + 2;
@@ -325,8 +329,10 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
             sample /= 4;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
@@ -345,13 +351,15 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
             sample >>= 2;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
     }
 }
 
-__audio static void update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+__audio static void update_noise(audio_data* restrict audio, int16_t* buffer, int len)
 {
     struct chan* c = audio->chans + 3;
 
@@ -415,8 +423,10 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
             sample *= c->volume;
             sample /= 4;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
@@ -442,8 +452,10 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
             sample *= c->volume;
             sample >>= 2;
 
-            left[i] += sample * c->on_left * audio->vol_l;
-            right[i] += sample * c->on_right * audio->vol_r;
+            int32_t left_contrib = sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = sample * c->on_right * audio->vol_r;
+
+            buffer[i] += (left_contrib + right_contrib) / 2;
         }
     }
 }
@@ -736,12 +748,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     PGB_GameScene** gameScene_ptr = context;
     PGB_GameScene* gameScene = *gameScene_ptr;
 
-    if (!gameScene)
-    {
-        return 0;
-    }
-
-    if (gameScene->audioLocked)
+    if (!gameScene || gameScene->audioLocked)
     {
         return 0;
     }
@@ -753,7 +760,6 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     audio_data* audio = &gameScene->context->gb->audio;
 
     __builtin_prefetch(left, 1);
-    __builtin_prefetch(right, 1);
 
     int sample_replication = get_sample_replication();
     int max_chunk = ((256 + sample_replication - 1) / sample_replication) * sample_replication;
@@ -763,13 +769,13 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         int chunksize = len >= max_chunk ? max_chunk : len;
 
         memset(left, 0, chunksize * sizeof(int16_t));
-        memset(right, 0, chunksize * sizeof(int16_t));
 
-        update_wave(audio, left, right, chunksize);
-        update_square(audio, left, right, 0, chunksize);
-        update_square(audio, left, right, 1, chunksize);
-        update_noise(audio, left, right, chunksize);
+        update_wave(audio, left, chunksize);
+        update_square(audio, left, 0, chunksize);
+        update_square(audio, left, 1, chunksize);
+        update_noise(audio, left, chunksize);
 
+        // 3. Handle sample replication on the 'left' buffer.
         if (sample_replication > 1)
         {
             for (int i = 0; i < chunksize; i += sample_replication)
@@ -777,7 +783,6 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                 for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
                 {
                     left[i + j] = left[i];
-                    right[i + j] = right[i];
                 }
             }
         }

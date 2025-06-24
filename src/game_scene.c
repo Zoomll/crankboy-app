@@ -273,7 +273,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 
     if (PGB_App->soundSource == NULL)
     {
-        PGB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, 1);
+        PGB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, 0);
     }
     audio_enabled = 1;
     context->gb = gb;
