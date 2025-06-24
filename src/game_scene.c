@@ -301,7 +301,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         {
             gb_init_boot_rom(context->gb, PGB_App->bootRomData);
         }
-        
+
         gb_reset(context->gb);
 
         if (gb_ret == GB_INIT_NO_ERROR)
@@ -2658,6 +2658,8 @@ __section__(".rare") static void PGB_GameScene_event(
     {
     case kEventLock:
     case kEventPause:
+        audioGameScene = NULL;
+
         DTCM_VERIFY();
         if (gameScene->cartridge_has_battery)
         {
@@ -2672,6 +2674,13 @@ __section__(".rare") static void PGB_GameScene_event(
             gb_save_to_disk(context->gb);
         }
         DTCM_VERIFY();
+        break;
+    case kEventUnlock:
+    case kEventResume:
+        if (gameScene->audioEnabled)
+        {
+            audioGameScene = gameScene;
+        }
         break;
     case kEventLowPower:
         if (context->gb->direct.sram_dirty && gameScene->save_data_loaded_successfully)
@@ -2721,13 +2730,18 @@ __section__(".rare") static void PGB_GameScene_event(
 
 static void PGB_GameScene_free(void* object)
 {
-    audio_enabled = 0;
-
     DTCM_VERIFY();
     PGB_GameScene* gameScene = object;
     PGB_GameSceneContext* context = gameScene->context;
 
+    if (PGB_App->soundSource != NULL)
+    {
+        playdate->sound->removeSource(PGB_App->soundSource);
+        PGB_App->soundSource = NULL;
+    }
+
     audioGameScene = NULL;
+    audio_enabled = 0;
 
     if (gameScene->menuImage)
     {
