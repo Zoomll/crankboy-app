@@ -685,6 +685,10 @@ __section__(".text.pgb") void gb_set_rtc(struct gb_s* gb, const struct tm* const
     high_byte |= (time->tm_yday >> 8) & 0x01; /* Set the new 9th day bit. */
 
     gb->rtc_bits.high = high_byte;
+
+    // Copy these initial values to the latched registers to ensure
+    // the very first read by the game gets the correct time.
+    memcpy(gb->latched_rtc, gb->cart_rtc, sizeof(gb->latched_rtc));
 }
 
 __section__(".text.pgb") static void __gb_update_tac(struct gb_s* gb)
@@ -770,7 +774,7 @@ __section__(".rare.pgb") static void __gb_rare_write(
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
             return;
-            
+
         /* Turn off boot ROM */
         case 0x50:
             if (gb->gb_bios_enable)
@@ -5925,7 +5929,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     __gb_update_selected_cart_bank_addr(gb);
 
     // intentionally skipped: lcd; bgcache; rom
-    
+
     // update boot rom overlay state
     if (gb->gb_bios_enable)
     {
