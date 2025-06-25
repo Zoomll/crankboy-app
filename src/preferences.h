@@ -41,6 +41,7 @@ typedef enum preference_index_bit_t {
 
 #define PREF(x, ...) extern preference_t preferences_##x;
 #include "prefs.x"
+extern const int pref_count;
 
 void preferences_init(void);
 
@@ -52,5 +53,8 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
 // stores the given preferences on the heap. Must be free'd.
 void* preferences_store_subset(preferences_bitfield_t subset);
 void preferences_restore_subset(void* stored);
+
+// all the preferences that need the game to restart to apply
+#define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_lua_support)
 
 #endif /* preferences_h */

@@ -99,14 +99,36 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     settingsScene->initial_sample_rate = preferences_sample_rate;
     settingsScene->initial_per_game = preferences_per_game;
     
-    // some settings cannot be changed
-    settingsScene->immutable_settings = preferences_store_subset(
-        gameScene ?
-        (
-            PREFBIT_itcm | PREFBIT_lua_support
+    if (gameScene)
+    {
+        // some settings cannot be changed
+        settingsScene->immutable_settings = preferences_store_subset(
+            PREFBITS_REQUIRES_RESTART
             | gameScene->prefs_locked_by_script
-        ) : 0
-    );
+        );
+        
+        // temporarily load prefs that need restarting a game
+        void* prefs_restart = preferences_store_subset(~(PREFBITS_REQUIRES_RESTART));
+        if (prefs_restart)
+        {
+            if (preferences_per_game)
+            {
+                call_with_user_stack_1(preferences_read_from_disk, settingsScene->gameScene->settings_filename);
+            }
+            else
+            {
+                call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+            }
+            
+            preferences_restore_subset(prefs_restart);
+            free(prefs_restart);
+        }
+    } else {
+        // (dummy)
+        settingsScene->immutable_settings = preferences_store_subset(
+            0
+        );
+    }
 
     PGB_Scene_refreshMenu(scene);
 
@@ -184,7 +206,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                 | PREFBIT_per_game | PREFBIT_save_state_slot
                 
                 // these prefs are locked, so we shouldn't be able to change them 
-                | PREFBIT_itcm | PREFBIT_lua_support | settingsScene->gameScene->prefs_locked_by_script
+                | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
             );
             
             if (result)
@@ -416,9 +438,10 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Settings scope",
             .values = settings_scope_labels,
-            .description = "Use global settings or\nadjust settings just\nfor this game.\n \n"
-                "Global: use the same settings\n as others games. Changes\nmade to the settings\nwill apply globally.\n \n"
-                "Game: the game will use\nbespoke settings. Changes made to\nthe settings will not\nreflect in other games.",
+            .description =
+                "Allows per-game settings.\n \n"
+                "Global: this game will\nuse the same settings\nas others games. Changes\nmade to the settings\nwill apply globally.\n \n"
+                "Game: this game will use\nbespoke settings.\nChanges made to\nthe settings will not\nreflect in other games.",
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
@@ -609,10 +632,8 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
         static char* itcm_restart_desc = NULL;
         if (itcm_restart_desc == NULL) {
-            playdate->system->formatString(&itcm_restart_desc, "%s\n \nYou need to restart the\ngame for the changes to\napply.", itcm_base_desc);
+            playdate->system->formatString(&itcm_restart_desc, "%s\n \nYou need to restart the\ngame for these changes to\napply.", itcm_base_desc);
         }
-
-        const char* itcm_locked_desc = "This setting can only be\nchanged when the Scope\nis set to 'Game'.\n \nYou also need to restart\nthe game for the changes\nto apply.";
 
         entries[++i] = (OptionsMenuEntry){
             .name = "ITCM acceleration",
@@ -622,10 +643,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL
         };
 
-        if (gameScene && preferences_per_game == 0) {
-            entries[i].locked = 1;
-            entries[i].description = itcm_locked_desc;
-        } else if (gameScene) {
+        if (gameScene) {
             entries[i].description = itcm_restart_desc;
         } else {
             entries[i].description = itcm_base_desc;
@@ -646,11 +664,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL,
     };
 
-    if (gameScene && preferences_per_game == 0)
-    {
-        entries[i].locked = 1;
-        entries[i].description = "This setting can only be\nchanged when the Scope\nis set to 'Game'.\n \nYou also need to restart\nthe game for the changes\nto apply.";
-    } else if (gameScene && preferences_per_game == 1)
+    if (gameScene)
     {
         entries[i].description = "Enable or disable Lua\nscripting support.\n \nEnabling this may impact\nperformance.\n \nYou need to restart the\ngame for the changes to\napply.";
     }
@@ -686,6 +700,23 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     PGB_ASSERT(i < max_entries);
 
     /* clang-format on */
+    
+    // disable any entries if script requires it
+    for (int i = 0; i < max_entries; ++i)
+    {
+        OptionsMenuEntry* entry = &entries[i];
+        int j = 0;
+        #define PREF(x, ...) \
+            if (entry->pref_var == &preferences_##x) {\
+                if (gameScene && (gameScene->prefs_locked_by_script & (1 << (preferences_bitfield_t)j))) \
+                { \
+                    entry->locked = 1; \
+                    entry->description = "Disabled by game script."; \
+                } \
+            } \
+            ++j;
+        #include "prefs.x"
+    }
 
     return entries;
 };

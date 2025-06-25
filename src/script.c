@@ -214,6 +214,32 @@ static int pgb_setCrankSoundsDisabled(lua_State* L)
     return 0;
 }
 
+__section__(".rare") static int pgb_force_pref(lua_State* L)
+{
+    struct PGB_GameScene* gameScene = get_game_scene(L);
+    if (!lua_check_args(L, 2, 2))
+    {
+        return luaL_error(L, "pgb.force_pref(preference, value) takes two arguments");
+    }
+    
+    const char* preference = luaL_checkstring(L, 1);
+    int value = luaL_checkinteger(L, 2);
+    
+    int i = 0;
+    #define PREF(x, ...) \
+        if (strcmp(preference, #x) == 0) \
+        { \
+            preferences_##x = value; \
+            gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i); \
+            printf("forced preference %s=%d\n", preference, value); \
+            return 0; \
+        } \
+        i++;
+    #include "prefs.x"
+    
+    return luaL_error(L, "ERROR: unrecognized pref \"%s\"", preference);
+}
+
 void __gb_step_cpu(struct gb_s* gb);
 static int pgb_step_cpu(lua_State* L)
 {
@@ -404,6 +430,9 @@ __section__(".rare") static void register_pgb_library(lua_State* L)
         
         lua_pushcfunction(L, pgb_rom_size);
         lua_setfield(L, -2, "rom_size");
+        
+        lua_pushcfunction(L, pgb_force_pref);
+        lua_setfield(L, -2, "force_pref");
 
         // pgb.regs
         lua_newtable(L);
