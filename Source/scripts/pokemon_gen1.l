@@ -60,6 +60,8 @@ local addr = ({
         hJoyInput = 0xfff8,
         wCurrentMenuItem = 0xcc26,
         wLastMenuItem = 0xcc2a,
+        wJoyIgnore = 0xcd6b,
+        wStatusFlags5 = 0xd730,
         HandleMenuInput = 0x3abe,
         HandleMenuInput_GetJoypadState = 0x3ae8+1,
         PauseMenuInputCheckDown = 0x002b18,
@@ -75,8 +77,10 @@ local addr = ({
         hJoy5 = 0xffb5,
         hJoy7 = 0xffb7,
         hJoyInput = 0xfff8,
+        wStatusFlags5 = 0xd730,
         wCurrentMenuItem = 0xcc26,
         wLastMenuItem = 0xcc2a,
+        wJoyIgnore = 0xcd6b,
         HandleMenuInput = 0x3abe,
         HandleMenuInput_GetJoypadState = 0x3ae8+1,
         PauseMenuInputCheckDown = 0x002b18,
@@ -92,8 +96,10 @@ local addr = ({
         hJoy5 = 0xffb5,
         hJoy7 = 0xffb7,
         hJoyInput = 0xfff5,
+        wStatusFlags5 = 0xd72f,
         wCurrentMenuItem = 0xcc26,
         wLastMenuItem = 0xcc2a,
+        wJoyIgnore = 0xcd6b,
         HandleMenuInput = 0x3aab,
         HandleMenuInput_GetJoypadState = 0x3ad5+1,
         PauseMenuInputCheckDown = 0x002a1a,
@@ -149,12 +155,23 @@ trainer_res = apply_patch(trainer, XRAM_TRAINER, XRAM_TRAINER, 0xFF00 - XRAM_TRA
 local patch = {
 "CrankUndockPauseMenu",
     -- if we're in scripted movement, load [hJoyHeld] instead
+    OP_LD_A_a16, word(addr.wStatusFlags5),
     OP_RLCA,
-    OP_JR_nc, r8"CrankUndockPauseMenu_notSimulating",
+    OP_JR_nc, r8"CrankUndockPauseMenu_notSimulating",    
+    
     OP_LD_A_a16, word(addr.hJoyHeld),
     OP_JR, r8"CrankUndockPauseMenu_ret",
     
 "CrankUndockPauseMenu_notSimulating",
+    -- if joypad input is ignored, load [hJoyHeld] instead
+    OP_AND_d8, 0x40,
+    OP_JR_nz, r8"CrankUndockPauseMenu_normal",
+    
+    -- if pause button is ignored, load [hJoyHeld] instead
+    OP_LD_A_a16, word(addr.wJoyIgnore),
+    OP_AND_d8, 0x8,
+    OP_JR_nz, r8"CrankUndockPauseMenu_normal",
+
     -- check crank docked
     OP_LD_A_a16, word(IO_PD_CRANK_DOCKED),
     
@@ -176,6 +193,10 @@ local patch = {
     OP_LD_H_A,
     OP_BIT3_A,
     OP_RET,
+    
+"CrankUndockPauseMenu_normal",
+    OP_LD_A_a16, word(addr.hJoyHeld),
+    OP_JR, r8"CrankUndockPauseMenu_ret",
     
 "CustomPauseMenuInput",
     OP_LD_A_d8, 1,
