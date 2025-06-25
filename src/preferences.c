@@ -14,7 +14,7 @@
 static const int pref_version = 1;
 
 int preferences_sound_mode = 2;
-int preferences_crank_mode = 0;
+int preferences_crank_mode = CRANK_MODE_START_SELECT;
 int preferences_display_fps = 0;
 int preferences_frame_skip = true;
 int preferences_itcm = false;
@@ -42,7 +42,7 @@ static void preferences_set_defaults(void)
 {
     preferences_per_game = 0;
     preferences_sound_mode = 2;
-    preferences_crank_mode = 0;
+    preferences_crank_mode = CRANK_MODE_START_SELECT;
     preferences_display_fps = 0;
     preferences_frame_skip = true;
     preferences_lua_support = false;

@@ -231,7 +231,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
-static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A"};
+static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
@@ -580,7 +580,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
             "B/A:\nCW for B, CCW for A.",
         .pref_var = &preferences_crank_mode,
-        .max_value = 3,
+        .max_value = 4,
         .on_press = NULL
     };
 

@@ -1091,7 +1091,7 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
     
     float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
     
-    if (preferences_crank_mode == 0)  // Start/Select mode
+    if (preferences_crank_mode == CRANK_MODE_START_SELECT)
     {
         if (angle <= (180 - gameScene->selector.deadAngle))
         {
@@ -1119,7 +1119,7 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
             gameScene->selector.selectPressed = true;
         }
     }
-    else  // Turbo mode
+    else if (preferences_crank_mode == CRANK_MODE_TURBO_CW || preferences_crank_mode == CRANK_MODE_TURBO_CCW) // Turbo mode
     {
         float crank_change = playdate->system->getCrankChange();
         gameScene->crank_turbo_accumulator += crank_change;
@@ -1127,7 +1127,7 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
         // Handle clockwise rotation
         while (gameScene->crank_turbo_accumulator >= 45.0f)
         {
-            if (preferences_crank_mode == 1)
+            if (preferences_crank_mode == CRANK_MODE_TURBO_CW)
             {
                 gameScene->crank_turbo_a_active = true;
             }
@@ -1141,7 +1141,7 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
         // Handle counter-clockwise rotation
         while (gameScene->crank_turbo_accumulator <= -45.0f)
         {
-            if (preferences_crank_mode == 1)
+            if (preferences_crank_mode == CRANK_MODE_TURBO_CW)
             {
                 gameScene->crank_turbo_b_active = true;
             }
@@ -1306,7 +1306,7 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
     else
     {
         context->gb->direct.crank_docked = 1;
-        if (preferences_crank_mode > 0)
+        if (preferences_crank_mode == CRANK_MODE_TURBO_CCW || preferences_crank_mode == CRANK_MODE_TURBO_CCW)
         {
             gameScene->crank_turbo_accumulator = 0.0f;
         }
@@ -1380,7 +1380,7 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
     if (gameScene->state == PGB_GameSceneStateLoaded)
     {
         bool shouldDisplayStartSelectUI =
-            (!playdate->system->isCrankDocked() && preferences_crank_mode == 0) ||
+            (!playdate->system->isCrankDocked() && preferences_crank_mode == CRANK_MODE_START_SELECT) ||
             (gameScene->button_hold_frames_remaining > 0);
 
         static bool wasSelectorVisible = false;
@@ -1731,14 +1731,14 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
                 );
             }
 
-            if (preferences_crank_mode > 0)
+            if (preferences_crank_mode == CRANK_MODE_TURBO_CCW || preferences_crank_mode == CRANK_MODE_TURBO_CCW)
             {
                 // Draw the Turbo indicator on the right panel
                 playdate->graphics->setFont(PGB_App->labelFont);
                 playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
                 const char* line1 = "Turbo";
-                const char* line2 = (preferences_crank_mode == 1) ? "A/B" : "B/A";
+                const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
 
                 int fontHeight = playdate->graphics->getFontHeight(PGB_App->labelFont);
                 int lineSpacing = 2;
