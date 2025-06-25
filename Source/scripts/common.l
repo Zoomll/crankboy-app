@@ -41,7 +41,7 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
     }
     
     function replacement:apply(yes)
-        if apply == null then
+        if apply == nil then
             apply = true
         end
         
@@ -69,10 +69,11 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
     return replacement
 end
 
+-- FIXME: port this to C, as it's really slow
 function find_code_cave(bank)
     local bank_start = (bank or 0) * 0x4000
     local bank_end = bank_start + 0x4000 - 1
-    if bank == null then
+    if bank == nil then
         bank_start = 0
         bank_end = pgb.rom_size() - 1
     end
@@ -80,8 +81,6 @@ function find_code_cave(bank)
     local max_size = 0
     local current_start = nil
     local current_size = 0
-    
-    print ("A")
     
     for addr = bank_start, bank_end do
         local byte = pgb.rom_peek(addr)
@@ -140,11 +139,14 @@ OP_INC_HL = 0x23
 OP_LD_H_d8 = 0x26
 OP_JR_z = 0x28
 OP_LD_A_iHL = 0x2A
+OP_DEC_HL = 0x2B
 OP_JR_nc = 0x30
 OP_JR_ge = 0x30
+OP_SCF = 0x37
 OP_JR_c = 0x38
 OP_JR_lt = 0x38
 OP_LD_A_d8 = 0x3E
+OP_CCF = 0x3F
 OP_LD_B_H = 0x44
 OP_LD_B_A = 0x47
 OP_LD_C_A = 0x4F
@@ -159,15 +161,20 @@ OP_LD_A_L = 0x7D
 OP_SUB_L = 0x95
 OP_SBC_H = 0x9C
 OP_AND_xHL = 0xA6
+OP_AND_A = 0xA7
 OP_XOR_A = 0xAF
 OP_POP_BC = 0xC1
+OP_JP = 0xC3
 OP_PUSH_BC = 0xC5
+OP_OR_B = 0xB0
 OP_OR_A = 0xB7
 OP_CP_xHL = 0xBE
+OP_CALL_nz = 0xC4
 OP_RET = 0xC9
 OP_CALL = 0xCD
 OP_SUB_d8 = 0xD6
 OP_RET_c = 0xD8
+OP_CALL_c = 0xDC
 OP_POP_HL = 0xE1
 OP_PUSH_HL = 0xE5
 OP_AND_d8 = 0xE6
@@ -179,7 +186,10 @@ OP_OR_d8 = 0xF6
 OP_LD_A_a16 = 0xFA
 OP_CP_d8 = 0xFE
 
+OP_RRC_B = {0xCB, 0x08}
+OP_RRC_C = {0xCB, 0x09}
 OP_BIT0_A = {0xCB, 0x47}
+OP_BIT0_H = {0xCB, 0x44}
 OP_BIT3_A = {0xCB, 0x5F}
 OP_BIT6_A = {0xCB, 0x77}
 OP_BIT7_H = {0xCB, 0x7C}
@@ -224,7 +234,28 @@ local function flatten(arr)
     return result
 end
 
+function table_has_holes(t)
+    local maxi = 0
+    for key, v in pairs(t) do
+        if type(key) == "number" then
+            maxi = math.max(maxi, key)
+        end
+    end
+    
+    for i=1,maxi do
+        if t[i] == nil then
+            return i
+        end
+    end
+    return false
+end
+
 function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
+
+    if rom_addr == nil then
+        error("apply_patch, but rom_addr nil")
+    end
+
     if not ram_addr then
         if rom_addr < 0x4000 then
             ram_addr = rom_addr
@@ -239,7 +270,10 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
     local r8 = {}
     local a16 = {}
     
-    -- TODO: ensure no holes in table
+    local hole_location = table_has_holes(patch)
+    if hole_location then
+        error("nil entry in patch -- all opcodes defined? loc=" .. tostring(hole_location))
+    end
     
     for _, op in ipairs(patch) do
         if type(op) == "number" then
@@ -262,15 +296,20 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
         end
     end
     
-    for offset, label in pairs(r8) do
-        dst = labels[label]
-        if not dst then
-            error("SCRIPT ERROR -- label \"" .. label .. "\" not found")
-            return nil
+    for offset, r8v in pairs(r8) do
+        local dst;
+        if type(r8v) == "string" then
+            dst = labels[r8v]
+            if not dst then
+                error("SCRIPT ERROR -- label \"" .. r8v .. "\" not found")
+                return nil
+            end
+        else
+            dst = r8v
         end
         local val = dst - (offset + ram_addr + 1)
         if val < -0x80 or val >= 0x80 then
-            error("SCRIPT ERROR -- label \"" .. label .. "\" out of range for relative jump")
+            error("SCRIPT ERROR -- label \"" .. r8v .. "\" out of range for relative jump")
             return nil
         end
         if val < 0 then
@@ -294,7 +333,12 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
         if b < 0 or b >= 0x100 then
             error("SCRIPT ERROR -- value doesn't fit in byte: " .. tostring(b))
         end
-        pgb.rom_poke(rom_addr + i - 1, b)
+        if (rom_addr >= 0xFEA0 and rom_addr <= 0xFEFF) then
+            -- xram trainer
+            pgb.ram_poke(rom_addr + i - 1, b)
+        else
+            pgb.rom_poke(rom_addr + i - 1, b)
+        end
     end
     
     return {

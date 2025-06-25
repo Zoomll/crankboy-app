@@ -1136,15 +1136,15 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
             : (int16_t)(crank16 - context->gb->direct.crank);
         
         int new_accumulation = (int)context->gb->direct.crank_menu_accumulation + crank_diff;
-        if (new_accumulation <= 0x800 - CRANK_MENU_DELTA_BINANGLE)
+        if (new_accumulation <= 0x8000 - CRANK_MENU_DELTA_BINANGLE)
         {
             context->gb->direct.crank_menu_delta--;
-            context->gb->direct.crank_menu_accumulation = 0x800;
+            context->gb->direct.crank_menu_accumulation = 0x8000;
         }
-        else if (new_accumulation >= 0x800 + CRANK_MENU_DELTA_BINANGLE)
+        else if (new_accumulation >= 0x8000 + CRANK_MENU_DELTA_BINANGLE)
         {
             context->gb->direct.crank_menu_delta++;
-            context->gb->direct.crank_menu_accumulation = 0x800;
+            context->gb->direct.crank_menu_accumulation = 0x8000;
         }
         else
         {
@@ -1284,7 +1284,7 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
             gameScene->crank_turbo_accumulator = 0.0f;
         }
         context->gb->direct.crank_menu_delta = 0;
-        context->gb->direct.crank_menu_accumulation = 0x800;
+        context->gb->direct.crank_menu_accumulation = 0x8000;
     }
 
     if (gameScene->button_hold_frames_remaining > 0)

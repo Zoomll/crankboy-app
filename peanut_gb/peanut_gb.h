@@ -204,6 +204,16 @@ typedef int16_t s16;
 #define PGB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
 #define PGB_SAVE_STATE_VERSION 0
 
+#define IO_PLAYDATE_EXTENSION_CTL 0x57
+#define IO_PLAYDATE_EXTENSION_CRANK_LO 0x58
+#define IO_PLAYDATE_EXTENSION_CRANK_HI 0x59
+#define IO_PLAYDATE_EXTENSION_ACCX_LO 0x5A
+#define IO_PLAYDATE_EXTENSION_ACCX_HI 0x5B
+#define IO_PLAYDATE_EXTENSION_ACCY_LO 0x5C
+#define IO_PLAYDATE_EXTENSION_ACCY_HI 0x5D
+#define IO_PLAYDATE_EXTENSION_ACCZ_LO 0x5E
+#define IO_PLAYDATE_EXTENSION_ACCZ_HI 0x5F
+
 typedef struct gb_breakpoint
 {
     // -1 to disable
@@ -560,6 +570,9 @@ struct gb_s
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
+        
+        // if set, causes crank register to behave as delta-menu-selection instead
+        uint8_t ext_crank_menu_indexing : 1;
 
         // where this is 0, skip the line
         uint8_t interlace_mask;
@@ -592,6 +605,10 @@ struct gb_s
                 uint16_t accel_z;
             };
         };
+        
+        // for ext_crank_menu_indexing. Defaults to 0x8000.
+        uint16_t crank_menu_accumulation;
+        int8_t crank_menu_delta;
 
         /* Implementation defined data. Set to NULL if not required. */
         void* priv;
@@ -617,6 +634,7 @@ struct gb_s
 #endif
 #endif
 
+    size_t gb_rom_size;
     uint8_t* gb_boot_rom;
 
     // NOTE: this MUST be the last member of gb_s.
@@ -784,10 +802,26 @@ __section__(".rare.pgb") static void __gb_rare_write(
             }
             return;
 
-        case 0x57:
+        case IO_PLAYDATE_EXTENSION_CTL:
+            // bit 0: accelerometer
             playdate->system->logToConsole("Set accelerometer enabled: %d", val & 1);
             playdate->system->setPeripheralsEnabled((val & 1) ? kAccelerometer : kNone);
+            
+            // bit 1: xram
             gb->direct.enable_xram = !!(val & 2);
+            
+            // bit 2: crank menu indexing mode
+            gb->direct.ext_crank_menu_indexing = !!(val & 4);
+            return;
+        
+        case IO_PLAYDATE_EXTENSION_CRANK_LO:
+            // reset crank menu delta
+            gb->direct.crank_menu_delta = 0;
+            return;
+            
+        case IO_PLAYDATE_EXTENSION_CRANK_HI:
+            // reset crank menu delta accumulation
+            gb->direct.crank_menu_accumulation = 0x8000;
             return;
 
         /* Interrupt Enable Register */
@@ -825,9 +859,22 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
         case 0x69:  // BCPD
             return 0xFF;
 
-        case 0x57:
+        case IO_PLAYDATE_EXTENSION_CTL:
             return gb->direct.crank_docked;
         case 0x58 ... 0x5F:
+            if (gb->direct.ext_crank_menu_indexing)
+            {
+                // crank register is handled specially in menu mode
+                if (addr == 0xFF58)
+                {
+                    return gb->direct.crank_menu_delta;
+                }
+                else if (addr == 0xFF59)
+                {
+                    return 0x80 + (((int)gb->direct.crank_menu_accumulation - 0x8000) * 0x7F) / (CRANK_MENU_DELTA_BINANGLE);
+                }
+            }
+            
             return gb->direct.peripherals[((addr & 0xFF) - 0x58) / 2] >> (8 * (addr % 2));
         /* Interrupt Enable Register */
         case 0xFF:
@@ -5717,6 +5764,9 @@ struct StateHeader
     // emulator architecture
     uint8_t big_endian : 1;
     uint8_t bits : 4;
+    
+    // indicates if a script is active
+    uint8_t script : 1;
 
     // Custom field for CrankBoy timestamp.
     uint32_t timestamp;
@@ -5809,9 +5859,14 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
         return "Not a CrankBoy savestate";
     }
 
-    if (header->version != PGB_SAVE_STATE_VERSION)
+    if (header->version < PGB_SAVE_STATE_VERSION)
     {
-        return "State comes from a different version of CrankBoy";
+        return "State comes from an incompatible older version of CrankBoy";
+    }
+    
+    if (header->version > PGB_SAVE_STATE_VERSION)
+    {
+        return "State comes from an incompatible future version of CrankBoy";
     }
 
     if (header->bits != sizeof(void*))
@@ -5885,7 +5940,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     in += VRAM_SIZE;
 
     // xram
-    memcpy(xram, in, sizeof(xram));
+    //memcpy(xram, in, sizeof(xram));
     in += sizeof(xram);
 
     // cartridge ram
@@ -6083,6 +6138,9 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     gb->gb_reg.P1 = 0xCF;
 
     gb->gb_reg.tima_overflow_delay = 0;
+    
+    gb->direct.crank_menu_accumulation = 0x8000;
+    gb->direct.crank_menu_delta = 0;
 
     memset(gb->vram, 0x00, VRAM_SIZE);
     memset(gb->wram, 0x00, WRAM_SIZE);
@@ -6093,7 +6151,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
  * the CPU.
  */
 __section__(".rare") enum gb_init_error_e gb_init(
-    struct gb_s* gb, uint8_t* wram, uint8_t* vram, uint8_t* lcd, uint8_t* gb_rom,
+    struct gb_s* gb, uint8_t* wram, uint8_t* vram, uint8_t* lcd, uint8_t* gb_rom, size_t rom_size,
     void (*gb_error)(struct gb_s*, const enum gb_error_e, const uint16_t), void* priv
 )
 {
@@ -6148,6 +6206,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     memset(xram, 0, sizeof(xram));
     gb->lcd = lcd;
     gb->gb_rom = gb_rom;
+    gb->gb_rom_size = rom_size;
     memcpy(gb_original_rom, gb_rom, sizeof(gb_original_rom));
     gb->gb_error = gb_error;
     gb->direct.priv = priv;

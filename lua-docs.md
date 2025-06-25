@@ -18,3 +18,7 @@ Inserts a "hardware" execution breakpoint at the given address. Returns the brea
 This is implemented by setting a special opcode, normally considered invalid, to the given address. If this address is modified afterward (e.g. by `pgb.rom_poke`), the breakpoint will no longer trigger.
 
 A maximum of 128 breakpoints may be placed.
+
+### `pgb.rom_size()`
+
+returns number of bytes in rom

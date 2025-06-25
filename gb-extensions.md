@@ -10,12 +10,15 @@ Different bits enable/disable different features:
 ```
 bit 0 - accelerometer
 bit 1 - xram
-bits 2-7 - reserved (assume 0 as safe default)
+bit 2 - crank menu mode
+bits 3-7 - reserved (assume 0 as safe default)
 ```
 
 If bit 0 is set, accelerometer is enabled; otherwise it is disabled.
 
 If bit 1 is set, RAM range 0xFEA0-0xFEFF becomes a read-writeable 0x60 byte region. (Normally this region is unused.)
+
+If bit 2 is set, the crank register `FF58` behaves as a menu 
 
 ## `FF57` [r] - Crank Docked
 
@@ -26,9 +29,37 @@ bit 0: crank docked [1 if docked]
 bits 1-7: reserved
 ```
 
-## `FF58` and `FF59` - Crank
+## `FF58`/`FF59` [r] - Crank
+
+*If crank menu mode is disabled:*
 
 16-bit word, contains a value in the range 0-FFFF, indicates crank rotation. FFFF is one pip less than 360°.
+
+## `FF58` [r] - Crank menu delta
+
+*If crank menu mode is enabled:*
+
+Accumulates menu movement; as the user cranks, this increments, and as the user cranks, it decrements, such that a delta of 1 should correspond to 1 menu movement (with +'ve meaning move up, and -'ve meaning move down).
+
+## `FF59` [r] - Crank menu delta
+
+*If crank menu mode is enabled:*
+
+Accumulates menu movement; as the user cranks, this increments, and as the user cranks, it decrements, such that a delta of 1 should correspond to 1 menu movement (with +'ve meaning move up, and -'ve meaning move down).
+
+## `FF5A` [r] - Crank menu delta accumulation
+
+*If crank menu mode is enabled:*
+
+A value in the range 1 to 0xFF indicating how close the crank is to overflowing and incrementing/decrementing crank menu delta.
+
+## `FF58` [w]
+
+Writing any value here causes the crank menu delta to reset to 0
+
+## `FF59` [w]
+
+Writing any value here causes the crank menu delta *accumulation* to reset.
 
 ## `FF5A` and `FF5B` - Accelerometer (X axis)
 

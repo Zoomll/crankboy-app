@@ -8,10 +8,10 @@ pgb.ram_poke(0xFF57, 2)
 -- y speed - d078
 -- input - ff8b
 
-local crank_angle = null;
+local crank_angle = nil;
 local crank_delta = 0
 local crank_delta_smooth = 0
-local crank_hyst = null
+local crank_hyst = nil
 
 local CRANK_DELTA_SMOOTH_FACTOR = 0.9
 local MIN_RATE_CRANK_BEGIN_FLAP = 0.5
@@ -34,8 +34,8 @@ poke_verify(6, 0x4096, 0xE6, 0xFE)
 poke_verify(6, 0x4097, 0x08, 0x01)
 poke_verify(6, 0x4098, 0x28, 0x20)
 
-local fly_thrust = null;
-local fly_max_speed = null;
+local fly_thrust = nil;
+local fly_max_speed = nil;
 
 local cave_1_addr, cave_1_size = find_code_cave(1);
 
@@ -370,7 +370,7 @@ pgb.rom_set_breakpoint(
                 patch_fly_accel_down:apply()
             end
         else
-            fly_thrust = null;
+            fly_thrust = nil;
         end
     end
 )

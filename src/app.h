@@ -133,7 +133,8 @@ void itcm_core_init(void);
 #define SAVE_STATE_THUMBNAIL_W 160
 #define SAVE_STATE_THUMBNAIL_H 144
 
-// for playdate extension crank menu IO register
-#define CRANK_MENU_DELTA_BINANGLE 0xA0
+// for playdate extension crank menu IO register;
+// how far one has to turn the crank before getting to the next menu item
+#define CRANK_MENU_DELTA_BINANGLE 0x1100
 
 #endif /* app_h */
