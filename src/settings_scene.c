@@ -97,6 +97,9 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 
     settingsScene->initial_sound_mode = preferences_sound_mode;
     settingsScene->initial_sample_rate = preferences_sample_rate;
+    settingsScene->initial_per_game = preferences_per_game;
+    settingsScene->initial_itcm = preferences_itcm;
+    settingsScene->initial_lua_support = preferences_lua_support;
 
     PGB_Scene_refreshMenu(scene);
 
@@ -155,7 +158,56 @@ static void settings_confirm_load_state(void* userdata, int option)
 
 static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
 {
-    int result = (intptr_t)call_with_user_stack(preferences_save_to_disk);
+    int result = 0;
+
+    if (settingsScene->gameScene)
+    {
+        if (preferences_per_game == 1)
+        {
+            result = (int)(intptr_t)call_with_user_stack_1(
+                preferences_save_to_disk, settingsScene->gameScene->settings_filename
+            );
+        }
+        else
+        {
+            int global_save_ok = (int)(intptr_t)call_with_user_stack_1(
+                preferences_save_to_disk, PGB_globalPrefsPath
+            );
+
+            if (global_save_ok)
+            {
+                // We just switched FROM 'Game' TO 'Global' scope.
+                if (settingsScene->initial_per_game == 1)
+                {
+                    call_with_user_stack_1(
+                        preferences_read_from_disk, settingsScene->gameScene->settings_filename
+                    );
+                    preferences_per_game = 0;
+
+                    result = (int)(intptr_t)call_with_user_stack_1(
+                        preferences_save_to_disk, settingsScene->gameScene->settings_filename
+                    );
+
+                    call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+                }
+                else
+                {
+                    result = 1;
+                }
+            }
+            else
+            {
+                result = 0;
+            }
+        }
+    }
+    else
+    {
+        // Not in a game, just save the global file
+        result =
+            (int)(intptr_t)call_with_user_stack_1(preferences_save_to_disk, PGB_globalPrefsPath);
+    }
+
     if (!result)
     {
         PGB_presentModal(PGB_Modal_new("Error saving preferences.", NULL, NULL, NULL)->scene);
@@ -190,6 +242,7 @@ static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Sta
 static const char* overclock_labels[] = {"Off", "x2", "x4"};
 static const char* dynamic_level_labels[] = {"1", "2", "3", "4",  "5", "6",
                                              "7", "8", "9", "10", "11"};
+static const char* settings_scope_labels[] = {"Global", "Game"};
 
 static void update_thumbnail(PGB_SettingsScene* settingsScene)
 {
@@ -308,7 +361,7 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
 
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 {
-    int max_entries = 16;  // we can overshoot, it's ok
+    int max_entries = 20;  // we can overshoot, it's ok
     OptionsMenuEntry* entries = malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
@@ -363,6 +416,15 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
                 .ud = gameScene,
             };
         }
+
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Settings scope",
+            .values = settings_scope_labels,
+            .description = "Use global settings or\ncreate settings just\nfor this game.",
+            .pref_var = &preferences_per_game,
+            .max_value = 2,
+            .on_press = NULL,
+        };
     }
 
     // sound
@@ -538,30 +600,40 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
+        static char* itcm_base_desc = NULL;
+        if (itcm_base_desc == NULL) {
+            playdate->system->formatString(&itcm_base_desc, "Unstable, but greatly\nimproves performance.\n \n"
+                "Runs emulator core\ndirectly from the stack.\n \n"
+                "Works with Rev A.\n(Your device: %s)",
+                pd_rev_description
+            );
+        }
 
-    static char *itcm_description = NULL;
-    if (itcm_description == NULL) playdate->system->formatString(
-            &itcm_description,
-        "Unstable, but greatly\nimproves performance.\n\nRuns emulator "
-        "core\ndirectly from the stack.\n \nWorks with Rev A.\n "
-        "\n(Your device: %s)",
-        pd_rev_description
-    );
-    entries[++i] = (OptionsMenuEntry){
-        .name = "ITCM acceleration",
-        .values = off_on_labels,
-        .description = itcm_description,
-        .pref_var = &preferences_itcm,
-        .max_value = 2,
-        .on_press = NULL
-    };
+        static char* itcm_restart_desc = NULL;
+        if (itcm_restart_desc == NULL) {
+            playdate->system->formatString(&itcm_restart_desc, "%s\n \nYou need to restart the\ngame for the changes to\napply.", itcm_base_desc);
+        }
 
-    if (gameScene)
-    {
-        entries[i].locked = 1;
-        entries[i].description = "Cannot be modified\nmid-game.";
-    }
-#endif
+        const char* itcm_locked_desc = "This setting can only be\nchanged when the Scope\nis set to 'Game'.\n \nYou also need to restart\nthe game for the changes\nto apply.";
+
+        entries[++i] = (OptionsMenuEntry){
+            .name = "ITCM acceleration",
+            .values = off_on_labels,
+            .pref_var = &preferences_itcm,
+            .max_value = 2,
+            .on_press = NULL
+        };
+
+        if (gameScene && preferences_per_game == 0) {
+            entries[i].locked = 1;
+            entries[i].description = itcm_locked_desc;
+        } else if (gameScene) {
+            entries[i].description = itcm_restart_desc;
+        } else {
+            entries[i].description = itcm_base_desc;
+        }
+    #endif
+
 
 #ifndef NOLUA
     // lua scripts
@@ -576,11 +648,15 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL,
     };
 
-    if (gameScene)
+    if (gameScene && preferences_per_game == 0)
     {
         entries[i].locked = 1;
-        entries[i].description = "Cannot be modified\nmid-game.";
+        entries[i].description = "This setting can only be\nchanged when the Scope\nis set to 'Game'.\n \nYou also need to restart\nthe game for the changes\nto apply.";
+    } else if (gameScene && preferences_per_game == 1)
+    {
+        entries[i].description = "Enable or disable Lua\nscripting support.\n \nEnabling this may impact\nperformance.\n \nYou need to restart the\ngame for the changes to\napply.";
     }
+
 #endif
 
     // show fps
@@ -761,6 +837,33 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     playdate->sound->synth->playNote(
                         settingsScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
                     );
+                }
+
+                if (cursor_entry->pref_var == &preferences_per_game)
+                {
+                    if (preferences_per_game == 0)
+                    {
+                        call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+                        preferences_per_game = 0;
+                    }
+                    else
+                    {
+                        const char* game_settings_path =
+                            settingsScene->gameScene->settings_filename;
+
+                        if (playdate->file->stat(game_settings_path, NULL) == 0)
+                        {
+                            call_with_user_stack_1(preferences_read_from_disk, game_settings_path);
+                        }
+                        // If it doesn't exist, we do nothing. The current global settings
+                        // will act as a template for the new per-game configuration.
+
+                        preferences_per_game = 1;
+                    }
+
+                    // After any scope change, always rebuild the menu to update locked states.
+                    PGB_SettingsScene_rebuildEntries(settingsScene);
+                    cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
                 }
 
                 if (strcmp(cursor_entry->name, "30 FPS mode") == 0 ||
@@ -1037,6 +1140,9 @@ static void PGB_SettingsScene_free(void* object)
         PGB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
+
+    preferences_itcm = settingsScene->initial_itcm;
+    preferences_lua_support = settingsScene->initial_lua_support;
 
     if (settingsScene->entries)
         free(settingsScene->entries);

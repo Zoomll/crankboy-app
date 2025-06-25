@@ -33,6 +33,7 @@ void PGB_init(void)
     playdate->file->mkdir(PGB_coversPath);
     playdate->file->mkdir(PGB_savesPath);
     playdate->file->mkdir(PGB_statesPath);
+    playdate->file->mkdir(PGB_settingsPath);
 
     preferences_init();
 

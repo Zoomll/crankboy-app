@@ -13,8 +13,6 @@
 
 static const int pref_version = 1;
 
-static const char* pref_filename = "preferences.json";
-
 int preferences_sound_mode = 2;
 int preferences_crank_mode = 0;
 int preferences_display_fps = 0;
@@ -29,6 +27,7 @@ int preferences_overclock = 1;
 int preferences_dynamic_level = 6;
 int preferences_transparency = 0;
 int preferences_joypad_interrupts = 0;
+int preferences_per_game = 0;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
@@ -39,30 +38,52 @@ static void preferences_write_uint8(SDFile* file, uint8_t value);
 static uint32_t preferences_read_uint32(SDFile* file);
 static void preferences_write_uint32(SDFile* file, uint32_t value);
 
-void preferences_init(void)
+static void preferences_set_defaults(void)
 {
-    // default values which depend on device hardware (not available statically)
+    preferences_per_game = 0;
+    preferences_sound_mode = 2;
+    preferences_crank_mode = 0;
+    preferences_display_fps = 0;
+    preferences_frame_skip = true;
+    preferences_lua_support = false;
+    preferences_dynamic_rate = DYNAMIC_RATE_OFF;
+    preferences_uncap_fps = 0;
+    preferences_dither_pattern = 0;
+    preferences_save_state_slot = 0;
+    preferences_overclock = 1;
+    preferences_dynamic_level = 6;
+    preferences_transparency = 0;
+    preferences_joypad_interrupts = 0;
+
+    // Hardware-dependent defaults
     preferences_itcm = (pd_rev == PD_REV_A);
     preferences_sample_rate = (pd_rev == PD_REV_A) ? 1 : 0;
+}
 
-    if (playdate->file->stat(pref_filename, NULL) != 0)
+void preferences_init(void)
+{
+    preferences_set_defaults();
+
+    if (playdate->file->stat(PGB_globalPrefsPath, NULL) != 0)
     {
-        preferences_save_to_disk();
+        preferences_save_to_disk(PGB_globalPrefsPath);
     }
     else
     {
-        preferences_read_from_disk();
+        preferences_read_from_disk(PGB_globalPrefsPath);
     }
 }
 
-void preferences_read_from_disk(void)
+void preferences_read_from_disk(const char* filename)
 {
+    preferences_set_defaults();
+
     json_value j;
-    int success = parse_json(pref_filename, &j, kFileReadData);
+    int success = parse_json(filename, &j, kFileReadData);
 
     if (!success)
     {
-        playdate->system->logToConsole("Failed to load preferences");
+        playdate->system->logToConsole("Failed to load preferences from %s", filename);
         return;
     }
 
@@ -74,6 +95,10 @@ void preferences_read_from_disk(void)
         for (size_t i = 0; i < obj->n; ++i)
         {
             json_value pref = obj->data[i].value;
+            KEY("per_game")
+            {
+                preferences_per_game = pref.data.intval;
+            }
             KEY("sound")
             {
                 preferences_sound_mode = pref.data.intval;
@@ -142,12 +167,12 @@ void preferences_read_from_disk(void)
     free_json_data(j);
 }
 
-int preferences_save_to_disk(void)
+int preferences_save_to_disk(const char* filename)
 {
-    playdate->system->logToConsole("Save preferences...");
+    playdate->system->logToConsole("Save preferences to %s...", filename);
 
 // number of prefs to save
-#define NUM_PREFS 15
+#define NUM_PREFS 16
 
     union
     {
@@ -219,7 +244,11 @@ int preferences_save_to_disk(void)
     data.obj.data[14].value.type = kJSONInteger;
     data.obj.data[14].value.data.intval = preferences_joypad_interrupts;
 
-    int error = write_json_to_disk(pref_filename, j);
+    data.obj.data[15].key = "per_game";
+    data.obj.data[15].value.type = kJSONInteger;
+    data.obj.data[15].value.data.intval = preferences_per_game;
+
+    int error = write_json_to_disk(filename, j);
 
     playdate->system->logToConsole("Save preferences status code %d", error);
 

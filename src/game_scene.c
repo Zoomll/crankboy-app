@@ -170,6 +170,16 @@ void itcm_core_init(void)
 }
 #endif
 
+// Helper function to generate the config file path for a game
+static char* pgb_game_config_path(const char* rom_filename)
+{
+    char* basename = pgb_basename(rom_filename, true);
+    char* path;
+    playdate->system->formatString(&path, "%s/%s.json", PGB_settingsPath, basename);
+    pgb_free(basename);
+    return path;
+}
+
 static LCDBitmap* numbers_bmp = NULL;
 static uint32_t last_fps_digits;
 static uint8_t fps_draw_timer;
@@ -313,6 +323,21 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 
             gameScene->base_filename = pgb_basename(rom_filename, true);
 
+            // Global settings are loaded by default. Check for a game-specific file.
+            gameScene->settings_filename = pgb_game_config_path(rom_filename);
+            if (playdate->file->stat(gameScene->settings_filename, NULL) == 0)
+            {
+                // A config file for this game exists. Load it.
+                preferences_read_from_disk(gameScene->settings_filename);
+
+                // If the file we just loaded explicitly says "use Global", we must
+                // discard its settings and reload the global file again.
+                if (preferences_per_game == 0)
+                {
+                    preferences_read_from_disk(PGB_globalPrefsPath);
+                }
+            }
+
             gameScene->cartridge_has_battery = context->gb->cart_battery;
             playdate->system->logToConsole(
                 "Cartridge has battery: %s", gameScene->cartridge_has_battery ? "Yes" : "No"
@@ -429,6 +454,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
             DTCM_VERIFY();
 
             audio_init(&gb->audio);
+            PGB_GameScene_apply_settings(gameScene, true);
+
             if (gameScene->audioEnabled)
             {
                 playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.2f);
@@ -2770,6 +2797,8 @@ static void PGB_GameScene_free(void* object)
     PGB_GameScene* gameScene = object;
     PGB_GameSceneContext* context = gameScene->context;
 
+    preferences_read_from_disk(PGB_globalPrefsPath);
+
     if (PGB_App->soundSource != NULL)
     {
         playdate->sound->removeSource(PGB_App->soundSource);
@@ -2795,6 +2824,7 @@ static void PGB_GameScene_free(void* object)
     pgb_free(gameScene->rom_filename);
     pgb_free(gameScene->save_filename);
     pgb_free(gameScene->base_filename);
+    pgb_free(gameScene->settings_filename);
 
     if (context->rom)
     {

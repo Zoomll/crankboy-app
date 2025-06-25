@@ -32,10 +32,11 @@ extern int preferences_overclock;
 extern int preferences_dynamic_level;
 extern int preferences_transparency;
 extern int preferences_joypad_interrupts;
+extern int preferences_per_game;
 
 void preferences_init(void);
 
-void preferences_read_from_disk(void);
-int preferences_save_to_disk(void);
+void preferences_read_from_disk(const char* filename);
+int preferences_save_to_disk(const char* filename);
 
 #endif /* preferences_h */

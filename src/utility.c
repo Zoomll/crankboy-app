@@ -19,6 +19,8 @@ const char* PGB_savesPath = "saves";
 const char* PGB_gamesPath = "games";
 const char* PGB_coversPath = "covers";
 const char* PGB_statesPath = "states";
+const char* PGB_settingsPath = "settings";
+const char* PGB_globalPrefsPath = "preferences.json";
 
 /* clang-format off */
 const clalign uint8_t PGB_patterns[4][4][4] = {

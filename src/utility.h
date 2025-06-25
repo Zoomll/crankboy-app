@@ -37,6 +37,8 @@ extern const char* PGB_savesPath;
 extern const char* PGB_gamesPath;
 extern const char* PGB_coversPath;
 extern const char* PGB_statesPath;
+extern const char* PGB_settingsPath;
+extern const char* PGB_globalPrefsPath;
 
 typedef enum
 {
