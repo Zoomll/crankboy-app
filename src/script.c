@@ -46,6 +46,13 @@ static struct gb_s* get_gb(lua_State* L)
     return get_game_scene(L)->context->gb;
 }
 
+static int pgb_rom_size(lua_State* L)
+{
+    struct gb_s* gb = get_gb(L);
+    lua_pushinteger(L, gb->gb_rom_size);
+    return 1;
+}
+
 static int pgb_rom_poke(lua_State* L)
 {
     if (!lua_check_args(L, 2, 2))
@@ -57,11 +64,11 @@ static int pgb_rom_poke(lua_State* L)
 
     int addr = luaL_checkinteger(L, 1);
     int value = luaL_checkinteger(L, 2);
-    size_t rom_size = 0x4000 * (gb->num_rom_banks_mask + 1);
+    size_t rom_size = gb->gb_rom_size;
 
     if (addr < 0 || addr >= rom_size)
     {
-        return luaL_error(L, "pgb.rom_poke: addr out of range (0-%x)", rom_size - 1);
+        return luaL_error(L, "pgb.rom_poke: addr %p out of range (0-%p)", addr, rom_size - 1);
     }
 
     gb->gb_rom[addr] = value;
@@ -80,11 +87,10 @@ static int pgb_rom_set_breakpoint(lua_State* L)
     struct gb_s* gb = get_gb(L);
     int addr = luaL_checkinteger(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
-    size_t rom_size = 0x4000 * (gb->num_rom_banks_mask + 1);
-
+    size_t rom_size = gb->gb_rom_size;
     if (addr < 0 || addr >= rom_size)
     {
-        return luaL_error(L, "pgb.rom_set_breakpoint: addr out of range (0-%x)", rom_size - 1);
+        return luaL_error(L, "pgb.rom_set_breakpoint: addr %[ out of range (0-%p)", addr, rom_size - 1);
     }
     int breakpoint_index = set_hw_breakpoint(gb, addr);
     if (breakpoint_index == -1)
@@ -93,7 +99,7 @@ static int pgb_rom_set_breakpoint(lua_State* L)
     }
     else if (breakpoint_index < 0)
     {
-        return luaL_error(L, "pgb.rom_set_breakpoint: failed to set breakpoint at addr %x", addr);
+        return luaL_error(L, "pgb.rom_set_breakpoint: failed to set breakpoint at addr %p", addr);
     }
 
     // store the function in a table in the registry
@@ -125,11 +131,11 @@ static int pgb_rom_peek(lua_State* L)
     struct gb_s* gb = get_gb(L);
 
     int addr = luaL_checkinteger(L, 1);
-    size_t rom_size = 0x4000 * (gb->num_rom_banks_mask + 1);
+    size_t rom_size = gb->gb_rom_size;
 
     if (addr < 0 || addr >= rom_size)
     {
-        return luaL_error(L, "pgb.rom_peek: addr out of range (0-%x)", rom_size - 1);
+        return luaL_error(L, "pgb.rom_peek: addr %p out of range (0-%p)", addr, rom_size - 1);
     }
 
     lua_pushinteger(L, gb->gb_rom[addr]);
@@ -395,6 +401,9 @@ __section__(".rare") static void register_pgb_library(lua_State* L)
 
         lua_pushcfunction(L, pgb_step_cpu);
         lua_setfield(L, -2, "step_cpu");
+        
+        lua_pushcfunction(L, pgb_rom_size);
+        lua_setfield(L, -2, "rom_size");
 
         // pgb.regs
         lua_newtable(L);
@@ -485,30 +494,28 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         json_value item = array->data[i];
         if (item.type != kJSONTable)
             continue;
-
-        const char* name = NULL;
-        const char* script_path = NULL;
-
-        JsonObject* obj = item.data.tableval;
-        for (size_t j = 0; j < obj->n; j++)
+        
+        json_value jenabled = json_get_table_value(item, "enabled");
+        if (jenabled.type == kJSONFalse)
+            continue;
+        
+        json_value jname = json_get_table_value(item, "name");
+        json_value jscript = json_get_table_value(item, "script");
+        
+        const char* name = (jname.type == kJSONString)
+            ? jname.data.stringval
+            : NULL;
+        const char* script_path = (jscript.type == kJSONString)
+            ? jscript.data.stringval
+            : NULL;
+        
+        if (script_path)
         {
-            const char* key = obj->data[j].key;
-            json_value value = obj->data[j].value;
-
-            if (strcmp(key, "name") == 0 && value.type == kJSONString)
-            {
-                name = value.data.stringval;
-            }
-            else if (strcmp(key, "script") == 0 && value.type == kJSONString)
-            {
 #ifdef TARGET_SIMULATOR
                 char fullpath[1024];
-                snprintf(fullpath, sizeof(fullpath), "Source/%s", value.data.stringval);
+                snprintf(fullpath, sizeof(fullpath), "Source/%s", script_path);
                 script_path = strdup(fullpath);
-#else
-                script_path = value.data.stringval;
 #endif
-            }
         }
 
         if (name && script_path && strcmp(name, game_name) == 0)

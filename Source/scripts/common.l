@@ -12,6 +12,8 @@ function poke_verify(bank, addr, prev, val)
 end
 
 function code_replacement(bank, addr, tprev, tval, unsafe)
+    tval = tval
+
     -- verify that the lengths match
     if #tprev ~= #tval then
         error("SCRIPT ERROR -- tprev and tval must have the same length")
@@ -68,18 +70,25 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
 end
 
 function find_code_cave(bank)
-    local bank_start = bank * 0x4000
+    local bank_start = (bank or 0) * 0x4000
     local bank_end = bank_start + 0x4000 - 1
+    if bank == null then
+        bank_start = 0
+        bank_end = pgb.rom_size() - 1
+    end
     local max_start = 0
     local max_size = 0
     local current_start = nil
     local current_size = 0
     
+    print ("A")
+    
     for addr = bank_start, bank_end do
         local byte = pgb.rom_peek(addr)
         
         -- Check if byte is part of a code cave (0x00 or 0xFF)
-        if byte == 0x00 or byte == 0xFF then
+        -- ignore if it's the first byte of a bank, to split caves by bank
+        if (byte == 0x00 or byte == 0xFF) and (addr % 0x4000 ~= 0) then
             if current_start == nil then
                 -- Start new code cave
                 current_start = addr
@@ -120,12 +129,15 @@ PAD_UP = 0x40
 PAD_DOWN = 0x80
 
 OP_NOP = 0x00
+OP_LD_B_d8 = 0x06
+OP_RLCA = 0x07
 OP_ADD_HL_BC = 0x09
 OP_RRCA = 0x0F
 OP_JR = 0x18
 OP_JR_nz = 0x20
 OP_LD_HL_d16 = 0x21
 OP_INC_HL = 0x23
+OP_LD_H_d8 = 0x26
 OP_JR_z = 0x28
 OP_LD_A_iHL = 0x2A
 OP_JR_nc = 0x30
@@ -155,8 +167,10 @@ OP_CP_xHL = 0xBE
 OP_RET = 0xC9
 OP_CALL = 0xCD
 OP_SUB_d8 = 0xD6
+OP_RET_c = 0xD8
 OP_POP_HL = 0xE1
 OP_PUSH_HL = 0xE5
+OP_AND_d8 = 0xE6
 OP_LD_a16_A = 0xEA
 OP_XOR_d8 = 0xEE
 OP_POP_AF = 0xF1
@@ -166,6 +180,7 @@ OP_LD_A_a16 = 0xFA
 OP_CP_d8 = 0xFE
 
 OP_BIT0_A = {0xCB, 0x47}
+OP_BIT3_A = {0xCB, 0x5F}
 OP_BIT6_A = {0xCB, 0x77}
 OP_BIT7_H = {0xCB, 0x7C}
 OP_RR_L = {0xCB, 0x1D}
@@ -192,6 +207,21 @@ end
 
 function a16(x)
     return {a16=x}
+end
+
+local function flatten(arr)
+    local result = {}
+    local function _flatten(t)
+        for _, v in ipairs(t) do
+            if type(v) == "table" then
+                _flatten(v)  -- Recursively flatten nested tables
+            else
+                table.insert(result, v)
+            end
+        end
+    end
+    _flatten(arr)
+    return result
 end
 
 function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
@@ -223,7 +253,7 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
                 data[#data + 1] = 0 -- placeholder
                 data[#data + 1] = 0 -- placeholder
             else
-                for _2, op2 in ipairs(op) do
+                for _2, op2 in ipairs(flatten(op)) do
                     data[#data + 1] = op2
                 end 
             end
@@ -270,4 +300,9 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
     return {
         labels=labels
     }
+end
+
+-- bool to int
+function bint(b)
+    return b and 1 or 0
 end

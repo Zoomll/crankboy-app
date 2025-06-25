@@ -1,6 +1,19 @@
 [
     {
+        "name": "POKEMON RED",
+        "script": "scripts/pokemon_gen1.l"
+    },
+    {
+        "name": "POKEMON BLUE",
+        "script": "scripts/pokemon_gen1.l"
+    },
+    {
+        "name": "POKEMON YELLOW",
+        "script": "scripts/pokemon_gen1.l"
+    },
+    {
         "name": "KIRBY DREAM LAND",
-        "script": "scripts/kirby_dreamland.l"
+        "script": "scripts/kirby_dreamland.l",
+        "enabled": true
     }
 ]

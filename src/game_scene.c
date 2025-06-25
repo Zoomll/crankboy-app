@@ -61,7 +61,7 @@ static void PGB_GameScene_generateBitmask(void);
 static void PGB_GameScene_free(void* object);
 static void PGB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
 
-static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError);
+static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size);
 
 // returns 0 if no pre-existing save data;
 // returns 1 if data found and loaded, but not RTC
@@ -284,7 +284,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     gameScene->context = context;
 
     PGB_GameSceneError romError;
-    uint8_t* rom = read_rom_to_ram(rom_filename, &romError);
+    size_t rom_size;
+    uint8_t* rom = read_rom_to_ram(rom_filename, &romError, &rom_size);
     DTCM_VERIFY();
     if (rom)
     {
@@ -295,7 +296,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         memset(lcd, 0, sizeof(lcd));
 
         enum gb_init_error_e gb_ret =
-            gb_init(context->gb, context->wram, context->vram, lcd, rom, gb_error, context);
+            gb_init(context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context);
 
         if (PGB_App->bootRomData)
         {
@@ -571,7 +572,7 @@ static void PGB_GameScene_selector_init(PGB_GameScene* gameScene)
 /**
  * Returns a pointer to the allocated space containing the ROM. Must be freed.
  */
-static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError)
+static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size)
 {
     *sceneError = PGB_GameSceneErrorUndefined;
 
@@ -603,6 +604,7 @@ static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneE
 
     playdate->file->seek(rom_file, 0, SEEK_END);
     int rom_size = playdate->file->tell(rom_file);
+    *o_rom_size = rom_size;
     playdate->file->seek(rom_file, 0, SEEK_SET);
 
     uint8_t* rom = pgb_malloc(rom_size);
@@ -1055,7 +1057,107 @@ static __section__(".text.tick") void display_fps(void)
     playdate->graphics->markUpdatedRows(0, height - 1);
 }
 
-__section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
+__section__(".text.tick") __space static
+void crank_update(PGB_GameScene* gameScene, float* progress)
+{
+    PGB_GameSceneContext* context = gameScene->context;
+    
+    float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
+    
+    if (preferences_crank_mode == 0)  // Start/Select mode
+    {
+        if (angle <= (180 - gameScene->selector.deadAngle))
+        {
+            if (angle >= gameScene->selector.triggerAngle)
+            {
+                gameScene->selector.startPressed = true;
+            }
+
+            float adjustedAngle = fminf(angle, gameScene->selector.triggerAngle);
+            *progress = 0.5f - adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
+        }
+        else if (angle >= (180 + gameScene->selector.deadAngle))
+        {
+            if (angle <= (360 - gameScene->selector.triggerAngle))
+            {
+                gameScene->selector.selectPressed = true;
+            }
+
+            float adjustedAngle = fminf(360 - angle, gameScene->selector.triggerAngle);
+            *progress = 0.5f + adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
+        }
+        else
+        {
+            gameScene->selector.startPressed = true;
+            gameScene->selector.selectPressed = true;
+        }
+    }
+    else  // Turbo mode
+    {
+        float crank_change = playdate->system->getCrankChange();
+        gameScene->crank_turbo_accumulator += crank_change;
+
+        // Handle clockwise rotation
+        while (gameScene->crank_turbo_accumulator >= 45.0f)
+        {
+            if (preferences_crank_mode == 1)
+            {
+                gameScene->crank_turbo_a_active = true;
+            }
+            else
+            {
+                gameScene->crank_turbo_b_active = true;
+            }
+            gameScene->crank_turbo_accumulator -= 45.0f;
+        }
+
+        // Handle counter-clockwise rotation
+        while (gameScene->crank_turbo_accumulator <= -45.0f)
+        {
+            if (preferences_crank_mode == 1)
+            {
+                gameScene->crank_turbo_b_active = true;
+            }
+            else
+            {
+                gameScene->crank_turbo_a_active = true;
+            }
+            gameScene->crank_turbo_accumulator += 45.0f;
+        }
+    }
+    
+    // playdate extension IO registers    
+    uint16_t crank16 = (angle / 360.0f) * 0x10000;
+    
+    if (context->gb->direct.ext_crank_menu_indexing)
+    {
+        int16_t crank_diff = context->gb->direct.crank_docked
+            ? 0
+            : (int16_t)(crank16 - context->gb->direct.crank);
+        
+        int new_accumulation = (int)context->gb->direct.crank_menu_accumulation + crank_diff;
+        if (new_accumulation <= 0x800 - CRANK_MENU_DELTA_BINANGLE)
+        {
+            context->gb->direct.crank_menu_delta--;
+            context->gb->direct.crank_menu_accumulation = 0x800;
+        }
+        else if (new_accumulation >= 0x800 + CRANK_MENU_DELTA_BINANGLE)
+        {
+            context->gb->direct.crank_menu_delta++;
+            context->gb->direct.crank_menu_accumulation = 0x800;
+        }
+        else
+        {
+            context->gb->direct.crank_menu_accumulation = (uint16_t)new_accumulation;
+        }
+    }
+    
+    context->gb->direct.crank = crank16;
+    context->gb->direct.crank_docked = 0;
+}
+
+__section__(".text.tick") __space static
+void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
 {
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     PGB_GameScene* gameScene = object;
@@ -1172,76 +1274,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     if (!playdate->system->isCrankDocked())
     {
-        if (preferences_crank_mode == 0)  // Start/Select mode
-        {
-            float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
-
-            context->gb->direct.crank_docked = 0;
-            context->gb->direct.crank = (angle / 360.0f) * 0x10000;
-
-            if (angle <= (180 - gameScene->selector.deadAngle))
-            {
-                if (angle >= gameScene->selector.triggerAngle)
-                {
-                    gameScene->selector.startPressed = true;
-                }
-
-                float adjustedAngle = fminf(angle, gameScene->selector.triggerAngle);
-                progress = 0.5f - adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
-            }
-            else if (angle >= (180 + gameScene->selector.deadAngle))
-            {
-                if (angle <= (360 - gameScene->selector.triggerAngle))
-                {
-                    gameScene->selector.selectPressed = true;
-                }
-
-                float adjustedAngle = fminf(360 - angle, gameScene->selector.triggerAngle);
-                progress = 0.5f + adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
-            }
-            else
-            {
-                gameScene->selector.startPressed = true;
-                gameScene->selector.selectPressed = true;
-            }
-        }
-        else  // Turbo mode
-        {
-            float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
-            context->gb->direct.crank_docked = 0;
-            context->gb->direct.crank = (angle / 360.0f) * 0x10000;
-
-            float crank_change = playdate->system->getCrankChange();
-            gameScene->crank_turbo_accumulator += crank_change;
-
-            // Handle clockwise rotation
-            while (gameScene->crank_turbo_accumulator >= 45.0f)
-            {
-                if (preferences_crank_mode == 1)
-                {
-                    gameScene->crank_turbo_a_active = true;
-                }
-                else
-                {
-                    gameScene->crank_turbo_b_active = true;
-                }
-                gameScene->crank_turbo_accumulator -= 45.0f;
-            }
-
-            // Handle counter-clockwise rotation
-            while (gameScene->crank_turbo_accumulator <= -45.0f)
-            {
-                if (preferences_crank_mode == 1)
-                {
-                    gameScene->crank_turbo_b_active = true;
-                }
-                else
-                {
-                    gameScene->crank_turbo_a_active = true;
-                }
-                gameScene->crank_turbo_accumulator += 45.0f;
-            }
-        }
+        crank_update(gameScene, &progress);
     }
     else
     {
@@ -1250,6 +1283,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         {
             gameScene->crank_turbo_accumulator = 0.0f;
         }
+        context->gb->direct.crank_menu_delta = 0;
+        context->gb->direct.crank_menu_accumulation = 0x800;
     }
 
     if (gameScene->button_hold_frames_remaining > 0)
@@ -2377,6 +2412,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
 
     struct StateHeader* header = (struct StateHeader*)buff;
     header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
+    header->script = (preferences_lua_support && context->scene->script);
 
     // Write the state to the temporary file
     SDFile* file = playdate->file->open(tmp_name, kFileWrite);

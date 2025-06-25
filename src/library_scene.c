@@ -23,6 +23,36 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene);
 static void PGB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
 
+static int page_advance = 0;
+
+__section__(".rare") static void PGB_LibraryScene_event(
+    void* object, PDSystemEvent event, uint32_t arg
+)
+{
+    PGB_LibraryScene* libraryScene = object;
+    
+    switch (event)
+    {
+    case kEventKeyPressed:
+        printf("Key pressed: %x\n", (unsigned)arg);
+
+        switch (arg)
+        {
+        case 0x64:
+            // [d] page up
+            page_advance = -8;
+            break;
+        case 0x66:
+            // [f] page down
+            page_advance = 8;
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 PGB_LibraryScene* PGB_LibraryScene_new(void)
 {
     playdate->system->setCrankSoundsDisabled(false);
@@ -39,6 +69,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     scene->update = PGB_LibraryScene_update;
     scene->free = PGB_LibraryScene_free;
     scene->menu = PGB_LibraryScene_menu;
+    scene->event = PGB_LibraryScene_event;
 
     libraryScene->model = (PGB_LibrarySceneModel){.empty = true, .tab = PGB_LibrarySceneTabList};
 
@@ -190,6 +221,22 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
 
         PGB_ListView_update(libraryScene->listView);
+        
+        #ifdef TARGET_SIMULATOR
+        while (page_advance > 0)
+        {
+            --page_advance;
+            PGB_App->buttons_pressed = kButtonDown;
+            PGB_ListView_update(libraryScene->listView);
+        }
+        while (page_advance < 0)
+        {
+            ++page_advance;
+            PGB_App->buttons_pressed = kButtonUp;
+            PGB_ListView_update(libraryScene->listView);
+        }
+        #endif
+        
         PGB_ListView_draw(libraryScene->listView);
 
         int selectedIndex = libraryScene->listView->selectedItem;

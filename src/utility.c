@@ -263,7 +263,7 @@ int pgb_compare_games_by_display_name(const void* a, const void* b)
     PGB_Game* gameA = *(PGB_Game**)a;
     PGB_Game* gameB = *(PGB_Game**)b;
 
-    return strcmp(gameA->displayName, gameB->displayName);
+    return strcasecmp(gameA->displayName, gameB->displayName);
 }
 
 void pgb_sanitize_string_for_filename(char* str)
