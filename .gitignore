@@ -5,6 +5,7 @@
 /Source/pdex.dylib
 /Source/pdex.elf
 /Source/pdex.so
+/Source/scripts/
 .vscode
 *.zip
 
