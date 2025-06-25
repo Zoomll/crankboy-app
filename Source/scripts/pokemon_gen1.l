@@ -20,7 +20,8 @@ XRAM_IN_MENU_DOCK_TO_EXIT = 0xFEA0
 XRAM_TMP_0 = 0xFEA1
 XRAM_TMP_1 = 0xFEA2
 XRAM_TMP_2 = 0xFEA3
-XRAM_TRAINER = 0xFEA4
+XRAM_BLOCK_MENU = 0xFEA4
+XRAM_TRAINER = 0xFEA5
 
 -- 2: enable xram [0xFEA0-FEFF]
 -- 4: enable crank menu mode
@@ -62,11 +63,16 @@ local addr = ({
         wLastMenuItem = 0xcc2a,
         wJoyIgnore = 0xcd6b,
         wStatusFlags5 = 0xd730,
+        WrapMenuItemID = 0x2B10,
+        CheckIfPastBottom = 0x002B29,
         HandleMenuInput = 0x3abe,
         HandleMenuInput_GetJoypadState = 0x3ae8+1,
         PauseMenuInputCheckDown = 0x002b18,
         JoypadLowSensitivity = 0x003831,
         Joypad = 0x00019A,
+        DrawStartMenu = 0x01710B,
+        MenuExitDraw = 0x01717A,
+        SkipDrawBorder = 0x0170BD,
     },
     B = {
         Bankswitch = 0x0035d6,
@@ -81,11 +87,16 @@ local addr = ({
         wCurrentMenuItem = 0xcc26,
         wLastMenuItem = 0xcc2a,
         wJoyIgnore = 0xcd6b,
+        WrapMenuItemID = 0x2B10,
+        CheckIfPastBottom = 0x002B29,
         HandleMenuInput = 0x3abe,
         HandleMenuInput_GetJoypadState = 0x3ae8+1,
         PauseMenuInputCheckDown = 0x002b18,
         JoypadLowSensitivity = 0x003831,
         Joypad = 0x00019A,
+        DrawStartMenu = 0x01710B,
+        MenuExitDraw = 0x01717A,
+        SkipDrawBorder = 0x0170BD,
     },
     Y = {
         Bankswitch = 0x003e84,
@@ -100,13 +111,26 @@ local addr = ({
         wCurrentMenuItem = 0xcc26,
         wLastMenuItem = 0xcc2a,
         wJoyIgnore = 0xcd6b,
+        WrapMenuItemID = 0x2A12,
+        CheckIfPastBottom = 0x002A2B,
         HandleMenuInput = 0x3aab,
         HandleMenuInput_GetJoypadState = 0x3ad5+1,
         PauseMenuInputCheckDown = 0x002a1a,
         JoypadLowSensitivity = 0x00381e,
         Joypad = 0x0001B9,
+        DrawStartMenu = 0x016F80,
+        MenuExitDraw = 0x016FED,
+        SkipDrawBorder = 0x016F33,
     }
 })[POKEVER]
+
+local function sym_to_rom(sym)
+    return (0x4000 * (sym >> 16)) | (sym % 0x4000)
+end
+
+local function sym_to_ram(sym)
+    return ((0x4000 * (sym >> 16) == 0) and 0 or 0x4000) | (sym % 0x4000)
+end
 
 local function farcall(dstbank, dstaddr)
     return {
@@ -158,11 +182,16 @@ local patch = {
     OP_LD_A_a16, word(addr.wStatusFlags5),
     OP_RLCA,
     OP_JR_nc, r8"CrankUndockPauseMenu_notSimulating",    
+
+    -- mark disabled menu input, lingers for 1 frame
+    OP_XOR_A,
+    OP_LD_a16_A, word(XRAM_BLOCK_MENU),
     
     OP_LD_A_a16, word(addr.hJoyHeld),
     OP_JR, r8"CrankUndockPauseMenu_ret",
     
 "CrankUndockPauseMenu_notSimulating",
+
     -- if joypad input is ignored, load [hJoyHeld] instead
     OP_AND_d8, 0x40,
     OP_JR_nz, r8"CrankUndockPauseMenu_normal",
@@ -171,6 +200,15 @@ local patch = {
     OP_LD_A_a16, word(addr.wJoyIgnore),
     OP_AND_d8, 0x8,
     OP_JR_nz, r8"CrankUndockPauseMenu_normal",
+    
+    OP_LD_A_a16, word(XRAM_BLOCK_MENU),
+    OP_PUSH_AF,
+        -- enable menu next frame
+        OP_LD_A_d8, 1,
+        OP_LD_a16_A, word(XRAM_BLOCK_MENU),
+    OP_POP_AF,
+    OP_AND_A,
+    OP_JR_z, r8"CrankUndockPauseMenu_normal_noblock",
 
     -- check crank docked
     OP_LD_A_a16, word(IO_PD_CRANK_DOCKED),
@@ -195,6 +233,11 @@ local patch = {
     OP_RET,
     
 "CrankUndockPauseMenu_normal",
+    -- mark disabled menu input, lingers for 1 frame
+    OP_XOR_A,
+    OP_LD_a16_A, word(XRAM_BLOCK_MENU),
+    
+"CrankUndockPauseMenu_normal_noblock",
     OP_LD_A_a16, word(addr.hJoyHeld),
     OP_JR, r8"CrankUndockPauseMenu_ret",
     
@@ -316,4 +359,56 @@ apply_patch(
         word(patch_res.labels.CustomMenuInput),
     },
     addr.HandleMenuInput_GetJoypadState
+)
+
+-- don't add "Exit" to menu
+apply_patch(
+    {
+        -- number of options minus 1
+        0x5
+    },
+    sym_to_rom(addr.WrapMenuItemID - 4), sym_to_ram(addr.WrapMenuItemID - 4)
+)
+apply_patch(
+    {
+        -- number of options
+        0x6
+    },
+    sym_to_rom(addr.CheckIfPastBottom - 4), sym_to_ram(addr.CheckIfPastBottom - 4)
+)
+apply_patch(
+    {
+        -- window size
+        0xC
+    },
+    sym_to_rom(addr.SkipDrawBorder - 14), sym_to_ram(addr.MenuExitDraw - 14)
+)
+apply_patch(
+    {
+        -- window size
+        0xA
+    },
+    sym_to_rom(addr.SkipDrawBorder - 5), sym_to_ram(addr.MenuExitDraw - 5)
+)
+apply_patch(
+    {
+        -- window size
+        0xC
+    },
+    sym_to_rom(addr.DrawStartMenu + 9), sym_to_ram(addr.MenuExitDraw + 9)
+)
+apply_patch(
+    {
+        -- window size (no pokédex)
+        0xA
+    },
+    sym_to_rom(addr.DrawStartMenu + 18), sym_to_ram(addr.MenuExitDraw + 18)
+)
+apply_patch(
+    {
+        -- add menu item 'Exit'
+        OP_NOP, OP_NOP, OP_NOP, 
+        OP_NOP, OP_NOP, OP_NOP, 
+    },
+    sym_to_rom(addr.MenuExitDraw + 9), sym_to_ram(addr.MenuExitDraw + 9)
 )

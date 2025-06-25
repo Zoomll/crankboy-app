@@ -135,6 +135,6 @@ void itcm_core_init(void);
 
 // for playdate extension crank menu IO register;
 // how far one has to turn the crank before getting to the next menu item
-#define CRANK_MENU_DELTA_BINANGLE 0x1100
+#define CRANK_MENU_DELTA_BINANGLE 0x1800
 
 #endif /* app_h */
