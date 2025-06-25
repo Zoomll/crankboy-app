@@ -12,6 +12,17 @@ ifeq ($(SDK),)
 	$(error SDK path not found; set ENV value PLAYDATE_SDK_PATH)
 endif
 
+# --- COPY LUA SCRIPTS ---
+COPY_LUA_SCRIPTS := $(shell \
+	mkdir -p Source/scripts; \
+	for file in src/scripts/*.lua; do \
+		if [ -e "$$file" ]; then \
+			base=$$(basename "$$file" .lua); \
+			cp "$$file" "Source/scripts/$${base}.l"; \
+		fi; \
+	done; \
+)
+
 VPATH += src
 VPATH += peanut_gb
 VPATH += minigb_apu
@@ -70,3 +81,11 @@ ULIBS =
 override LDSCRIPT=./link_map.ld
 
 include $(SDK)/C_API/buildsupport/common.mk
+
+# --- CUSTOM CLEANUP ---
+.PHONY: clean-scripts
+clean-scripts:
+	@echo "Cleaning up Lua scripts..."
+	@rm -rf Source/scripts
+
+clean: clean-scripts
