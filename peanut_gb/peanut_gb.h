@@ -2054,6 +2054,9 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
     {
     case 0x0:
         cbop = (cbop >> 4) & 0x3;
+        
+        gb->cpu_reg.f_bits.n = 0;
+        gb->cpu_reg.f_bits.h = 0;
 
         switch (cbop)
         {
@@ -2065,8 +2068,6 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
                 val = (val >> 1);
                 val |= cbop ? (gb->cpu_reg.f_bits.c << 7) : (temp << 7);
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
                 gb->cpu_reg.f_bits.c = (temp & 0x01);
             }
             else /* RLC R / RL R */
@@ -2075,8 +2076,6 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
                 val = (val << 1);
                 val |= cbop ? gb->cpu_reg.f_bits.c : (temp >> 7);
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
                 gb->cpu_reg.f_bits.c = (temp >> 7);
             }
 
@@ -2088,16 +2087,12 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
                 gb->cpu_reg.f_bits.c = val & 0x01;
                 val = (val >> 1) | (val & 0x80);
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
             }
             else /* SLA R */
             {
                 gb->cpu_reg.f_bits.c = (val >> 7);
                 val = val << 1;
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
             }
 
             break;
@@ -2108,8 +2103,6 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
                 gb->cpu_reg.f_bits.c = val & 0x01;
                 val = val >> 1;
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
             }
             else /* SWAP R */
             {
@@ -2117,8 +2110,6 @@ __core static uint8_t __gb_execute_cb(struct gb_s* gb)
                 temp |= (val << 4) & 0xF0;
                 val = temp;
                 gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
                 gb->cpu_reg.f_bits.c = 0;
             }
 
