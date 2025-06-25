@@ -22,8 +22,11 @@
 #define CRANK_MODE_TURBO_CCW 2
 #define CRANK_MODE_OFF 3
 
-// at least 1 bit for each setting
+// at least 1 bit for each setting.
+// WARNING: don't change this blindly, since these are
+// casted down to uintptr_t (potentially 32-bit) for call_with_user_stack
 typedef uint32_t preferences_bitfield_t;
+typedef int preference_t;
 
 typedef enum preference_index_t {
     #define PREF(x, ...) PREFI_##x,
@@ -36,12 +39,18 @@ typedef enum preference_index_bit_t {
     #include "prefs.x"
 } preference_index_bit_t;
 
-#define PREF(x, ...) extern int preferences_##x;
+#define PREF(x, ...) extern preference_t preferences_##x;
 #include "prefs.x"
 
 void preferences_init(void);
 
 void preferences_read_from_disk(const char* filename);
-int preferences_save_to_disk(const char* filename);
+
+// returns 0 on failure
+int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is);
+
+// stores the given preferences on the heap. Must be free'd.
+void* preferences_store_subset(preferences_bitfield_t subset);
+void preferences_restore_subset(void* stored);
 
 #endif /* preferences_h */

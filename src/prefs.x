@@ -2,8 +2,8 @@ PREF(per_game, 0)
 PREF(save_state_slot, 0)
 
 // audio
-PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 PREF(sound_mode, 2)
+PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 
 // display
 PREF(frame_skip, true)

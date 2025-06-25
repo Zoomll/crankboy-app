@@ -13,7 +13,7 @@
 
 static const int pref_version = 1;
 
-#define PREF(x, ...) int preferences_##x;
+#define PREF(x, ...) preference_t preferences_##x;
 #include "prefs.x"
 
 #define PREF(x, ...) 1 +
@@ -38,16 +38,22 @@ static void preferences_set_defaults(void)
 
 void preferences_init(void)
 {
+    // if this fails, increase bitfield to uint64_t
+    PGB_ASSERT(pref_count <= 8*sizeof(preferences_bitfield_t));
+    
     preferences_set_defaults();
 
     if (playdate->file->stat(PGB_globalPrefsPath, NULL) != 0)
     {
-        preferences_save_to_disk(PGB_globalPrefsPath);
+        preferences_save_to_disk(PGB_globalPrefsPath, 0);
     }
     else
     {
         preferences_read_from_disk(PGB_globalPrefsPath);
     }
+    
+    // paranoia
+    preferences_per_game = 0;
 }
 
 void preferences_read_from_disk(const char* filename)
@@ -83,9 +89,21 @@ void preferences_read_from_disk(const char* filename)
     free_json_data(j);
 }
 
-int preferences_save_to_disk(const char* filename)
+int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
 {
     playdate->system->logToConsole("Save preferences to %s...", filename);
+    
+    void* preserved_all = preferences_store_subset(-1);
+    void* preserved_to_write = preferences_store_subset(~leave_as_is);
+    
+    // temporarily load the fields which are to be left as is
+    if (leave_as_is != 0 && preserved_to_write)
+    {
+        preferences_read_from_disk(filename);
+        preferences_restore_subset(preserved_to_write);
+    }
+    
+    if (preserved_to_write) free (preserved_to_write);
 
     union
     {
@@ -104,6 +122,13 @@ int preferences_save_to_disk(const char* filename)
         data.obj.data[i].value.data.intval = preferences_##x; \
         ++i;
     #include "prefs.x"
+    
+    // restore caller's preferences
+    if (preserved_all)
+    {
+        preferences_restore_subset(preserved_all);
+        free(preserved_all);
+    }
 
     int error = write_json_to_disk(filename, j);
 
@@ -159,4 +184,46 @@ static void cpu_endian_to_big_endian(
     {
         memcpy(buffer, src, size * len);
     }
+}
+
+void* preferences_store_subset(preferences_bitfield_t subset)
+{
+    int count = 0;
+    int i = 0;
+    #define PREF(x, ...) \
+        if (subset & (1 << i)) \
+            {count++;} \
+        ++i;
+    #include "prefs.x"
+    
+    void* data = malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
+    if (!data) return NULL;
+    
+    preferences_bitfield_t* dbits = data;
+    *dbits = subset;
+    preference_t* prefs = data + sizeof(preferences_bitfield_t);
+    
+    count = 0;
+    i = 0;
+    #define PREF(x, ...) \
+        if (subset & (1 << i)) \
+            {prefs[count++] = preferences_##x; } \
+        ++i;
+    #include "prefs.x"
+    
+    return data;
+}
+
+void preferences_restore_subset(void* data)
+{
+    preferences_bitfield_t subset = *(preferences_bitfield_t*)data;
+    preference_t* prefs = data + sizeof(preferences_bitfield_t);
+    
+    int count = 0;
+    int i = 0;
+    #define PREF(x, ...) \
+        if (subset & (1 << i)) \
+            {preferences_##x = prefs[count++]; } \
+        ++i;
+    #include "prefs.x"
 }

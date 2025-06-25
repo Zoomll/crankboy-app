@@ -11,6 +11,7 @@
 
 #include "peanut_gb.h"
 #include "scene.h"
+#include "preferences.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -142,6 +143,7 @@ typedef struct PGB_GameScene
 
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
+    preferences_bitfield_t prefs_locked_by_script;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);

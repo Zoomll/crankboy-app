@@ -239,6 +239,29 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     gameScene->staticSelectorUIDrawn = false;
 
     gameScene->save_data_loaded_successfully = false;
+    
+    // Global settings are loaded by default. Check for a game-specific file.
+    gameScene->settings_filename = pgb_game_config_path(rom_filename);
+    
+    // Try loading game-specific preferences
+    preferences_per_game = 0;
+    call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
+
+    void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
+
+    // If the game-specific settings explicitly says "use Global"
+    // (or there is no game-specific settings file),
+    // load the global preferences file instead.
+    if (preferences_per_game == 0)
+    {
+        call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+    }
+    
+    if (stored_save_slot)
+    {
+        preferences_restore_subset(stored_save_slot);
+        free(stored_save_slot);
+    }
 
     PGB_GameScene_generateBitmask();
 
@@ -319,21 +342,6 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
             gameScene->save_filename = save_filename;
 
             gameScene->base_filename = pgb_basename(rom_filename, true);
-
-            // Global settings are loaded by default. Check for a game-specific file.
-            gameScene->settings_filename = pgb_game_config_path(rom_filename);
-            if (playdate->file->stat(gameScene->settings_filename, NULL) == 0)
-            {
-                // A config file for this game exists. Load it.
-                preferences_read_from_disk(gameScene->settings_filename);
-
-                // If the file we just loaded explicitly says "use Global", we must
-                // discard its settings and reload the global file again.
-                if (preferences_per_game == 0)
-                {
-                    preferences_read_from_disk(PGB_globalPrefsPath);
-                }
-            }
 
             gameScene->cartridge_has_battery = context->gb->cart_battery;
             playdate->system->logToConsole(
@@ -2796,6 +2804,8 @@ static void PGB_GameScene_free(void* object)
     PGB_GameSceneContext* context = gameScene->context;
 
     preferences_read_from_disk(PGB_globalPrefsPath);
+    preferences_per_game = 0;
+    preferences_save_state_slot = 0;
 
     if (PGB_App->soundSource != NULL)
     {

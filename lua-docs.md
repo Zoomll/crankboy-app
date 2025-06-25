@@ -11,6 +11,9 @@ returns crank angle in degrees, or null if docked
 see `playdate->system->setCrankSoundsDisabled`
     
 ### `pgb.setROMBreakpoint(addr, fn)`
+
+Only call this function at script initialization time.
+
 Inserts a "hardware" execution breakpoint at the given address. Returns the breakpoint index (or null if an error occurred).
 
 `fn(n)` will be invoked every time the instruction at this address runs, where `n` is the breakpoint index.

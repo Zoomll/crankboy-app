@@ -5942,7 +5942,9 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     }
 
     // breakpoints
-    memcpy(gb->breakpoints, in, MAX_BREAKPOINTS * sizeof(gb_breakpoint));
+    // NOTE: scripts should only set breakpoints on startup, so
+    // we keep them as they are
+    // memcpy(gb->breakpoints, in, MAX_BREAKPOINTS * sizeof(gb_breakpoint));
     in += MAX_BREAKPOINTS * sizeof(gb_breakpoint);
 
     // clear caches and other presentation-layer data

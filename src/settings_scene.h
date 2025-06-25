@@ -31,9 +31,8 @@ typedef struct PGB_SettingsScene
     int initial_sound_mode;
     int initial_sample_rate;
     int initial_per_game;
-    int initial_itcm;
-    int initial_lua_support;
-
+    preference_t* immutable_settings;
+    
     struct OptionsMenuEntry* entries;
     struct PDSynth* clickSynth;
 
