@@ -91,9 +91,6 @@ const uint16_t PGB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
 };
 
-// defined here for minor cache coherence benefit
-int preferences_dither_pattern = 0;
-
 const uint16_t PGB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1111 << 4) | (0b0000 << 8) | (0b0000 << 12),
@@ -1417,6 +1414,7 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
         context->gb->direct.joypad_bits.down = !(current_pd_buttons & kButtonDown);
 
         context->gb->overclock = (unsigned)(preferences_overclock);
+        if (context->gb->gb_bios_enable) context->gb->overclock = 0; // overclocked boot ROM is glitchy
 
         if (gbScreenRequiresFullRefresh)
         {

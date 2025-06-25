@@ -22,22 +22,22 @@
 #define CRANK_MODE_TURBO_CCW 2
 #define CRANK_MODE_OFF 3
 
-extern int preferences_display_fps;
-extern int preferences_frame_skip;
-extern int preferences_itcm;
-extern int preferences_lua_support;
-extern int preferences_sound_mode;
-extern int preferences_crank_mode;
-extern int preferences_dynamic_rate;
-extern int preferences_sample_rate;
-extern int preferences_uncap_fps;
-extern int preferences_dither_pattern;
-extern int preferences_save_state_slot;
-extern int preferences_overclock;
-extern int preferences_dynamic_level;
-extern int preferences_transparency;
-extern int preferences_joypad_interrupts;
-extern int preferences_per_game;
+// at least 1 bit for each setting
+typedef uint32_t preferences_bitfield_t;
+
+typedef enum preference_index_t {
+    #define PREF(x, ...) PREFI_##x,
+    #include "prefs.x"
+    PREFI_COUNT,
+} preference_index_t;
+
+typedef enum preference_index_bit_t {
+    #define PREF(x, ...) PREFBIT_##x = (1 << (int)PREFI_##x),
+    #include "prefs.x"
+} preference_index_bit_t;
+
+#define PREF(x, ...) extern int preferences_##x;
+#include "prefs.x"
 
 void preferences_init(void);
 

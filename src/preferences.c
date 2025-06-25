@@ -13,21 +13,13 @@
 
 static const int pref_version = 1;
 
-int preferences_sound_mode = 2;
-int preferences_crank_mode = CRANK_MODE_START_SELECT;
-int preferences_display_fps = 0;
-int preferences_frame_skip = true;
-int preferences_itcm = false;
-int preferences_lua_support = false;
-int preferences_dynamic_rate = DYNAMIC_RATE_OFF;
-int preferences_sample_rate = 1;
-int preferences_uncap_fps = 0;
-int preferences_save_state_slot = 0;
-int preferences_overclock = 1;
-int preferences_dynamic_level = 6;
-int preferences_transparency = 0;
-int preferences_joypad_interrupts = 0;
-int preferences_per_game = 0;
+#define PREF(x, ...) int preferences_##x;
+#include "prefs.x"
+
+#define PREF(x, ...) 1 +
+const int pref_count =
+    #include "prefs.x"
+    0;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
@@ -40,24 +32,8 @@ static void preferences_write_uint32(SDFile* file, uint32_t value);
 
 static void preferences_set_defaults(void)
 {
-    preferences_per_game = 0;
-    preferences_sound_mode = 2;
-    preferences_crank_mode = CRANK_MODE_START_SELECT;
-    preferences_display_fps = 0;
-    preferences_frame_skip = true;
-    preferences_lua_support = false;
-    preferences_dynamic_rate = DYNAMIC_RATE_OFF;
-    preferences_uncap_fps = 0;
-    preferences_dither_pattern = 0;
-    preferences_save_state_slot = 0;
-    preferences_overclock = 1;
-    preferences_dynamic_level = 6;
-    preferences_transparency = 0;
-    preferences_joypad_interrupts = 0;
-
-    // Hardware-dependent defaults
-    preferences_itcm = (pd_rev == PD_REV_A);
-    preferences_sample_rate = (pd_rev == PD_REV_A) ? 1 : 0;
+    #define PREF(x, d) preferences_##x = d;
+    #include "prefs.x"
 }
 
 void preferences_init(void)
@@ -95,70 +71,10 @@ void preferences_read_from_disk(const char* filename)
         for (size_t i = 0; i < obj->n; ++i)
         {
             json_value pref = obj->data[i].value;
-            KEY("per_game")
-            {
-                preferences_per_game = pref.data.intval;
-            }
-            KEY("sound")
-            {
-                preferences_sound_mode = pref.data.intval;
-            }
-            KEY("crank")
-            {
-                preferences_crank_mode = pref.data.intval;
-            }
-            KEY("fps")
-            {
-                preferences_display_fps = pref.data.intval;
-            }
-            KEY("frameskip")
-            {
-                preferences_frame_skip = pref.data.intval;
-            }
-            KEY("itcm")
-            {
-                preferences_itcm = pref.data.intval;
-            }
-            KEY("lua")
-            {
-                preferences_lua_support = pref.data.intval;
-            }
-            KEY("dynamic_rate")
-            {
-                preferences_dynamic_rate = pref.data.intval;
-            }
-            KEY("sample_rate")
-            {
-                preferences_sample_rate = pref.data.intval;
-            }
-            KEY("uncap_fps")
-            {
-                preferences_uncap_fps = pref.data.intval;
-            }
-            KEY("dither")
-            {
-                preferences_dither_pattern = pref.data.intval;
-            }
-            KEY("save-state-slot")
-            {
-                preferences_save_state_slot = pref.data.intval;
-            }
-            KEY("overclock")
-            {
-                preferences_overclock = pref.data.intval;
-            }
-            KEY("dynamic_level")
-            {
-                preferences_dynamic_level = pref.data.intval;
-            }
-            KEY("transparency")
-            {
-                preferences_transparency = pref.data.intval;
-            }
-            KEY("joypad_interrupts")
-            {
-                preferences_joypad_interrupts = pref.data.intval;
-            }
+            
+            #define PREF(x, ...) if (!strcmp(obj->data[i].key, #x)) \
+                { preferences_##x = obj->data[i].value.data.intval; };
+            #include "prefs.x"
         }
     }
 
@@ -171,82 +87,23 @@ int preferences_save_to_disk(const char* filename)
 {
     playdate->system->logToConsole("Save preferences to %s...", filename);
 
-// number of prefs to save
-#define NUM_PREFS 16
-
     union
     {
         JsonObject obj;
-        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * NUM_PREFS];
+        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * pref_count];
     } data;
     json_value j;
     j.type = kJSONTable;
     j.data.tableval = &data.obj;
-    data.obj.n = NUM_PREFS;
-
-    data.obj.data[0].key = "sound";
-    data.obj.data[0].value.type = kJSONInteger;
-    data.obj.data[0].value.data.intval = preferences_sound_mode;
-
-    data.obj.data[1].key = "crank";
-    data.obj.data[1].value.type = kJSONInteger;
-    data.obj.data[1].value.data.intval = preferences_crank_mode;
-
-    data.obj.data[2].key = "fps";
-    data.obj.data[2].value.type = kJSONInteger;
-    data.obj.data[2].value.data.intval = preferences_display_fps;
-
-    data.obj.data[3].key = "frameskip";
-    data.obj.data[3].value.type = kJSONInteger;
-    data.obj.data[3].value.data.intval = preferences_frame_skip;
-
-    data.obj.data[4].key = "itcm";
-    data.obj.data[4].value.type = kJSONInteger;
-    data.obj.data[4].value.data.intval = preferences_itcm;
-
-    data.obj.data[5].key = "lua";
-    data.obj.data[5].value.type = kJSONInteger;
-    data.obj.data[5].value.data.intval = preferences_lua_support;
-
-    data.obj.data[6].key = "dynamic_rate";
-    data.obj.data[6].value.type = kJSONInteger;
-    data.obj.data[6].value.data.intval = preferences_dynamic_rate;
-
-    data.obj.data[7].key = "sample_rate";
-    data.obj.data[7].value.type = kJSONInteger;
-    data.obj.data[7].value.data.intval = preferences_sample_rate;
-
-    data.obj.data[8].key = "uncap_fps";
-    data.obj.data[8].value.type = kJSONInteger;
-    data.obj.data[8].value.data.intval = preferences_uncap_fps;
-
-    data.obj.data[9].key = "dither";
-    data.obj.data[9].value.type = kJSONInteger;
-    data.obj.data[9].value.data.intval = preferences_dither_pattern;
-
-    data.obj.data[10].key = "save-state-slot";
-    data.obj.data[10].value.type = kJSONInteger;
-    data.obj.data[10].value.data.intval = preferences_save_state_slot;
-
-    data.obj.data[11].key = "overclock";
-    data.obj.data[11].value.type = kJSONInteger;
-    data.obj.data[11].value.data.intval = preferences_overclock;
-
-    data.obj.data[12].key = "dynamic_level";
-    data.obj.data[12].value.type = kJSONInteger;
-    data.obj.data[12].value.data.intval = preferences_dynamic_level;
-
-    data.obj.data[13].key = "transparency";
-    data.obj.data[13].value.type = kJSONInteger;
-    data.obj.data[13].value.data.intval = preferences_transparency;
-
-    data.obj.data[14].key = "joypad_interrupts";
-    data.obj.data[14].value.type = kJSONInteger;
-    data.obj.data[14].value.data.intval = preferences_joypad_interrupts;
-
-    data.obj.data[15].key = "per_game";
-    data.obj.data[15].value.type = kJSONInteger;
-    data.obj.data[15].value.data.intval = preferences_per_game;
+    data.obj.n = pref_count;
+    
+    int i = 0;
+    #define PREF(x, ...) \
+        data.obj.data[i].key = #x; \
+        data.obj.data[i].value.type = kJSONInteger; \
+        data.obj.data[i].value.data.intval = preferences_##x; \
+        ++i;
+    #include "prefs.x"
 
     int error = write_json_to_disk(filename, j);
 

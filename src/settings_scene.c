@@ -420,7 +420,9 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Settings scope",
             .values = settings_scope_labels,
-            .description = "Use global settings or\ncreate settings just\nfor this game.",
+            .description = "Use global settings or\nadjust settings just\nfor this game.\n \n"
+                "Global: the game will\nuse the same settings as others.\nChanges made to the settings\nwill apply globally.\n"
+                "Game: the game will\nuse bespoke settings.\nChanges made to the settings\nwill not reflect in\nother games.\n",
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
