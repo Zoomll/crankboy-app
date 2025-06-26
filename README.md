@@ -26,8 +26,8 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home
   screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder, the folder name depends on the sideload method.
-  - For Web sideload: `/Data/user.*.app.crankboy/games/`
-  - For USB: `/Data/app.crankboy/games/`
+    - For Web sideload: `/Data/user.*.app.crankboyhq.crankboy/games/`
+    - For USB: `/Data/app.crankboyhq.crankboy/games/`
 - Filenames must end with `.gb` or `.gbc`
 
 ## Implementation
