@@ -82,6 +82,9 @@ override LDSCRIPT=./link_map.ld
 
 include $(SDK)/C_API/buildsupport/common.mk
 
+# Add --quiet to pdc to suppress informational warnings
+PDCFLAGS += --quiet
+
 # --- CUSTOM CLEANUP ---
 .PHONY: clean-scripts
 clean-scripts:
