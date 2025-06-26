@@ -1,34 +1,27 @@
 [
     {
         "section": "CrankBoy, Primary Coding",
-        "contributors": [
-            "NaOH (Sodium Hydroxide)",
-            "stonerl"
-        ]
-    }, {
+        "contributors": ["NaOH (Sodium Hydroxide)", "stonerl"]
+    },
+    {
         "section": "Based on PlayGB",
         "subtitle": "-by-",
-        "contributors": [
-            "RPDev (Risolvi Productions)"
-        ]
-    }, {
+        "contributors": ["RPDev (Risolvi Productions)"]
+    },
+    {
         "section": "Based on Peanut-GB",
         "subtitle": "-by-",
-        "contributors": [
-            "deltabeard"
-        ]
-    }, {
+        "contributors": ["deltabeard"]
+    },
+    {
         "section": "Playdate Optimization Research",
-        "contributors": [
-            "StiNKz",
-            "NaOH (Sodium Hydroxide)"
-        ]
-    }, {
+        "contributors": ["StiNKz", "NaOH (Sodium Hydroxide)"]
+    },
+    {
         "section": "Graphics Assets",
-        "contributors": [
-            "tinyevilwizard"
-        ]
-    }, {
+        "contributors": ["tinyevilwizard"]
+    },
+    {
         "section": "Special Thanks",
         "contributors": [
             "SonoSooS",
@@ -40,14 +33,12 @@
             "FReDs72",
             "pret"
         ]
-    }, {
+    },
+    {
         "section": "Testing",
-        "contributors": [
-            "Ophelia Bee",
-            "Exguardi",
-            "Boozook"
-        ]
-    }, {
+        "contributors": ["Ophelia Bee", "Exguardi", "Boozook"]
+    },
+    {
         "section": "Using code from",
         "contributors": [
             "SameBoy",
@@ -56,14 +47,12 @@
             "Sean Eron Anderson",
             "Deathwink"
         ]
-    }, {
+    },
+    {
         "section": "Fonts",
-        "contributors": [
-            "Roobert",
-            "Asheville Sans",
-            "Nontendo"
-        ]
-    }, {
+        "contributors": ["Roobert", "Asheville Sans", "Nontendo"]
+    },
+    {
         "info": [
             "MIT License",
             "",
@@ -82,7 +71,8 @@
     {},
     {
         "section": "Thanks for using CrankBoy!"
-    }, {
+    },
+    {
         "info": [
             "",
             "CrankBoy is not affiliated with either Panic or Nintendo.",
