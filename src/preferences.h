@@ -28,15 +28,17 @@
 typedef uint32_t preferences_bitfield_t;
 typedef int preference_t;
 
-typedef enum preference_index_t {
-    #define PREF(x, ...) PREFI_##x,
-    #include "prefs.x"
+typedef enum preference_index_t
+{
+#define PREF(x, ...) PREFI_##x,
+#include "prefs.x"
     PREFI_COUNT,
 } preference_index_t;
 
-typedef enum preference_index_bit_t {
-    #define PREF(x, ...) PREFBIT_##x = (1 << (int)PREFI_##x),
-    #include "prefs.x"
+typedef enum preference_index_bit_t
+{
+#define PREF(x, ...) PREFBIT_##x = (1 << (int)PREFI_##x),
+#include "prefs.x"
 } preference_index_bit_t;
 
 #define PREF(x, ...) extern preference_t preferences_##x;

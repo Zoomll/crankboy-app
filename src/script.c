@@ -90,7 +90,9 @@ static int pgb_rom_set_breakpoint(lua_State* L)
     size_t rom_size = gb->gb_rom_size;
     if (addr < 0 || addr >= rom_size)
     {
-        return luaL_error(L, "pgb.rom_set_breakpoint: addr %[ out of range (0-%p)", addr, rom_size - 1);
+        return luaL_error(
+            L, "pgb.rom_set_breakpoint: addr %[ out of range (0-%p)", addr, rom_size - 1
+        );
     }
     int breakpoint_index = set_hw_breakpoint(gb, addr);
     if (breakpoint_index == -1)
@@ -221,22 +223,22 @@ __section__(".rare") static int pgb_force_pref(lua_State* L)
     {
         return luaL_error(L, "pgb.force_pref(preference, value) takes two arguments");
     }
-    
+
     const char* preference = luaL_checkstring(L, 1);
     int value = luaL_checkinteger(L, 2);
-    
+
     int i = 0;
-    #define PREF(x, ...) \
-        if (strcmp(preference, #x) == 0) \
-        { \
-            preferences_##x = value; \
-            gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i); \
-            printf("forced preference %s=%d\n", preference, value); \
-            return 0; \
-        } \
-        i++;
-    #include "prefs.x"
-    
+#define PREF(x, ...)                                                           \
+    if (strcmp(preference, #x) == 0)                                           \
+    {                                                                          \
+        preferences_##x = value;                                               \
+        gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i); \
+        printf("forced preference %s=%d\n", preference, value);                \
+        return 0;                                                              \
+    }                                                                          \
+    i++;
+#include "prefs.x"
+
     return luaL_error(L, "ERROR: unrecognized pref \"%s\"", preference);
 }
 
@@ -427,10 +429,10 @@ __section__(".rare") static void register_pgb_library(lua_State* L)
 
         lua_pushcfunction(L, pgb_step_cpu);
         lua_setfield(L, -2, "step_cpu");
-        
+
         lua_pushcfunction(L, pgb_rom_size);
         lua_setfield(L, -2, "rom_size");
-        
+
         lua_pushcfunction(L, pgb_force_pref);
         lua_setfield(L, -2, "force_pref");
 
@@ -523,27 +525,23 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         json_value item = array->data[i];
         if (item.type != kJSONTable)
             continue;
-        
+
         json_value jenabled = json_get_table_value(item, "enabled");
         if (jenabled.type == kJSONFalse)
             continue;
-        
+
         json_value jname = json_get_table_value(item, "name");
         json_value jscript = json_get_table_value(item, "script");
-        
-        const char* name = (jname.type == kJSONString)
-            ? jname.data.stringval
-            : NULL;
-        const char* script_path = (jscript.type == kJSONString)
-            ? jscript.data.stringval
-            : NULL;
-        
+
+        const char* name = (jname.type == kJSONString) ? jname.data.stringval : NULL;
+        const char* script_path = (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
+
         if (script_path)
         {
 #ifdef TARGET_SIMULATOR
-                char fullpath[1024];
-                snprintf(fullpath, sizeof(fullpath), "Source/%s", script_path);
-                script_path = strdup(fullpath);
+            char fullpath[1024];
+            snprintf(fullpath, sizeof(fullpath), "Source/%s", script_path);
+            script_path = strdup(fullpath);
 #endif
         }
 

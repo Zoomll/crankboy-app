@@ -61,7 +61,9 @@ static void PGB_GameScene_generateBitmask(void);
 static void PGB_GameScene_free(void* object);
 static void PGB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
 
-static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size);
+static uint8_t* read_rom_to_ram(
+    const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size
+);
 
 // returns 0 if no pre-existing save data;
 // returns 1 if data found and loaded, but not RTC
@@ -239,10 +241,10 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     gameScene->staticSelectorUIDrawn = false;
 
     gameScene->save_data_loaded_successfully = false;
-    
+
     // Global settings are loaded by default. Check for a game-specific file.
     gameScene->settings_filename = pgb_game_config_path(rom_filename);
-    
+
     // Try loading game-specific preferences
     preferences_per_game = 0;
     call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
@@ -256,7 +258,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     {
         call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
     }
-    
+
     if (stored_save_slot)
     {
         preferences_restore_subset(stored_save_slot);
@@ -325,8 +327,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         static uint8_t lcd[LCD_SIZE];
         memset(lcd, 0, sizeof(lcd));
 
-        enum gb_init_error_e gb_ret =
-            gb_init(context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context);
+        enum gb_init_error_e gb_ret = gb_init(
+            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
+        );
 
         if (PGB_App->bootRomData)
         {
@@ -604,7 +607,9 @@ static void PGB_GameScene_selector_init(PGB_GameScene* gameScene)
 /**
  * Returns a pointer to the allocated space containing the ROM. Must be freed.
  */
-static uint8_t* read_rom_to_ram(const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size)
+static uint8_t* read_rom_to_ram(
+    const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size
+)
 {
     *sceneError = PGB_GameSceneErrorUndefined;
 
@@ -1089,13 +1094,13 @@ static __section__(".text.tick") void display_fps(void)
     playdate->graphics->markUpdatedRows(0, height - 1);
 }
 
-__section__(".text.tick") __space static
-void crank_update(PGB_GameScene* gameScene, float* progress)
+__section__(".text.tick") __space
+    static void crank_update(PGB_GameScene* gameScene, float* progress)
 {
     PGB_GameSceneContext* context = gameScene->context;
-    
+
     float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
-    
+
     if (preferences_crank_mode == CRANK_MODE_START_SELECT)
     {
         if (angle <= (180 - gameScene->selector.deadAngle))
@@ -1124,7 +1129,8 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
             gameScene->selector.selectPressed = true;
         }
     }
-    else if (preferences_crank_mode == CRANK_MODE_TURBO_CW || preferences_crank_mode == CRANK_MODE_TURBO_CCW) // Turbo mode
+    else if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
+             preferences_crank_mode == CRANK_MODE_TURBO_CCW)  // Turbo mode
     {
         float crank_change = playdate->system->getCrankChange();
         gameScene->crank_turbo_accumulator += crank_change;
@@ -1157,16 +1163,15 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
             gameScene->crank_turbo_accumulator += 45.0f;
         }
     }
-    
-    // playdate extension IO registers    
+
+    // playdate extension IO registers
     uint16_t crank16 = (angle / 360.0f) * 0x10000;
-    
+
     if (context->gb->direct.ext_crank_menu_indexing)
     {
-        int16_t crank_diff = context->gb->direct.crank_docked
-            ? 0
-            : (int16_t)(crank16 - context->gb->direct.crank);
-        
+        int16_t crank_diff =
+            context->gb->direct.crank_docked ? 0 : (int16_t)(crank16 - context->gb->direct.crank);
+
         int new_accumulation = (int)context->gb->direct.crank_menu_accumulation + crank_diff;
         if (new_accumulation <= 0x8000 - CRANK_MENU_DELTA_BINANGLE)
         {
@@ -1183,13 +1188,12 @@ void crank_update(PGB_GameScene* gameScene, float* progress)
             context->gb->direct.crank_menu_accumulation = (uint16_t)new_accumulation;
         }
     }
-    
+
     context->gb->direct.crank = crank16;
     context->gb->direct.crank_docked = 0;
 }
 
-__section__(".text.tick") __space static
-void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
+__section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
 {
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     PGB_GameScene* gameScene = object;
@@ -1311,7 +1315,8 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
     else
     {
         context->gb->direct.crank_docked = 1;
-        if (preferences_crank_mode == CRANK_MODE_TURBO_CCW || preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+        if (preferences_crank_mode == CRANK_MODE_TURBO_CCW ||
+            preferences_crank_mode == CRANK_MODE_TURBO_CCW)
         {
             gameScene->crank_turbo_accumulator = 0.0f;
         }
@@ -1384,9 +1389,9 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
 
     if (gameScene->state == PGB_GameSceneStateLoaded)
     {
-        bool shouldDisplayStartSelectUI =
-            (!playdate->system->isCrankDocked() && preferences_crank_mode == CRANK_MODE_START_SELECT) ||
-            (gameScene->button_hold_frames_remaining > 0);
+        bool shouldDisplayStartSelectUI = (!playdate->system->isCrankDocked() &&
+                                           preferences_crank_mode == CRANK_MODE_START_SELECT) ||
+                                          (gameScene->button_hold_frames_remaining > 0);
 
         static bool wasSelectorVisible = false;
         if (shouldDisplayStartSelectUI != wasSelectorVisible)
@@ -1422,7 +1427,8 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
         context->gb->direct.joypad_bits.down = !(current_pd_buttons & kButtonDown);
 
         context->gb->overclock = (unsigned)(preferences_overclock);
-        if (context->gb->gb_bios_enable) context->gb->overclock = 0; // overclocked boot ROM is glitchy
+        if (context->gb->gb_bios_enable)
+            context->gb->overclock = 0;  // overclocked boot ROM is glitchy
 
         if (gbScreenRequiresFullRefresh)
         {
@@ -1737,7 +1743,8 @@ void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
                 );
             }
 
-            if (preferences_crank_mode == CRANK_MODE_TURBO_CCW || preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+            if (preferences_crank_mode == CRANK_MODE_TURBO_CCW ||
+                preferences_crank_mode == CRANK_MODE_TURBO_CCW)
             {
                 // Draw the Turbo indicator on the right panel
                 playdate->graphics->setFont(PGB_App->labelFont);

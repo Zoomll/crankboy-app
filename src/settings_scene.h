@@ -32,7 +32,7 @@ typedef struct PGB_SettingsScene
     int initial_sample_rate;
     int initial_per_game;
     preference_t* immutable_settings;
-    
+
     struct OptionsMenuEntry* entries;
     struct PDSynth* clickSynth;
 

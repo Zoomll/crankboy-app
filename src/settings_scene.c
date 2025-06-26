@@ -98,36 +98,36 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     settingsScene->initial_sound_mode = preferences_sound_mode;
     settingsScene->initial_sample_rate = preferences_sample_rate;
     settingsScene->initial_per_game = preferences_per_game;
-    
+
     if (gameScene)
     {
         // some settings cannot be changed
-        settingsScene->immutable_settings = preferences_store_subset(
-            PREFBITS_REQUIRES_RESTART
-            | gameScene->prefs_locked_by_script
-        );
-        
+        settingsScene->immutable_settings =
+            preferences_store_subset(PREFBITS_REQUIRES_RESTART | gameScene->prefs_locked_by_script);
+
         // temporarily load prefs that need restarting a game
         void* prefs_restart = preferences_store_subset(~(PREFBITS_REQUIRES_RESTART));
         if (prefs_restart)
         {
             if (preferences_per_game)
             {
-                call_with_user_stack_1(preferences_read_from_disk, settingsScene->gameScene->settings_filename);
+                call_with_user_stack_1(
+                    preferences_read_from_disk, settingsScene->gameScene->settings_filename
+                );
             }
             else
             {
                 call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
             }
-            
+
             preferences_restore_subset(prefs_restart);
             free(prefs_restart);
         }
-    } else {
+    }
+    else
+    {
         // (dummy)
-        settingsScene->immutable_settings = preferences_store_subset(
-            0
-        );
+        settingsScene->immutable_settings = preferences_store_subset(0);
     }
 
     PGB_Scene_refreshMenu(scene);
@@ -162,10 +162,10 @@ static void settings_load_state(PGB_GameScene* gameScene, PGB_SettingsScene* set
         // TODO: something less invasive than a modal here.
         const char* options[] = {"Game", "Settings", NULL};
         PGB_presentModal(PGB_Modal_new(
-                "State loaded. Return to:", options, state_action_modal_callback,
-                settingsScene
-            )->scene
-        );
+                             "State loaded. Return to:", options, state_action_modal_callback,
+                             settingsScene
+        )
+                             ->scene);
     }
 }
 
@@ -201,14 +201,16 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         else
         {
             result = (int)(intptr_t)call_with_user_stack_2(
-                preferences_save_to_disk, PGB_globalPrefsPath, 0
-                // never save these to global prefs
-                | PREFBIT_per_game | PREFBIT_save_state_slot
-                
-                // these prefs are locked, so we shouldn't be able to change them 
-                | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
+                preferences_save_to_disk, PGB_globalPrefsPath,
+                0
+                    // never save these to global prefs
+                    | PREFBIT_per_game |
+                    PREFBIT_save_state_slot
+
+                    // these prefs are locked, so we shouldn't be able to change them
+                    | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
             );
-            
+
             if (result)
             {
                 // also save that preferences are global in the per-game script,
@@ -223,7 +225,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
     else
     {
         // Not in a game, just save the global file
-        result = (int)(intptr_t)call_with_user_stack_2(preferences_save_to_disk, PGB_globalPrefsPath, 0);
+        result =
+            (int)(intptr_t)call_with_user_stack_2(preferences_save_to_disk, PGB_globalPrefsPath, 0);
     }
 
     if (!result)
@@ -700,22 +703,23 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     PGB_ASSERT(i < max_entries);
 
     /* clang-format on */
-    
+
     // disable any entries if script requires it
     for (int i = 0; i < max_entries; ++i)
     {
         OptionsMenuEntry* entry = &entries[i];
         int j = 0;
-        #define PREF(x, ...) \
-            if (entry->pref_var == &preferences_##x) {\
-                if (gameScene && (gameScene->prefs_locked_by_script & (1 << (preferences_bitfield_t)j))) \
-                { \
-                    entry->locked = 1; \
-                    entry->description = "Disabled by game script."; \
-                } \
-            } \
-            ++j;
-        #include "prefs.x"
+#define PREF(x, ...)                                                                             \
+    if (entry->pref_var == &preferences_##x)                                                     \
+    {                                                                                            \
+        if (gameScene && (gameScene->prefs_locked_by_script & (1 << (preferences_bitfield_t)j))) \
+        {                                                                                        \
+            entry->locked = 1;                                                                   \
+            entry->description = "Disabled by game script.";                                     \
+        }                                                                                        \
+    }                                                                                            \
+    ++j;
+#include "prefs.x"
     }
 
     return entries;
@@ -842,7 +846,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
     OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
-    
+
     preference_t old_preferences_per_game = preferences_per_game;
 
     if (cursor_entry->on_press && a_pressed)
@@ -876,16 +880,16 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 if (cursor_entry->pref_var == &preferences_per_game)
                 {
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
-                    
+
                     // TODO: check for error and if an error occurs display a modal
-                    const char* game_settings_path =
-                            settingsScene->gameScene->settings_filename;
+                    const char* game_settings_path = settingsScene->gameScene->settings_filename;
                     if (!preferences_per_game && old_preferences_per_game)
                     {
                         // write per-game prefs to disk
-                        preferences_per_game = 0; // paranoia: record in game settings that we're using global settings
+                        preferences_per_game = 0;  // paranoia: record in game settings that we're
+                                                   // using global settings
                         preferences_save_to_disk(game_settings_path, 0);
-                        
+
                         // try reading global prefs
                         preferences_read_from_disk(PGB_globalPrefsPath);
                         preferences_per_game = 0;
@@ -893,13 +897,15 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     else if (preferences_per_game && !old_preferences_per_game)
                     {
                         // write global prefs to disk
-                        preferences_save_to_disk(PGB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot);
-                        
+                        preferences_save_to_disk(
+                            PGB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot
+                        );
+
                         // try reading per-game prefs
                         preferences_read_from_disk(game_settings_path);
                         preferences_per_game = 1;
                     }
-                    
+
                     if (stored_save_slot)
                     {
                         preferences_restore_subset(stored_save_slot);

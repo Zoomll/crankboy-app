@@ -30,7 +30,7 @@ __section__(".rare") static void PGB_LibraryScene_event(
 )
 {
     PGB_LibraryScene* libraryScene = object;
-    
+
     switch (event)
     {
     case kEventKeyPressed:
@@ -221,8 +221,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
 
         PGB_ListView_update(libraryScene->listView);
-        
-        #ifdef TARGET_SIMULATOR
+
+#ifdef TARGET_SIMULATOR
         while (page_advance > 0)
         {
             --page_advance;
@@ -235,8 +235,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             PGB_App->buttons_pressed = kButtonUp;
             PGB_ListView_update(libraryScene->listView);
         }
-        #endif
-        
+#endif
+
         PGB_ListView_draw(libraryScene->listView);
 
         int selectedIndex = libraryScene->listView->selectedItem;

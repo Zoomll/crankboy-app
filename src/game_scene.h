@@ -10,8 +10,8 @@
 #define game_scene_h
 
 #include "peanut_gb.h"
-#include "scene.h"
 #include "preferences.h"
+#include "scene.h"
 
 #include <math.h>
 #include <stdio.h>
