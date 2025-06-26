@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Pre-commit hook that runs clang-format on staged C/H files.
+# This script prevents commits if the only changes were formatting adjustments
+# that resulted in no actual code changes.
+
+# List of files and patterns to format.
+FILES_TO_FORMAT="main.c src/*.c src/*.h minigb_apu/minigb_apu.c minigb_apu/minigb_apu.h peanut_gb/peanut_gb.h"
+
+# Get a list of staged files that match our patterns.
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR -- $FILES_TO_FORMAT)
+
+if [ -z "$STAGED_FILES" ]; then
+  # No matching files are staged, so we can exit successfully.
+  exit 0
+fi
+
+echo "Formatting staged files with clang-format..."
+# Run clang-format on the staged files and re-stage them.
+echo "$STAGED_FILES" | xargs clang-format -i
+echo "$STAGED_FILES" | xargs git add
+
+# Check if there are any staged changes left after formatting.
+# `git diff --cached --quiet` exits with 0 if there are no changes, 1 otherwise.
+if git diff --cached --quiet; then
+  # No changes are staged, so abort the commit.
+  echo "Commit aborted: No changes to commit after formatting."
+  exit 1
+else
+  # Changes are staged, so allow the commit.
+  echo "Formatting complete. Proceeding with commit."
+  exit 0
+fi
