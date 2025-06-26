@@ -1,5 +1,6 @@
 {
   "editor.default_syntax" : "c",
+  "luals.workspace.config-file" : "$workspace.path\/.luarc.json",
   "workspace.art_style" : 1,
   "workspace.color" : 2,
   "workspace.name" : "CrankBoy"

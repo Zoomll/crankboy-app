@@ -62,14 +62,14 @@ local patch = {
             OP_AND_xHL,
             OP_RRCA,
             OP_JR_c, r8"docked",
-            
+
             -- circle difference between crank angle and prev
             -- HL <- IO_PD_CRANK
             OP_LD_A_a16, word(IO_PD_CRANK_lo),
             OP_LD_L_A,
             OP_LD_A_a16, word(IO_PD_CRANK_hi),
             OP_LD_H_A,
-            
+
             -- BC <- FFFF - XRAM_crank_prev
             OP_LD_A_a16, word(XRAM_crank_prev_lo),
             OP_XOR_d8, 0xFF,
@@ -77,36 +77,36 @@ local patch = {
             OP_LD_A_a16, word(XRAM_crank_prev_hi),
             OP_XOR_d8, 0xFF,
             OP_LD_B_A,
-            
+
             -- store previous crank
             OP_LD_A_H,
             OP_LD_a16_A, word(XRAM_crank_prev_hi),
             OP_LD_A_L,
             OP_LD_a16_A, word(XRAM_crank_prev_lo),
-            
+
             -- HL <- IO_PD_CRANK - XRAM_crank_prev
             OP_ADD_HL_BC,
             OP_INC_HL,
-            
+
             -- TODO: hysteresis
-            
+
             -- write delta and smoothed delta
             OP_LD_A_L,
             OP_LD_a16_A, word(XRAM_crank_delta_lo),
-        
+
             OP_LD_A_H,
             OP_LD_a16_A, word(XRAM_crank_delta_hi),
-            
+
             -- HL <- XRAM_crank_delta_smooth
             OP_LD_HL_d16, word(XRAM_crank_delta_smooth_lo),
             OP_LD_A_iHL,
             OP_LD_H_xHL,
             OP_LD_L_A,
-        
+
             -- BC <- HL
             OP_LD_B_H,
             OP_LD_C_L,
-            
+
             -- hl <- hl/8
             OP_SRA_H,
             OP_RR_L,
@@ -115,7 +115,7 @@ local patch = {
             OP_SRA_H,
             OP_RR_L,
         "bp5",
-            
+
             -- hl <- bc - hl
             OP_LD_A_C,
             OP_SUB_L,
@@ -124,13 +124,13 @@ local patch = {
             OP_SBC_H,
             OP_LD_H_A,
         "bp6",
-            
+
             -- BC <- XRAM_crank_delta
             OP_LD_A_a16, word(XRAM_crank_delta_lo),
             OP_LD_B_A,
             OP_LD_A_a16, word(XRAM_crank_delta_hi),
             OP_LD_C_A,
-            
+
             -- BC /= 8
             OP_SRA_B,
             OP_RR_C,
@@ -138,17 +138,17 @@ local patch = {
             OP_RR_C,
             OP_SRA_B,
             OP_RR_C,
-            
+
             -- HL += BC
             OP_ADD_HL_BC,
-            
+
         "bp7",
             OP_LD_A_L,
             OP_LD_a16_A, word(XRAM_crank_delta_smooth_lo),
             OP_LD_A_H,
             OP_LD_a16_A, word(XRAM_crank_delta_smooth_hi),
             OP_JR, r8"write_prev",
-            
+
         "docked",
             -- crank delta <- 0
             -- crank delta smooth <- 0
@@ -157,13 +157,13 @@ local patch = {
             OP_LD_a16_A, word(XRAM_crank_delta_smooth_lo),
             OP_LD_a16_A, word(XRAM_crank_delta_hi),
             OP_LD_a16_A, word(XRAM_crank_delta_smooth_hi),
-    
+
     "write_prev",
         OP_POP_AF,
         OP_LD_a16_A, word(XRAM_crank_dock_prev),
-        
+
     OP_POP_BC, OP_POP_HL,
-    
+
     -- input 'up' if cranking
     -- TODO: min. hysteresis
     OP_LD_A_a16, word(XRAM_crank_delta_smooth_hi),
@@ -178,7 +178,7 @@ local patch = {
     OP_CP_d8, math.floor(MIN_RATE_CRANK_BEGIN_FLAP / 360.0 * 0x10000),
 "bp",
     OP_JR_ge, r8"input_up",
-    
+
     -- original code
 "org",
     0xF0, 0x8B,
@@ -203,7 +203,7 @@ local patch = {
     OP_LD_B_A,
     0x2A, 0xB8,
     OP_RET,
-    
+
 "continue_flying",
     OP_LD_A_a16, word(XRAM_crank_delta_smooth_hi),
     OP_OR_A,
@@ -214,15 +214,15 @@ local patch = {
 "cf_math",
     OP_PUSH_HL,
         OP_LD_HL_d16, word(XRAM_crank_delta_smooth_lo),
-        
+
         OP_LD_A_iHL,
         OP_LD_H_xHL,
         OP_LD_L_A,
-        
+
         -- skip if HL < 0
         OP_BIT7_H,
         OP_JR_nz, r8("pophl_continue_flying.org"),
-        
+
         -- hl <- hl/32
         OP_SRA_H,
         OP_RR_L,
@@ -234,30 +234,30 @@ local patch = {
         OP_RR_L,
         OP_SRA_H,
         OP_RR_L,
-        
+
         OP_LD_A_H,
         OP_OR_A,
         OP_JR_z, r8("ld_a_l"),
-        
+
         OP_LD_A_d8, 0xFF,
         OP_LD_L_A,
     "ld_a_l",
         OP_LD_A_L,
-        
+
         -- A in range [0, 0x80)
         OP_SRL_A,
         OP_SUB_d8, 0x20,
         OP_JR_lt, r8"flap_negative",
         OP_JR, r8"set_thrust",
-        
+
     "flap_negative",
         OP_LD_A_d8, 0x20,
         OP_LD_a16_A, word(XRAM_thrust),
         OP_JR, r8"pophl_continue_flying.org",
-        
+
     "set_thrust",
         OP_LD_a16_A, word(XRAM_thrust),
-        
+
     OP_POP_HL,
     -- fallthrough
 
@@ -266,7 +266,7 @@ local patch = {
     OP_OR_d8, PAD_UP,
     OP_SWAP_A,
     OP_RET,
-    
+
 "_check_lo",
     OP_LD_A_a16, word(XRAM_crank_delta_smooth_lo),
     OP_CP_d8, math.floor(MIN_RATE_CRANK_FLAP / 360.0 * 0x10000),
@@ -337,7 +337,7 @@ pgb.rom_set_breakpoint(
     (1*0x4000) | (0x467E % 0x4000),
     function(n)
         -- TODO: if holding up/down, ignore crank
-        
+
         if crank_delta_smooth > MIN_RATE_CRANK_FLAP then
             local rate = math.max(0, math.min(crank_delta_smooth, 30)) / 30
             fly_thrust = math.floor(-0x20 + 0x70 * rate);
@@ -360,7 +360,7 @@ pgb.rom_set_breakpoint(
             elseif fly_thrust >= 0 then
                 fly_thrust = math.floor((fly_thrust / 0x50) * (fly_thrust / 0x50) * 0x50)
                 pgb.regs.a = pgb.regs.a | 0x40
-                
+
                 patch_fly_accel_up.tval[2] = math.max(fly_thrust, 0)
                 patch_fly_accel_up.applied = false
                 patch_fly_accel_up:apply()
@@ -407,16 +407,16 @@ function pgb.update()
                 crank_hyst = (new_crank_angle + CRANK_MAX_HYST) % 360
             end
         end
-        
+
         crank_delta_smooth = crank_delta_smooth * CRANK_DELTA_SMOOTH_FACTOR
             + (1 - CRANK_DELTA_SMOOTH_FACTOR)* crank_delta
     else
         crank_delta = 0
         crank_hyst = new_crank_angle
     end
-    
+
     crank_angle = new_crank_angle
-    
+
     patch_fly_accel_down:apply(false)
     patch_fly_accel_up:apply(false)
 end

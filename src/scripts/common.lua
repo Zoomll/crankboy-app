@@ -7,7 +7,7 @@ function poke_verify(bank, addr, prev, val)
     if pgb.rom_peek(addr) ~= prev then
         error("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at " .. string.format("0x%04X", addr) .. " expected " .. string.format("0x%02X", prev) .. " got " .. string.format("0x%02X", pgb.rom_peek(addr)))
     end
-    
+
     pgb.rom_poke(addr, val)
 end
 
@@ -18,18 +18,18 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
     if #tprev ~= #tval then
         error("SCRIPT ERROR -- tprev and tval must have the same length")
     end
-    
+
     -- verify tprev matches what's in ROM
     local base_addr = bank * 0x4000 | (addr % 0x4000)
     for i = 1, #tprev do
         local current_addr = base_addr + i - 1
         local current_byte = pgb.rom_peek(current_addr)
         if current_byte ~= tprev[i] then
-            error(string.format("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at 0x%04X expected 0x%02X got 0x%02X", 
+            error(string.format("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at 0x%04X expected 0x%02X got 0x%02X",
                 current_addr, tprev[i], current_byte))
         end
     end
-    
+
     local replacement = {
         bank = bank,
         addr = base_addr,
@@ -39,33 +39,33 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
         length = #tprev,
         applied = false,
     }
-    
+
     function replacement:apply(yes)
         if apply == nil then
             apply = true
         end
-        
+
         if self.applied == apply then
             return
         end
-    
+
         local target = (yes == false)
             and self.tprev
             or self.tval
-        
+
         if not self.unsafe then
             -- wait until PC is outside the replacement area
             while pgb.regs.pc >= self.addr and pgb.regs.pc < self.addr + self.length do
                 pgb.step_cpu()
             end
         end
-        
+
         -- Apply the changes
         for i = 1, self.length do
             pgb.rom_poke(self.addr + i - 1, target[i])
         end
     end
-    
+
     return replacement
 end
 
@@ -81,10 +81,10 @@ function find_code_cave(bank)
     local max_size = 0
     local current_start = nil
     local current_size = 0
-    
+
     for addr = bank_start, bank_end do
         local byte = pgb.rom_peek(addr)
-        
+
         -- Check if byte is part of a code cave (0x00 or 0xFF)
         -- ignore if it's the first byte of a bank, to split caves by bank
         if (byte == 0x00 or byte == 0xFF) and (addr % 0x4000 ~= 0) then
@@ -108,13 +108,13 @@ function find_code_cave(bank)
             end
         end
     end
-    
+
     -- Check if the last bytes in the bank were part of a code cave
     if current_start ~= nil and current_size > max_size then
         max_size = current_size
         max_start = current_start
     end
-    
+
     return max_start, max_size
 end
 
@@ -241,7 +241,7 @@ function table_has_holes(t)
             maxi = math.max(maxi, key)
         end
     end
-    
+
     for i=1,maxi do
         if t[i] == nil then
             return i
@@ -263,18 +263,18 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
             ram_addr = 0x4000 | (rom_addr % 0x4000)
         end
     end
-    
+
     local labels = _labels or {}
     local data = {}
-    
+
     local r8 = {}
     local a16 = {}
-    
+
     local hole_location = table_has_holes(patch)
     if hole_location then
         error("nil entry in patch -- all opcodes defined? loc=" .. tostring(hole_location))
     end
-    
+
     for _, op in ipairs(patch) do
         if type(op) == "number" then
             data[#data + 1] = op
@@ -289,13 +289,13 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
             else
                 for _2, op2 in ipairs(flatten(op)) do
                     data[#data + 1] = op2
-                end 
+                end
             end
         elseif type(op) == "string" then
             labels[op] = ram_addr + #data
         end
     end
-    
+
     for offset, r8v in pairs(r8) do
         local dst;
         if type(r8v) == "string" then
@@ -317,7 +317,7 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
         end
         data[offset + 1] = val
     end
-    
+
     for offset, label in pairs(a16) do
         dst = labels[label]
         if not dst then
@@ -327,7 +327,7 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
         data[offset + 1] = dst & 0xFF
         data[offset + 2] = dst >> 8
     end
-    
+
     -- write to rom
     for i, b in ipairs(data) do
         if b < 0 or b >= 0x100 then
@@ -340,7 +340,7 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
             pgb.rom_poke(rom_addr + i - 1, b)
         end
     end
-    
+
     return {
         labels=labels
     }

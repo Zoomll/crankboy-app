@@ -158,14 +158,14 @@ local trainer = {
     OP_DEC_HL,
     OP_LD_H_xHL,
     OP_LD_L_A,
-    
+
     -- B <- dst bank
     OP_LD_B_d8, cave_bank,
     OP_CALL, word(addr.Bankswitch),
-    
+
     -- A <- H
     OP_LD_A_H,
-    
+
     OP_PUSH_AF,
         -- restore HL
         OP_LD_a16_A, word(XRAM_TMP_0),
@@ -182,26 +182,26 @@ local patch = {
     -- if we're in scripted movement, load [hJoyHeld] instead
     OP_LD_A_a16, word(addr.wStatusFlags5),
     OP_RLCA,
-    OP_JR_nc, r8"CrankUndockPauseMenu_notSimulating",    
+    OP_JR_nc, r8"CrankUndockPauseMenu_notSimulating",
 
     -- mark disabled menu input, lingers for 1 frame
     OP_XOR_A,
     OP_LD_a16_A, word(XRAM_BLOCK_MENU),
-    
+
     OP_LD_A_a16, word(addr.hJoyHeld),
     OP_JR, r8"CrankUndockPauseMenu_ret",
-    
+
 "CrankUndockPauseMenu_notSimulating",
 
     -- if joypad input is ignored, load [hJoyHeld] instead
     OP_AND_d8, 0x40,
     OP_JR_nz, r8"CrankUndockPauseMenu_normal",
-    
+
     -- if pause button is ignored, load [hJoyHeld] instead
     OP_LD_A_a16, word(addr.wJoyIgnore),
     OP_AND_d8, 0x8,
     OP_JR_nz, r8"CrankUndockPauseMenu_normal",
-    
+
     OP_LD_A_a16, word(XRAM_BLOCK_MENU),
     OP_PUSH_AF,
         -- enable menu next frame
@@ -213,52 +213,52 @@ local patch = {
 
     -- check crank docked
     OP_LD_A_a16, word(IO_PD_CRANK_DOCKED),
-    
+
     OP_RRCA,
     OP_JR_c, r8"CrankUndockPauseMenu_CrankDocked",
-    
+
     -- undocked; input 'start'
     OP_LD_A_d8, 8,
     -- also, clear crank menu delta register
     OP_LD_a16_A, word(IO_PD_CRANK_hi),
     OP_LD_a16_A, word(IO_PD_CRANK_lo),
     OP_JR, r8"CrankUndockPauseMenu_ret",
-    
+
 "CrankUndockPauseMenu_CrankDocked",
     OP_LD_A_a16, word(addr.hJoyPressed),
     OP_AND_d8, (~8) & 0xFF, -- not start button
-    
+
 "CrankUndockPauseMenu_ret",
     OP_LD_H_A,
     OP_BIT3_A,
     OP_RET,
-    
+
 "CrankUndockPauseMenu_normal",
     -- mark disabled menu input, lingers for 1 frame
     OP_XOR_A,
     OP_LD_a16_A, word(XRAM_BLOCK_MENU),
-    
+
 "CrankUndockPauseMenu_normal_noblock",
     OP_LD_A_a16, word(addr.hJoyHeld),
     OP_JR, r8"CrankUndockPauseMenu_ret",
-    
+
 "CustomPauseMenuInput",
     OP_LD_A_d8, 1,
     OP_LD_a16_A, word(XRAM_IN_MENU_DOCK_TO_EXIT),
     OP_CALL, word(addr.HandleMenuInput),
-    
+
     OP_PUSH_AF,
         OP_XOR_A,
         OP_LD_a16_A, word(XRAM_IN_MENU_DOCK_TO_EXIT),
     OP_POP_AF,
-    
+
 "CustomPauseMenuInput_Done",
     OP_LD_H_A,
     OP_BIT6_A,
     OP_JR_nz, r8"CustomPauseMenuInput_Done_Up",
     OP_SCF, OP_CCF, -- clear carry flag (indicates not pressing 'up')
     OP_RET,
-    
+
 -- had to steal some of this for detour
 "CustomPauseMenuInput_Done_Up",
     OP_LD_A_a16, word(addr.wCurrentMenuItem),
@@ -267,7 +267,7 @@ local patch = {
     OP_OR_B,
     OP_SCF,
     OP_RET,
-    
+
 "CustomMenuInput",
     OP_LD_A_a16, word(addr.hJoyInput),
 
@@ -282,22 +282,22 @@ local patch = {
     OP_POP_AF,
     OP_RRC_B,
     OP_JR_nc, r8"menuDoctorInput",
-    
+
 "startMenuDoctorInput",
         -- suppress 'start' and 'B'
         OP_AND_d8, 0xFF & (~0xA),
-        
+
         -- if crank docked, input 'B' to exit menu
         OP_RRC_C,
-        
+
         OP_JR_nc, r8"menuDoctorInput",
         OP_OR_d8, 2,
 
-"menuDoctorInput", 
+"menuDoctorInput",
 
     OP_BIT0_H,
     OP_CALL_nz, a16"inputVerticalFromCrank",
-    
+
     -- restore HL
     OP_PUSH_AF,
         OP_LD_A_a16, word(XRAM_TMP_0),
@@ -305,12 +305,12 @@ local patch = {
         OP_LD_A_a16, word(XRAM_TMP_1),
         OP_LD_L_A,
     OP_POP_AF,
-    
+
     OP_LD_a16_A, word(addr.hJoyInput),
     OP_CALL, word(addr.JoypadLowSensitivity),
     OP_LD_A_a16, word(addr.hJoy5),
     OP_RET,
-    
+
 "inputVerticalFromCrank",
     OP_BIT7_H,
     OP_JR_nz, r8"inputUpFromCrank",
@@ -318,7 +318,7 @@ local patch = {
 "inputDownFromCrank",
     OP_OR_d8, 0x80,
     OP_RET,
-    
+
 "inputUpFromCrank",
     OP_OR_d8, 0x40,
     OP_RET,
@@ -408,8 +408,8 @@ apply_patch(
 apply_patch(
     {
         -- add menu item 'Exit'
-        OP_NOP, OP_NOP, OP_NOP, 
-        OP_NOP, OP_NOP, OP_NOP, 
+        OP_NOP, OP_NOP, OP_NOP,
+        OP_NOP, OP_NOP, OP_NOP,
     },
     sym_to_rom(addr.MenuExitDraw + 9), sym_to_ram(addr.MenuExitDraw + 9)
 )
