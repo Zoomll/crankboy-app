@@ -442,9 +442,9 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .name = "Settings scope",
             .values = settings_scope_labels,
             .description =
-                "Allows per-game settings.\n \n"
-                "Global: this game will\nuse the same settings\nas others games. Changes\nmade to the settings\nwill apply globally.\n \n"
-                "Game: this game will use\nbespoke settings.\nChanges made to\nthe settings will not\nreflect in other games.",
+                "Use shared settings or\ncreate custom ones for\nthis game.\n \n"
+                "Global:\nSettings are shared\nacross all games.\n \n"
+                "Game:\nSettings are unique\nto this game.",
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
