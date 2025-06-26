@@ -25,6 +25,7 @@ typedef struct PGB_Modal
     char* text;
     int options_count;
     int option_selected;
+    int width, height;
     char* options[MODAL_MAX_OPTIONS];
     PGB_ModalCallback callback;
     int timer;

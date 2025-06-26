@@ -16,12 +16,48 @@
 #include "modal.h"
 #include "preferences.h"
 #include "settings_scene.h"
+#include "version.h"
 
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void PGB_LibraryScene_free(void* object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene);
 static void PGB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
+static bool has_checked_for_update = false;
+
+static void CB_updatecheck(int code, const char* text, void* ud)
+{
+    printf("UPDATE RESULT %d: %s\n", code, text);
+    
+    char* modal_result = NULL;
+    
+    if (code == -253)
+    {
+        modal_result = aprintf("You can enable checking for updates at any time by adjusting CrankBoy's permissions in your Playdate's settings.");
+    }
+    else if (code == 1)
+    {
+        modal_result = aprintf(
+            "Update available: %s\n\n(Your version: %s)\n\nPlease download it manually.",
+            text, get_current_version()
+        );
+    }
+    
+    if (modal_result)
+    {
+        PGB_Modal* modal = PGB_Modal_new(
+            modal_result, NULL, NULL, NULL
+        );
+        free(modal_result);
+        
+        modal->width = 300;
+        modal->height = 180;
+        
+        PGB_presentModal(
+            modal->scene
+        );
+    }
+}
 
 static int page_advance = 0;
 
@@ -165,6 +201,12 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
     PGB_LibraryScene* libraryScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
+    
+    if (!has_checked_for_update)
+    {
+        has_checked_for_update = true;
+        possibly_check_for_updates(CB_updatecheck, NULL);
+    }
 
     PGB_Scene_update(libraryScene->scene, dt);
 

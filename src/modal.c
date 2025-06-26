@@ -74,9 +74,9 @@ void PGB_Modal_update(PGB_Modal* modal)
 
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
 
-    int w = 250;
+    int w = modal->width;
     int x = (LCD_COLUMNS - w) / 2;
-    int h = 120;
+    int h = modal->height;
     float p = MIN(modal->droptimer, MODAL_DROP_TIME) / (float)MODAL_DROP_TIME;
     p = 1 - (1 - p) * sqrtf(1 - p);  // easing
     int y = -h + ((LCD_ROWS - h) / 2 + h) * p;
@@ -181,6 +181,9 @@ PGB_Modal* PGB_Modal_new(
 {
     PGB_Modal* modal = pgb_malloc(sizeof(PGB_Modal));
     memset(modal, 0, sizeof(*modal));
+    
+    modal->width = 250;
+    modal->height = 120;
 
     modal->options_count = 0;
     if (options)

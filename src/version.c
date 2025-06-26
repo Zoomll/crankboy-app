@@ -23,7 +23,7 @@ struct VersionInfo
 {
     char* name;
     char* domain;
-    char* url;
+    char* path;
 };
 static struct VersionInfo* localVersionInfo = NULL;
 
@@ -35,7 +35,7 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     
     if (oinfo->name) free(oinfo->name);
     if (oinfo->domain) free(oinfo->domain);
-    if (oinfo->url) free(oinfo->url);
+    if (oinfo->path) free(oinfo->path);
 
     int jparse_result = (ispath)
         ? parse_json("version.json", &jvinfo, kFileRead | kFileReadData)
@@ -48,17 +48,17 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     }
     
     json_value jname = json_get_table_value(jvinfo, "name");
-    json_value jurl = json_get_table_value(jvinfo, "url");
+    json_value jpath = json_get_table_value(jvinfo, "path");
     json_value jdomain = json_get_table_value(jvinfo, "domain");
     
-    if (jname.type != kJSONString || jurl.type != kJSONString || jdomain.type != kJSONString)
+    if (jname.type != kJSONString || jpath.type != kJSONString || jdomain.type != kJSONString)
     {
         free_json_data(jvinfo);
         return -2;
     }
     
     oinfo->name = strdup(jname.data.stringval);
-    oinfo->url = strdup(jurl.data.stringval);
+    oinfo->path = strdup(jpath.data.stringval);
     oinfo->domain = strdup(jdomain.data.stringval);
     
     free_json_data(jvinfo);
@@ -208,7 +208,7 @@ void CB_Permission(bool allowed, void* _cbud)
         );
         playdate->network->http->setResponseCallback(connection, CB_Response);
         
-        PDNetErr err = playdate->network->http->get(connection, localVersionInfo->url, NULL, 0);
+        PDNetErr err = playdate->network->http->get(connection, localVersionInfo->path, NULL, 0);
         if (err != NET_OK) goto release_and_fail;
         
         printf("HTTP get, no immediate error\n");
@@ -287,6 +287,40 @@ void CB_SetEnabled(PDNetErr err)
     }
 }
 
+static int read_local_version(void)
+{
+    if (!localVersionInfo)
+    {
+        localVersionInfo = malloc(sizeof(struct VersionInfo));
+        if (!localVersionInfo)
+        {
+            return -1;
+        }
+        memset(localVersionInfo, 0, sizeof(*localVersionInfo));
+
+        int result;
+        if ((result = read_version_info("version.json", true, localVersionInfo)))
+        {
+            free(localVersionInfo); localVersionInfo = NULL;
+            return -2;
+        }
+    }
+    
+    return 1;
+}
+
+const char* get_current_version(void)
+{
+    if (read_local_version() == 1)
+    {
+        return localVersionInfo->name;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
 void check_for_updates(update_result_cb cb, void* ud)
 {
     if (static_cbud.cb != NULL)
@@ -298,25 +332,71 @@ void check_for_updates(update_result_cb cb, void* ud)
     static_cbud.cb = cb;
     static_cbud.ud = ud;
 
-    if (!localVersionInfo)
+    switch(read_local_version())
     {
-        localVersionInfo = malloc(sizeof(struct VersionInfo));
-        if (!localVersionInfo)
-        {
-            cb(ERRMEM, STR_ERRMEM, ud);
-            static_cbud.cb = NULL;
-            return;
-        }
-        memset(localVersionInfo, 0, sizeof(*localVersionInfo));
-
-        int result;
-        if ((result = read_version_info("version.json", true, localVersionInfo)))
-        {
-            cb(result, "Error getting current version", ud);
-            static_cbud.cb = NULL;
-            free(localVersionInfo); localVersionInfo = NULL; return;
-        }
+    case -1:
+        cb(ERRMEM, STR_ERRMEM, ud);
+        static_cbud.cb = NULL;
+        return;
+    case -2:
+        cb(-956, "Error getting current version", ud);
+        static_cbud.cb = NULL;
+    default:
+        break;
     }
     
     playdate->network->setEnabled(true, CB_SetEnabled);
+}
+
+#define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
+
+typedef uint32_t timestamp_t;
+
+void write_update_timestamp(timestamp_t time)
+{
+    SDFile* f = playdate->file->open(UPDATE_CHECK_TIMESTAMP_PATH, kFileWrite);
+    
+    playdate->file->write(f, &time, sizeof(time));
+    
+    playdate->file->close(f);
+}
+
+#define DAYLEN (60*60*24)
+#define TIME_BEFORE_CHECK_FIRST_UPDATE (DAYLEN * 4)
+#define TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS (DAYLEN)
+
+void possibly_check_for_updates(update_result_cb cb, void* ud)
+{
+    timestamp_t now = playdate->system->getSecondsSinceEpoch(NULL);
+    
+    SDFile* f = playdate->file->open(UPDATE_CHECK_TIMESTAMP_PATH, kFileReadData);
+    
+    if (!f)
+    {
+        write_update_timestamp(now + TIME_BEFORE_CHECK_FIRST_UPDATE);
+        cb(-5303, "no update timestamp -- first-time start", ud);
+    }
+    else
+    {
+        timestamp_t timestamp;
+        
+        int read = playdate->file->read(f, &timestamp, sizeof(timestamp));
+        write_update_timestamp(now + TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS);
+        if (read != sizeof(timestamp) || timestamp < (365 * DAYLEN * 20))
+        {
+            write_update_timestamp(now + TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS/2);
+            cb(-5304, "failed to read timestamp -- replaced", ud);
+        }
+        else if (now >= timestamp)
+        {
+            write_update_timestamp(now + TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS);
+            
+            // ready to update!
+            check_for_updates(cb, ud);
+        }
+        else
+        {
+            cb(-5305, "it's not yet time to check for an update", ud);
+        }
+    }
 }

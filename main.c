@@ -12,7 +12,6 @@
 #include "pd_api.h"
 #include "revcheck.h"
 #include "userstack.h"
-#include "version.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -33,11 +32,6 @@ __section__(".rare") static void* user_stack_test(void* p)
     else
         playdate->system->error("Error from user stack: unexpected arg p=%p", p);
     return (void*)0x784;
-}
-
-void CB_updatecheck(int code, const char* text, void* ud)
-{
-    printf("UPDATE RESULT %d: %s\n", code, text);
 }
 
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
@@ -62,9 +56,6 @@ __section__(".text.main") DllExport
         playdate->system->logToConsole("Device: %s", pd_rev_description);
         
         srand(time(NULL));
-        
-        check_for_updates(CB_updatecheck, NULL);
-
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
