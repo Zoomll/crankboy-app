@@ -5,7 +5,7 @@
 # that resulted in no actual code changes.
 
 # List of files and patterns to format.
-FILES_TO_FORMAT="main.c src/*.c src/*.h minigb_apu/minigb_apu.c minigb_apu/minigb_apu.h peanut_gb/peanut_gb.h"
+FILES_TO_FORMAT="main.c pdnewlib.c src/*.c src/*.h minigb_apu/minigb_apu.c minigb_apu/minigb_apu.h peanut_gb/peanut_gb.h"
 
 # Get a list of staged files that match our patterns.
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR -- $FILES_TO_FORMAT)
