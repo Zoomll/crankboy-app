@@ -9,7 +9,7 @@ PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 PREF(frame_skip, true)
 PREF(dither_pattern, 0)
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)
-PREF(dynamic_level, 6)
+PREF(dynamic_level, 5)
 PREF(transparency, 0)
 
 // behaviour
