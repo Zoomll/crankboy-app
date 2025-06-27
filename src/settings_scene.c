@@ -65,6 +65,9 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     settingsScene->shouldDismiss = false;
     settingsScene->entries = getOptionsEntries(gameScene);
 
+    // Store the true global value for UI sounds before any potential changes.
+    int global_ui_sounds = preferences_ui_sounds;
+
     if (gameScene)
     {
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
@@ -135,6 +138,8 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
         settingsScene->immutable_settings = preferences_store_subset(0);
     }
 
+    preferences_ui_sounds = global_ui_sounds;
+
     PGB_Scene_refreshMenu(scene);
 
     update_thumbnail(settingsScene);
@@ -200,7 +205,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         {
             result = (int)(intptr_t)call_with_user_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
-                settingsScene->gameScene->prefs_locked_by_script
+                settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds
             );
         }
         else
@@ -209,8 +214,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                 preferences_save_to_disk, PGB_globalPrefsPath,
                 0
                     // never save these to global prefs
-                    | PREFBIT_per_game |
-                    PREFBIT_save_state_slot
+                    | PREFBIT_per_game | PREFBIT_save_state_slot |
+                    PREFBIT_ui_sounds
 
                     // these prefs are locked, so we shouldn't be able to change them
                     | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
@@ -706,14 +711,17 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     };
 
     // ui sounds
-    entries[++i] = (OptionsMenuEntry){
-        .name = "UI sounds",
-        .values = off_on_labels,
-        .description = "Enable or disable\ninterface sound effects.",
-        .pref_var = &preferences_ui_sounds,
-        .max_value = 2,
-        .on_press = NULL,
-    };
+    if (!gameScene)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "UI sounds",
+            .values = off_on_labels,
+            .description = "Enable or disable\ninterface sound effects.",
+            .pref_var = &preferences_ui_sounds,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
 
 
     PGB_ASSERT(i < max_entries);
@@ -901,6 +909,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 // special behaviour if we've switched between per-game and global settings
                 if (cursor_entry->pref_var == &preferences_per_game)
                 {
+                    int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
 
                     // TODO: check for error and if an error occurs display a modal
@@ -933,6 +942,8 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                         preferences_restore_subset(stored_save_slot);
                         free(stored_save_slot);
                     }
+
+                    preferences_ui_sounds = global_ui_sounds;
 
                     // After any scope change, always rebuild the menu to update locked states.
                     PGB_SettingsScene_rebuildEntries(settingsScene);
