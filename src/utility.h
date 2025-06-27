@@ -103,6 +103,7 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
 );
 
 void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result);
+void pgb_clear_global_cover_cache(void);
 
 void pgb_play_ui_sound(PGB_UISound sound);
 

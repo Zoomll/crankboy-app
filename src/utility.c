@@ -474,6 +474,18 @@ void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result)
     }
 }
 
+void pgb_clear_global_cover_cache(void)
+{
+    if (PGB_App->coverArtCache.rom_path)
+    {
+        pgb_free(PGB_App->coverArtCache.rom_path);
+        PGB_App->coverArtCache.rom_path = NULL;
+    }
+    pgb_free_loaded_cover_art_bitmap(&PGB_App->coverArtCache.art);
+
+    PGB_App->coverArtCache.art.status = PGB_COVER_ART_FILE_NOT_FOUND;
+}
+
 void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color)
 {
     int r2 = radius * 2;

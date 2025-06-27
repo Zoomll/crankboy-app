@@ -47,7 +47,6 @@ typedef struct PGB_LibraryScene
     int lastSelectedItem;
 
     LCDBitmap* missingCoverIcon;
-    PGB_LoadedCoverArt currentCoverArt;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);

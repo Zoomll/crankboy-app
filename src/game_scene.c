@@ -2055,38 +2055,15 @@ static void PGB_GameScene_menu(void* object)
         char* actual_cover_path = NULL;
 
         // --- Get Cover Art ---
-        if (gameScene->rom_filename != NULL)
+
+        bool has_cover_art = false;
+        if (PGB_App->coverArtCache.rom_path &&
+            strcmp(PGB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
+            PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
+            PGB_App->coverArtCache.art.bitmap != NULL)
         {
-            char* rom_basename_full = string_copy(gameScene->rom_filename);
-            char* filename_part = rom_basename_full;
-            char* last_slash = strrchr(rom_basename_full, '/');
-            if (last_slash != NULL)
-            {
-                filename_part = last_slash + 1;
-            }
-            char* rom_basename_ext = string_copy(filename_part);
-            char* basename_no_ext = string_copy(rom_basename_ext);
-            char* ext = strrchr(basename_no_ext, '.');
-            if (ext != NULL)
-            {
-                *ext = '\0';
-            }
-            char* cleanName_no_ext = string_copy(basename_no_ext);
-            pgb_sanitize_string_for_filename(cleanName_no_ext);
-            actual_cover_path = pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
-
-            if (actual_cover_path != NULL)
-            {
-                cover_art = pgb_load_and_scale_cover_art_from_path(actual_cover_path, 200, 200);
-            }
-
-            pgb_free(cleanName_no_ext);
-            pgb_free(basename_no_ext);
-            pgb_free(rom_basename_ext);
-            pgb_free(rom_basename_full);
+            has_cover_art = true;
         }
-        bool has_cover_art =
-            (cover_art.status == PGB_COVER_ART_SUCCESS && cover_art.bitmap != NULL);
 
         // --- Get Save Times ---
 
@@ -2132,10 +2109,40 @@ static void PGB_GameScene_menu(void* object)
                 playdate->graphics->pushContext(gameScene->menuImage);
                 playdate->graphics->setDrawMode(kDrawModeCopy);
 
+                const int content_top = 40;
+                const int content_height = 160;
+
+                int cover_art_y = 0;
+                int cover_art_height = 0;
+
                 if (has_cover_art)
                 {
                     playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
                     playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
+
+                    PGB_LoadedCoverArt* cached_art = &PGB_App->coverArtCache.art;
+
+                    const int max_width = 200;
+                    const int max_height = 200;
+
+                    float scale_x = (float)max_width / cached_art->scaled_width;
+                    float scale_y = (float)max_height / cached_art->scaled_height;
+                    float scale = fminf(scale_x, scale_y);
+
+                    int final_width = (int)(cached_art->scaled_width * scale);
+                    int final_height = (int)(cached_art->scaled_height * scale);
+
+                    int art_x = (200 - final_width) / 2;
+                    if (!show_time_info)
+                    {
+                        cover_art_y = content_top + (content_height - final_height) / 2;
+                    }
+
+                    playdate->graphics->drawScaledBitmap(
+                        cached_art->bitmap, art_x, cover_art_y, scale, scale
+                    );
+
+                    cover_art_height = final_height;
                 }
                 else if (show_time_info)
                 {
@@ -2160,23 +2167,6 @@ static void PGB_GameScene_menu(void* object)
                         playdate->graphics->setDrawMode(kDrawModeCopy);
                         playdate->graphics->freeBitmap(ditherOverlay);
                     }
-                }
-
-                int content_top = 40;
-                int content_height = 160;
-                int cover_art_y = 0, cover_art_height = 0;
-
-                if (has_cover_art)
-                {
-                    int art_x = (200 - cover_art.scaled_width) / 2;
-                    if (!show_time_info)
-                    {
-                        cover_art_y = content_top + (content_height - cover_art.scaled_height) / 2;
-                    }
-                    playdate->graphics->drawBitmap(
-                        cover_art.bitmap, art_x, cover_art_y, kBitmapUnflipped
-                    );
-                    cover_art_height = cover_art.scaled_height;
                 }
 
                 // 2. Draw Save Time if it exists
@@ -2306,15 +2296,6 @@ static void PGB_GameScene_menu(void* object)
                 }
                 playdate->graphics->popContext();
             }
-        }
-
-        if (has_cover_art)
-        {
-            pgb_free_loaded_cover_art_bitmap(&cover_art);
-        }
-        if (actual_cover_path != NULL)
-        {
-            pgb_free(actual_cover_path);
         }
     }
 

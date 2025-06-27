@@ -117,7 +117,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->missingCoverIcon = NULL;
 
-    libraryScene->currentCoverArt = (PGB_LoadedCoverArt){.bitmap = NULL};
+    pgb_clear_global_cover_cache();
 
     DTCM_VERIFY_DEBUG();
 
@@ -291,22 +291,21 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         if (selectionChanged)
         {
+            pgb_clear_global_cover_cache();
+
             if (libraryScene->initialLoadComplete)
             {
                 pgb_play_ui_sound(PGB_UISound_Navigate);
             }
-
-            pgb_free_loaded_cover_art_bitmap(&libraryScene->currentCoverArt);
-            libraryScene->currentCoverArt =
-                (PGB_LoadedCoverArt){.bitmap = NULL, .status = PGB_COVER_ART_FILE_NOT_FOUND};
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
                 PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                 if (selectedGame->coverPath != NULL)
                 {
-                    libraryScene->currentCoverArt =
+                    PGB_App->coverArtCache.art =
                         pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, 240, 240);
+                    PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
                 }
             }
         }
@@ -321,35 +320,34 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
-                if (libraryScene->currentCoverArt.status == PGB_COVER_ART_SUCCESS &&
-                    libraryScene->currentCoverArt.bitmap != NULL)
+                if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
+                    PGB_App->coverArtCache.art.bitmap != NULL)
                 {
                     int panel_content_width = rightPanelWidth - 1;
                     int coverX =
                         leftPanelWidth + 1 +
-                        (panel_content_width - libraryScene->currentCoverArt.scaled_width) / 2;
-                    int coverY = (screenHeight - libraryScene->currentCoverArt.scaled_height) / 2;
+                        (panel_content_width - PGB_App->coverArtCache.art.scaled_width) / 2;
+                    int coverY = (screenHeight - PGB_App->coverArtCache.art.scaled_height) / 2;
 
                     playdate->graphics->setDrawMode(kDrawModeCopy);
                     playdate->graphics->drawBitmap(
-                        libraryScene->currentCoverArt.bitmap, coverX, coverY, kBitmapUnflipped
+                        PGB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
                     );
                 }
                 else
                 {
                     PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                     bool had_error_loading =
-                        libraryScene->currentCoverArt.status != PGB_COVER_ART_FILE_NOT_FOUND;
+                        PGB_App->coverArtCache.art.status != PGB_COVER_ART_FILE_NOT_FOUND;
 
                     if (had_error_loading)
                     {
                         const char* message = "Error";
-                        if (libraryScene->currentCoverArt.status == PGB_COVER_ART_ERROR_LOADING)
+                        if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_ERROR_LOADING)
                         {
                             message = "Error loading image";
                         }
-                        else if (libraryScene->currentCoverArt.status ==
-                                 PGB_COVER_ART_INVALID_IMAGE)
+                        else if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_INVALID_IMAGE)
                         {
                             message = "Invalid image";
                         }
@@ -628,13 +626,6 @@ static void PGB_LibraryScene_menu(void* object)
 static void PGB_LibraryScene_free(void* object)
 {
     PGB_LibraryScene* libraryScene = object;
-
-    if (libraryScene->missingCoverIcon)
-    {
-        playdate->graphics->freeBitmap(libraryScene->missingCoverIcon);
-    }
-
-    pgb_free_loaded_cover_art_bitmap(&libraryScene->currentCoverArt);
 
     PGB_Scene_free(libraryScene->scene);
 

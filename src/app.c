@@ -29,6 +29,9 @@ void PGB_init(void)
 
     PGB_App->pendingScene = NULL;
 
+    PGB_App->coverArtCache.rom_path = NULL;
+    PGB_App->coverArtCache.art.bitmap = NULL;
+
     playdate->file->mkdir(PGB_gamesPath);
     playdate->file->mkdir(PGB_coversPath);
     playdate->file->mkdir(PGB_savesPath);
@@ -220,7 +223,7 @@ __section__(".rare") void PGB_event(PDSystemEvent event, uint32_t arg)
 
         if (event == kEventPause)
         {
-            // This probably supercedes any need to call PGB_Scene_refreshMenu anywhere else
+            // This probably supersedes any need to call PGB_Scene_refreshMenu anywhere else
             PGB_Scene_refreshMenu(PGB_App->scene);
         }
     }
@@ -233,6 +236,8 @@ void PGB_quit(void)
         void* managedObject = PGB_App->scene->managedObject;
         PGB_App->scene->free(managedObject);
     }
+
+    pgb_clear_global_cover_cache();
 
     if (PGB_App->clickSynth)
     {

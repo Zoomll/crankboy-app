@@ -37,6 +37,12 @@ extern pthread_mutex_t audio_mutex;
 
 #define TENDENCY_BASED_ADAPTIVE_INTERLACING 1
 
+typedef struct
+{
+    PGB_LoadedCoverArt art;
+    char* rom_path;
+} PGB_GlobalCoverCache;
+
 typedef struct PGB_Application
 {
     float dt;
@@ -53,6 +59,7 @@ typedef struct PGB_Application
     LCDBitmapTable* selectorBitmapTable;
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
+    PGB_GlobalCoverCache coverArtCache;
     struct PDSynth* clickSynth;
     PDButtons buttons_down;
     PDButtons buttons_pressed;
