@@ -691,7 +691,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
-    // show fps
+    // overclocking
     entries[++i] = (OptionsMenuEntry){
         .name = "Overclock",
         .values = overclock_labels,
@@ -705,17 +705,16 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
-    if (!gameScene)
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "UI sounds",
-            .values = off_on_labels,
-            .description = "Enable or disable\ninterface sound effects.",
-            .pref_var = &preferences_ui_sounds,
-            .max_value = 2,
-            .on_press = NULL,
-        };
-    }
+    // ui sounds
+    entries[++i] = (OptionsMenuEntry){
+        .name = "UI sounds",
+        .values = off_on_labels,
+        .description = "Enable or disable\ninterface sound effects.",
+        .pref_var = &preferences_ui_sounds,
+        .max_value = 2,
+        .on_press = NULL,
+    };
+
 
     PGB_ASSERT(i < max_entries);
 
