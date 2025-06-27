@@ -8,7 +8,9 @@
 
 #include "utility.h"
 
+#include "app.h"
 #include "library_scene.h"
+#include "preferences.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -540,7 +542,8 @@ void pgb_free(void* ptr)
 
 char* aprintf(const char* fmt, ...)
 {
-    if (fmt == NULL) {
+    if (fmt == NULL)
+    {
         return NULL;
     }
 
@@ -551,13 +554,15 @@ char* aprintf(const char* fmt, ...)
     int length = vsnprintf(NULL, 0, fmt, args1) + 1;
     va_end(args1);
 
-    if (length <= 0) {
+    if (length <= 0)
+    {
         va_end(args2);
         return NULL;
     }
 
     char* buffer = (char*)malloc(length * sizeof(char));
-    if (buffer == NULL) {
+    if (buffer == NULL)
+    {
         va_end(args2);
         return NULL;
     }
@@ -566,4 +571,27 @@ char* aprintf(const char* fmt, ...)
     va_end(args2);
 
     return buffer;
+}
+
+void pgb_play_ui_sound(PGB_UISound sound)
+{
+    if (!preferences_ui_sounds || !PGB_App->clickSynth)
+    {
+        return;
+    }
+
+    switch (sound)
+    {
+    case PGB_UISound_Navigate:
+        playdate->sound->synth->playNote(
+            PGB_App->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
+        );
+        break;
+
+    case PGB_UISound_Confirm:
+        playdate->sound->synth->playNote(
+            PGB_App->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
+        );
+        break;
+    }
 }

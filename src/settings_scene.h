@@ -34,7 +34,6 @@ typedef struct PGB_SettingsScene
     preference_t* immutable_settings;
 
     struct OptionsMenuEntry* entries;
-    struct PDSynth* clickSynth;
 
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
 } PGB_SettingsScene;

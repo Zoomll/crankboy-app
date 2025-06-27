@@ -42,6 +42,13 @@ void PGB_init(void)
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
 
+    PGB_App->clickSynth = playdate->sound->synth->newSynth();
+    playdate->sound->synth->setWaveform(PGB_App->clickSynth, kWaveformSquare);
+    playdate->sound->synth->setAttackTime(PGB_App->clickSynth, 0.0f);
+    playdate->sound->synth->setDecayTime(PGB_App->clickSynth, 0.05f);
+    playdate->sound->synth->setSustainLevel(PGB_App->clickSynth, 0.0f);
+    playdate->sound->synth->setReleaseTime(PGB_App->clickSynth, 0.0f);
+
     PGB_App->selectorBitmapTable =
         playdate->graphics->loadBitmapTable("images/selector/selector", NULL);
     PGB_App->startSelectBitmap =
@@ -226,4 +233,12 @@ void PGB_quit(void)
         void* managedObject = PGB_App->scene->managedObject;
         PGB_App->scene->free(managedObject);
     }
+
+    if (PGB_App->clickSynth)
+    {
+        playdate->sound->synth->freeSynth(PGB_App->clickSynth);
+        PGB_App->clickSynth = NULL;
+    }
+
+    pgb_free(PGB_App);
 }

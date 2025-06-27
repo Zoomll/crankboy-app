@@ -48,7 +48,6 @@ typedef struct PGB_LibraryScene
 
     LCDBitmap* missingCoverIcon;
     PGB_LoadedCoverArt currentCoverArt;
-    struct PDSynth* clickSynth;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);

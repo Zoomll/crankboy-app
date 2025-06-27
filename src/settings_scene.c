@@ -73,13 +73,6 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
     }
 
-    settingsScene->clickSynth = playdate->sound->synth->newSynth();
-    playdate->sound->synth->setWaveform(settingsScene->clickSynth, kWaveformSquare);
-    playdate->sound->synth->setAttackTime(settingsScene->clickSynth, 0.0f);
-    playdate->sound->synth->setDecayTime(settingsScene->clickSynth, 0.05f);
-    playdate->sound->synth->setSustainLevel(settingsScene->clickSynth, 0.0f);
-    playdate->sound->synth->setReleaseTime(settingsScene->clickSynth, 0.0f);
-
     settingsScene->totalMenuItemCount = 0;
     if (settingsScene->entries)
     {
@@ -844,14 +837,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             settingsScene->cursorIndex = 0;
     }
 
-    if (oldCursorIndex != settingsScene->cursorIndex && settingsScene->clickSynth)
+    if (oldCursorIndex != settingsScene->cursorIndex)
     {
-        if (preferences_ui_sounds)
-        {
-            playdate->sound->synth->playNote(
-                settingsScene->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
-            );
-        }
+        pgb_play_ui_sound(PGB_UISound_Navigate);
     }
 
     if (pushed & kButtonB)
@@ -896,15 +884,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             if (old_value != *cursor_entry->pref_var)
             {
                 // setting value has changed
-                if (settingsScene->clickSynth)
-                {
-                    if (preferences_ui_sounds)
-                    {
-                        playdate->sound->synth->playNote(
-                            settingsScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
-                        );
-                    }
-                }
+                pgb_play_ui_sound(PGB_UISound_Confirm);
 
                 // special behaviour if we've switched between per-game and global settings
                 if (cursor_entry->pref_var == &preferences_per_game)
@@ -1209,11 +1189,6 @@ static void PGB_SettingsScene_free(void* object)
 {
     DTCM_VERIFY();
     PGB_SettingsScene* settingsScene = object;
-
-    if (settingsScene->clickSynth)
-    {
-        playdate->sound->synth->freeSynth(settingsScene->clickSynth);
-    }
 
     if (settingsScene->gameScene)
     {

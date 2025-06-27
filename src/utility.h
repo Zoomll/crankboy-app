@@ -42,6 +42,12 @@ extern const char* PGB_globalPrefsPath;
 
 typedef enum
 {
+    PGB_UISound_Navigate,  // For up/down movement
+    PGB_UISound_Confirm    // For selection/changing a value
+} PGB_UISound;
+
+typedef enum
+{
     PGB_COVER_ART_SUCCESS,
     PGB_COVER_ART_ERROR_LOADING,
     PGB_COVER_ART_INVALID_IMAGE,
@@ -97,6 +103,8 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
 );
 
 void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result);
+
+void pgb_play_ui_sound(PGB_UISound sound);
 
 #ifdef TARGET_PLAYDATE
 #define __section__(x) __attribute__((section(x)))

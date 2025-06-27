@@ -53,6 +53,7 @@ typedef struct PGB_Application
     LCDBitmapTable* selectorBitmapTable;
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
+    struct PDSynth* clickSynth;
     PDButtons buttons_down;
     PDButtons buttons_pressed;
     PDButtons buttons_suppress;  // prevent these from registering until they
