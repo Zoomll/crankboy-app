@@ -43,10 +43,12 @@ typedef struct PGB_LibraryScene
     PGB_LibrarySceneTab tab;
 
     bool firstLoad;
+    bool initialLoadComplete;
     int lastSelectedItem;
 
     LCDBitmap* missingCoverIcon;
     PGB_LoadedCoverArt currentCoverArt;
+    struct PDSynth* clickSynth;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);

@@ -65,6 +65,11 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     settingsScene->shouldDismiss = false;
     settingsScene->entries = getOptionsEntries(gameScene);
 
+    if (gameScene)
+    {
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
+    }
+
     settingsScene->clickSynth = playdate->sound->synth->newSynth();
     playdate->sound->synth->setWaveform(settingsScene->clickSynth, kWaveformSquare);
     playdate->sound->synth->setAttackTime(settingsScene->clickSynth, 0.0f);

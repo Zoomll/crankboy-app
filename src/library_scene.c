@@ -113,10 +113,18 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->listView->selectedItem = last_selected_game_index;
     libraryScene->tab = PGB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
+    libraryScene->initialLoadComplete = false;
 
     libraryScene->missingCoverIcon = NULL;
 
     libraryScene->currentCoverArt = (PGB_LoadedCoverArt){.bitmap = NULL};
+
+    libraryScene->clickSynth = playdate->sound->synth->newSynth();
+    playdate->sound->synth->setWaveform(libraryScene->clickSynth, kWaveformSquare);
+    playdate->sound->synth->setAttackTime(libraryScene->clickSynth, 0.0f);
+    playdate->sound->synth->setDecayTime(libraryScene->clickSynth, 0.05f);
+    playdate->sound->synth->setSustainLevel(libraryScene->clickSynth, 0.0f);
+    playdate->sound->synth->setReleaseTime(libraryScene->clickSynth, 0.0f);
 
     DTCM_VERIFY_DEBUG();
 
@@ -218,6 +226,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
         {
+            if (libraryScene->clickSynth)
+            {
+                playdate->sound->synth->playNote(
+                    libraryScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
+                );
+            }
+
             last_selected_game_index = selectedItem;
 
             PGB_Game* game = libraryScene->games->items[selectedItem];
@@ -288,6 +303,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         if (selectionChanged)
         {
+            if (libraryScene->initialLoadComplete && libraryScene->clickSynth)
+            {
+                playdate->sound->synth->playNote(
+                    libraryScene->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
+                );
+            }
+
             pgb_free_loaded_cover_art_bitmap(&libraryScene->currentCoverArt);
             libraryScene->currentCoverArt =
                 (PGB_LoadedCoverArt){.bitmap = NULL, .status = PGB_COVER_ART_FILE_NOT_FOUND};
@@ -595,6 +617,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             );
         }
     }
+    libraryScene->initialLoadComplete = true;
 }
 
 static void PGB_LibraryScene_showSettings(void* userdata)
@@ -619,6 +642,11 @@ static void PGB_LibraryScene_menu(void* object)
 static void PGB_LibraryScene_free(void* object)
 {
     PGB_LibraryScene* libraryScene = object;
+
+    if (libraryScene->clickSynth)
+    {
+        playdate->sound->synth->freeSynth(libraryScene->clickSynth);
+    }
 
     if (libraryScene->missingCoverIcon)
     {

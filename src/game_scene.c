@@ -2820,6 +2820,8 @@ static void PGB_GameScene_free(void* object)
         PGB_App->soundSource = NULL;
     }
 
+    playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
+
     audioGameScene = NULL;
     audio_enabled = 0;
 
