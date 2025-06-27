@@ -28,34 +28,33 @@ static bool has_checked_for_update = false;
 static void CB_updatecheck(int code, const char* text, void* ud)
 {
     printf("UPDATE RESULT %d: %s\n", code, text);
-    
+
     char* modal_result = NULL;
-    
+
     if (code == -253)
     {
-        modal_result = aprintf("You can enable checking for updates at any time by adjusting CrankBoy's permissions in your Playdate's settings.");
+        modal_result = aprintf(
+            "You can enable checking for updates at any time by adjusting CrankBoy's permissions "
+            "in your Playdate's settings."
+        );
     }
     else if (code == 1)
     {
         modal_result = aprintf(
-            "Update available: %s\n\n(Your version: %s)\n\nPlease download it manually.",
-            text, get_current_version()
+            "Update available: %s\n\n(Your version: %s)\n\nPlease download it manually.", text,
+            get_current_version()
         );
     }
-    
+
     if (modal_result)
     {
-        PGB_Modal* modal = PGB_Modal_new(
-            modal_result, NULL, NULL, NULL
-        );
+        PGB_Modal* modal = PGB_Modal_new(modal_result, NULL, NULL, NULL);
         free(modal_result);
-        
+
         modal->width = 300;
         modal->height = 180;
-        
-        PGB_presentModal(
-            modal->scene
-        );
+
+        PGB_presentModal(modal->scene);
     }
 }
 
@@ -116,6 +115,8 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->lastSelectedItem = -1;
 
     libraryScene->missingCoverIcon = NULL;
+
+    libraryScene->currentCoverArt = (PGB_LoadedCoverArt){.bitmap = NULL};
 
     DTCM_VERIFY_DEBUG();
 
@@ -201,7 +202,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
     PGB_LibraryScene* libraryScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
-    
+
     if (!has_checked_for_update)
     {
         has_checked_for_update = true;
@@ -285,6 +286,23 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         bool selectionChanged = (selectedIndex != libraryScene->lastSelectedItem);
 
+        if (selectionChanged)
+        {
+            pgb_free_loaded_cover_art_bitmap(&libraryScene->currentCoverArt);
+            libraryScene->currentCoverArt =
+                (PGB_LoadedCoverArt){.bitmap = NULL, .status = PGB_COVER_ART_FILE_NOT_FOUND};
+
+            if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
+            {
+                PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                if (selectedGame->coverPath != NULL)
+                {
+                    libraryScene->currentCoverArt =
+                        pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, 240, 240);
+                }
+            }
+        }
+
         if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
         {
             libraryScene->lastSelectedItem = selectedIndex;
@@ -295,40 +313,35 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
-                PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-
-                if (selectedGame->coverPath != NULL)
+                if (libraryScene->currentCoverArt.status == PGB_COVER_ART_SUCCESS &&
+                    libraryScene->currentCoverArt.bitmap != NULL)
                 {
-                    PGB_LoadedCoverArt cover_art =
-                        pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, 240, 240);
+                    int panel_content_width = rightPanelWidth - 1;
+                    int coverX =
+                        leftPanelWidth + 1 +
+                        (panel_content_width - libraryScene->currentCoverArt.scaled_width) / 2;
+                    int coverY = (screenHeight - libraryScene->currentCoverArt.scaled_height) / 2;
 
-                    if (cover_art.status == PGB_COVER_ART_SUCCESS && cover_art.bitmap != NULL)
-                    {
-                        int panel_content_width = rightPanelWidth - 1;
-                        int coverX =
-                            leftPanelWidth + 1 + (panel_content_width - cover_art.scaled_width) / 2;
-                        int coverY = (screenHeight - cover_art.scaled_height) / 2;
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                    playdate->graphics->drawBitmap(
+                        libraryScene->currentCoverArt.bitmap, coverX, coverY, kBitmapUnflipped
+                    );
+                }
+                else
+                {
+                    PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                    bool had_error_loading =
+                        libraryScene->currentCoverArt.status != PGB_COVER_ART_FILE_NOT_FOUND;
 
-                        playdate->graphics->setDrawMode(kDrawModeCopy);
-                        playdate->graphics->drawBitmap(
-                            cover_art.bitmap, coverX, coverY, kBitmapUnflipped
-                        );
-                    }
-                    else
+                    if (had_error_loading)
                     {
                         const char* message = "Error";
-                        if (cover_art.status == PGB_COVER_ART_FILE_NOT_FOUND)
-                        {
-                            message = "Cover not found";
-                            playdate->system->logToConsole(
-                                "Cover %s not found by load func.", selectedGame->coverPath
-                            );
-                        }
-                        else if (cover_art.status == PGB_COVER_ART_ERROR_LOADING)
+                        if (libraryScene->currentCoverArt.status == PGB_COVER_ART_ERROR_LOADING)
                         {
                             message = "Error loading image";
                         }
-                        else if (cover_art.status == PGB_COVER_ART_INVALID_IMAGE)
+                        else if (libraryScene->currentCoverArt.status ==
+                                 PGB_COVER_ART_INVALID_IMAGE)
                         {
                             message = "Invalid image";
                         }
@@ -348,115 +361,114 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             message, pgb_strlen(message), kUTF8Encoding, textX, textY
                         );
                     }
-                    pgb_free_loaded_cover_art_bitmap(&cover_art);
-                }
-                else
-                {
-                    if (libraryScene->missingCoverIcon == NULL)
+                    else
                     {
-                        libraryScene->missingCoverIcon =
-                            playdate->graphics->loadBitmap("launcher/icon", NULL);
-                    }
+                        if (libraryScene->missingCoverIcon == NULL)
+                        {
+                            libraryScene->missingCoverIcon =
+                                playdate->graphics->loadBitmap("launcher/icon", NULL);
+                        }
 
-                    LCDBitmap* iconBitmap = libraryScene->missingCoverIcon;
+                        LCDBitmap* iconBitmap = libraryScene->missingCoverIcon;
 
-                    static const char* title = "Missing cover";
-                    static const char* message1 = "Connect to a computer";
-                    static const char* message2 = "and copy covers to:";
-                    static const char* message3 = "Data/*.crankboy/covers";
+                        static const char* title = "Missing cover";
+                        static const char* message1 = "Connect to a computer";
+                        static const char* message2 = "and copy covers to:";
+                        static const char* message3 = "Data/*.crankboy/covers";
 
-                    LCDFont* titleFont = PGB_App->bodyFont;
-                    LCDFont* bodyFont = PGB_App->subheadFont;
+                        LCDFont* titleFont = PGB_App->bodyFont;
+                        LCDFont* bodyFont = PGB_App->subheadFont;
 
-                    int imageToTitleSpacing = 8;
-                    int titleToMessageSpacing = 6;
-                    int messageLineSpacing = 2;
+                        int imageToTitleSpacing = 8;
+                        int titleToMessageSpacing = 6;
+                        int messageLineSpacing = 2;
 
-                    int iconWidth = 0, iconHeight = 0;
-                    if (iconBitmap)
-                    {
-                        playdate->graphics->getBitmapData(
-                            iconBitmap, &iconWidth, &iconHeight, NULL, NULL, NULL
+                        int iconWidth = 0, iconHeight = 0;
+                        if (iconBitmap)
+                        {
+                            playdate->graphics->getBitmapData(
+                                iconBitmap, &iconWidth, &iconHeight, NULL, NULL, NULL
+                            );
+                        }
+
+                        int titleHeight = playdate->graphics->getFontHeight(titleFont);
+                        int messageHeight = playdate->graphics->getFontHeight(bodyFont);
+
+                        int containerHeight =
+                            (iconHeight > 0 ? iconHeight + imageToTitleSpacing : 0) + titleHeight +
+                            titleToMessageSpacing + (messageHeight * 3) + (messageLineSpacing * 2);
+                        int containerY_start = (screenHeight - containerHeight) / 2;
+
+                        int panel_content_width = rightPanelWidth - 1;
+
+                        int iconX = leftPanelWidth + 1 + (panel_content_width - iconWidth) / 2;
+                        int titleX = leftPanelWidth + 1 +
+                                     (panel_content_width -
+                                      playdate->graphics->getTextWidth(
+                                          titleFont, title, pgb_strlen(title), kUTF8Encoding, 0
+                                      )) /
+                                         2;
+                        int message1_X =
+                            leftPanelWidth + 1 +
+                            (panel_content_width -
+                             playdate->graphics->getTextWidth(
+                                 bodyFont, message1, pgb_strlen(message1), kUTF8Encoding, 0
+                             )) /
+                                2;
+                        int message2_X =
+                            leftPanelWidth + 1 +
+                            (panel_content_width -
+                             playdate->graphics->getTextWidth(
+                                 bodyFont, message2, pgb_strlen(message2), kUTF8Encoding, 0
+                             )) /
+                                2;
+                        int message3_X =
+                            leftPanelWidth + 1 +
+                            (panel_content_width -
+                             playdate->graphics->getTextWidth(
+                                 bodyFont, message3, pgb_strlen(message3), kUTF8Encoding, 0
+                             )) /
+                                2;
+
+                        int currentY = containerY_start;
+                        int iconY = currentY;
+                        if (iconBitmap)
+                        {
+                            currentY += iconHeight + imageToTitleSpacing;
+                        }
+                        int titleY = currentY;
+                        currentY += titleHeight + titleToMessageSpacing;
+                        int message1_Y = currentY;
+                        currentY += messageHeight + messageLineSpacing;
+                        int message2_Y = currentY;
+                        currentY += messageHeight + messageLineSpacing;
+                        int message3_Y = currentY;
+
+                        playdate->graphics->setDrawMode(kDrawModeCopy);
+                        if (iconBitmap)
+                        {
+                            playdate->graphics->drawBitmap(
+                                iconBitmap, iconX, iconY, kBitmapUnflipped
+                            );
+                        }
+
+                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                        playdate->graphics->setFont(titleFont);
+                        playdate->graphics->drawText(
+                            title, pgb_strlen(title), kUTF8Encoding, titleX, titleY
+                        );
+
+                        playdate->graphics->setFont(bodyFont);
+                        playdate->graphics->drawText(
+                            message1, pgb_strlen(message1), kUTF8Encoding, message1_X, message1_Y
+                        );
+                        playdate->graphics->drawText(
+                            message2, pgb_strlen(message2), kUTF8Encoding, message2_X, message2_Y
+                        );
+                        playdate->graphics->drawText(
+                            message3, pgb_strlen(message3), kUTF8Encoding, message3_X, message3_Y
                         );
                     }
-
-                    int titleHeight = playdate->graphics->getFontHeight(titleFont);
-                    int messageHeight = playdate->graphics->getFontHeight(bodyFont);
-
-                    int containerHeight = (iconHeight > 0 ? iconHeight + imageToTitleSpacing : 0) +
-                                          titleHeight + titleToMessageSpacing +
-                                          (messageHeight * 3) + (messageLineSpacing * 2);
-                    int containerY_start = (screenHeight - containerHeight) / 2;
-
-                    int panel_content_width = rightPanelWidth - 1;
-
-                    int iconX = leftPanelWidth + 1 + (panel_content_width - iconWidth) / 2;
-                    int titleX = leftPanelWidth + 1 +
-                                 (panel_content_width -
-                                  playdate->graphics->getTextWidth(
-                                      titleFont, title, pgb_strlen(title), kUTF8Encoding, 0
-                                  )) /
-                                     2;
-                    int message1_X = leftPanelWidth + 1 +
-                                     (panel_content_width -
-                                      playdate->graphics->getTextWidth(
-                                          bodyFont, message1, pgb_strlen(message1), kUTF8Encoding, 0
-                                      )) /
-                                         2;
-                    int message2_X = leftPanelWidth + 1 +
-                                     (panel_content_width -
-                                      playdate->graphics->getTextWidth(
-                                          bodyFont, message2, pgb_strlen(message2), kUTF8Encoding, 0
-                                      )) /
-                                         2;
-                    int message3_X = leftPanelWidth + 1 +
-                                     (panel_content_width -
-                                      playdate->graphics->getTextWidth(
-                                          bodyFont, message3, pgb_strlen(message3), kUTF8Encoding, 0
-                                      )) /
-                                         2;
-
-                    int currentY = containerY_start;
-
-                    int iconY = currentY;
-                    if (iconBitmap)
-                    {
-                        currentY += iconHeight + imageToTitleSpacing;
-                    }
-
-                    int titleY = currentY;
-                    currentY += titleHeight + titleToMessageSpacing;
-
-                    int message1_Y = currentY;
-                    currentY += messageHeight + messageLineSpacing;
-
-                    int message2_Y = currentY;
-                    currentY += messageHeight + messageLineSpacing;
-
-                    int message3_Y = currentY;
-
-                    playdate->graphics->setDrawMode(kDrawModeCopy);
-                    if (iconBitmap)
-                    {
-                        playdate->graphics->drawBitmap(iconBitmap, iconX, iconY, kBitmapUnflipped);
-                    }
-
-                    playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                    playdate->graphics->setFont(titleFont);
-                    playdate->graphics->drawText(
-                        title, pgb_strlen(title), kUTF8Encoding, titleX, titleY
-                    );
-
-                    playdate->graphics->setFont(bodyFont);
-                    playdate->graphics->drawText(
-                        message1, pgb_strlen(message1), kUTF8Encoding, message1_X, message1_Y
-                    );
-                    playdate->graphics->drawText(
-                        message2, pgb_strlen(message2), kUTF8Encoding, message2_X, message2_Y
-                    );
-                    playdate->graphics->drawText(
-                        message3, pgb_strlen(message3), kUTF8Encoding, message3_X, message3_Y
-                    );
                 }
             }
             playdate->graphics->drawLine(
@@ -612,6 +624,8 @@ static void PGB_LibraryScene_free(void* object)
     {
         playdate->graphics->freeBitmap(libraryScene->missingCoverIcon);
     }
+
+    pgb_free_loaded_cover_art_bitmap(&libraryScene->currentCoverArt);
 
     PGB_Scene_free(libraryScene->scene);
 
