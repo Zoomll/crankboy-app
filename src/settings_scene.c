@@ -705,6 +705,18 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
+    if (!gameScene)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "UI sounds",
+            .values = off_on_labels,
+            .description = "Enable or disable\ninterface sound effects.",
+            .pref_var = &preferences_ui_sounds,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
+
     PGB_ASSERT(i < max_entries);
 
     /* clang-format on */
@@ -827,9 +839,12 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     if (oldCursorIndex != settingsScene->cursorIndex && settingsScene->clickSynth)
     {
-        playdate->sound->synth->playNote(
-            settingsScene->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
-        );
+        if (preferences_ui_sounds)
+        {
+            playdate->sound->synth->playNote(
+                settingsScene->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
+            );
+        }
     }
 
     if (pushed & kButtonB)
@@ -876,9 +891,12 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 // setting value has changed
                 if (settingsScene->clickSynth)
                 {
-                    playdate->sound->synth->playNote(
-                        settingsScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
-                    );
+                    if (preferences_ui_sounds)
+                    {
+                        playdate->sound->synth->playNote(
+                            settingsScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
+                        );
+                    }
                 }
 
                 // special behaviour if we've switched between per-game and global settings

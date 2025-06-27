@@ -226,7 +226,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
         {
-            if (libraryScene->clickSynth)
+            if (preferences_ui_sounds && libraryScene->clickSynth)
             {
                 playdate->sound->synth->playNote(
                     libraryScene->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
@@ -303,7 +303,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         if (selectionChanged)
         {
-            if (libraryScene->initialLoadComplete && libraryScene->clickSynth)
+            if (libraryScene->initialLoadComplete && preferences_ui_sounds &&
+                libraryScene->clickSynth)
             {
                 playdate->sound->synth->playNote(
                     libraryScene->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0

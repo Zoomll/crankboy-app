@@ -22,5 +22,6 @@ PREF(lua_support, false)
 PREF(itcm, (pd_rev == PD_REV_A))
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
+PREF(ui_sounds, 1)
 
 #undef PREF
