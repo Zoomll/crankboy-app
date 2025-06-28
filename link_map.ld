@@ -1,4 +1,4 @@
-ENTRY(eventHandlerShim)
+ENTRY(_entrypoint_)
 GROUP(libgcc.a libc.a libm.a)
 
 /* Forces a particular cache-line alignment, for stability
@@ -26,6 +26,7 @@ SECTIONS
 	.text :
 	{        	
 		__text_start__ = .;
+		*(.entry)
 		build/pdnewlib.o(.text)
 		
 		. = ALIGN(32);
