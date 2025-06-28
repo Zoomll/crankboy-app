@@ -30,8 +30,8 @@ static void CB_updatecheck(int code, const char* text, void* ud)
     printf("UPDATE RESULT %d: %s\n", code, text);
 
     char* modal_result = NULL;
-
-    if (code == -253)
+    
+    if (code == ERR_PERMISSION_ASKED_DENIED)
     {
         modal_result = aprintf(
             "You can enable checking for updates at any time by adjusting CrankBoy's permissions "

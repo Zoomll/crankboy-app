@@ -1,9 +1,13 @@
 #pragma once
 
-// any negative code is considered an error
-// 0: no update
-// 1: update exists
+#include "http.h"
 
+#define ERR_PERMISSION_ASKED_DENIED (-253)
+#define ERR_PERMISSION_DENIED (-254)
+
+// any negative code is considered an error
+// 0: success (but no result)
+// 1: success (and result)
 typedef void (*update_result_cb)(
     int code, const char* text, void* ud
 );
