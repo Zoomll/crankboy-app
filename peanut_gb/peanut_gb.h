@@ -1434,7 +1434,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             }
             else if (gb->mbc == 3)
             {
-                gb->selected_rom_bank = val & 0x7F;
+                gb->selected_rom_bank = val;
                 if (!gb->selected_rom_bank)
                     gb->selected_rom_bank++;
             }
