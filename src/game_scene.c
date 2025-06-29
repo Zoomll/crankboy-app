@@ -427,19 +427,14 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 
                     if (now > gameScene->last_save_time)
                     {
-                        gameScene->rtc_seconds_to_catch_up = now - gameScene->last_save_time;
-                    }
-
-                    if (gameScene->rtc_seconds_to_catch_up > 0)
-                    {
-                        playdate->system->logToConsole(
-                            "Catching up RTC by %u seconds...", gameScene->rtc_seconds_to_catch_up
-                        );
-                        for (unsigned int i = 0; i < gameScene->rtc_seconds_to_catch_up; ++i)
+                        unsigned int seconds_to_advance = now - gameScene->last_save_time;
+                        if (seconds_to_advance > 0)
                         {
-                            gb_tick_rtc(context->gb);
+                            playdate->system->logToConsole(
+                                "Catching up RTC by %u seconds...", seconds_to_advance
+                            );
+                            gb_catch_up_rtc_direct(context->gb, seconds_to_advance);
                         }
-                        gameScene->rtc_seconds_to_catch_up = 0;
                     }
                 }
                 else
@@ -1692,29 +1687,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             if (gameScene->rtc_seconds_to_catch_up > 0)
             {
-                // Define our time budget for catch-up in milliseconds.
-                // A budget of 1-2ms is very safe and shouldn't impact the frame
-                // rate.
-                const float CATCH_UP_TIME_BUDGET_MS = 2.0f;
-
-                // Get the time before we start the loop.
-                float start_time_ms = playdate->system->getElapsedTime() * 1000.0f;
-                float current_time_ms = start_time_ms;
-
-                // Loop until we run out of seconds to catch up OR we exceed our
-                // time budget.
-                while (gameScene->rtc_seconds_to_catch_up > 0)
-                {
-                    gb_tick_rtc(context->gb);
-                    gameScene->rtc_seconds_to_catch_up--;
-
-                    // Check the elapsed time.
-                    current_time_ms = playdate->system->getElapsedTime() * 1000.0f;
-                    if (current_time_ms - start_time_ms > CATCH_UP_TIME_BUDGET_MS)
-                    {
-                        break;  // Our time budget for this frame is used up.
-                    }
-                }
+                gb_catch_up_rtc_direct(context->gb, gameScene->rtc_seconds_to_catch_up);
+                gameScene->rtc_seconds_to_catch_up = 0;
             }
         }
 

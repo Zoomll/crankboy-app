@@ -651,8 +651,60 @@ __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
 }
 
 /**
+ * Directly calculates and applies the RTC state after a given
+ * number of seconds have passed.
+ *
+ * This is a replacement for calling gb_tick_rtc() in a loop.
+ * The logic is inspired by SameBoy's RTC implementation.
+ *
+ */
+__section__(".text.pgb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned int seconds_to_add)
+{
+    if ((gb->rtc_bits.high & 0x40) || seconds_to_add == 0)
+    {
+        return;
+    }
+
+    uint16_t current_days = gb->rtc_bits.yday | ((gb->rtc_bits.high & 0x01) << 8);
+
+    unsigned long long total_seconds = gb->rtc_bits.sec + gb->rtc_bits.min * 60ULL +
+                                       gb->rtc_bits.hour * 3600ULL + current_days * 86400ULL;
+
+    total_seconds += seconds_to_add;
+
+    uint8_t new_sec = total_seconds % 60;
+    total_seconds /= 60;
+    uint8_t new_min = total_seconds % 60;
+    total_seconds /= 60;
+    uint8_t new_hour = total_seconds % 24;
+    total_seconds /= 24;
+    uint16_t new_days = total_seconds;
+
+    uint8_t day_overflow = (new_days > 511);
+
+    new_days %= 512;
+
+    gb->rtc_bits.sec = new_sec;
+    gb->rtc_bits.min = new_min;
+    gb->rtc_bits.hour = new_hour;
+    gb->rtc_bits.yday = (uint8_t)(new_days & 0xFF);
+
+    uint8_t high_byte = gb->rtc_bits.high & 0x40;
+    high_byte |= (new_days >> 8) & 0x01;
+    if (day_overflow)
+    {
+        high_byte |= 0x80;
+    }
+    gb->rtc_bits.high = high_byte;
+}
+
+/**
  * Tick the internal RTC by one second.
  * This was taken from SameBoy, which is released under MIT Licence.
+ *
+ * NOTE: This function is currently unused in favor of the more performant
+ * gb_catch_up_rtc_direct() function. It is kept for reference and potential
+ * future use in a cycle-accurate timing model.
  */
 __section__(".text.pgb") void gb_tick_rtc(struct gb_s* gb)
 {
