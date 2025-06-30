@@ -599,7 +599,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .name = "Stabilization",
         .values = off_on_labels,
         .description =
-            "If enabled, distortions\n(caused by the 5:3 ratio\nbetween the GB's and\nPlaydate's vertical size)\nwill track with the camera\nas it scrolls vertically.\n \nDownside: can cause\nhorizontal lines to linger\non-screen as artifacts."
+            "If enabled, distortions\n(caused by the 5:3 ratio\nbetween the GB's and\nPlaydate's vertical size)\nwill track with the camera\nas it scrolls vertically.\n \nMay slightly reduce\nperformance in games\nthat scroll up and down\nvery often."
         ,
         .pref_var = &preferences_dither_stable,
         .max_value = 2,

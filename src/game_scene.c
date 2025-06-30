@@ -233,6 +233,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
 
     gameScene->interlace_tendency_counter = 0;
     gameScene->interlace_lock_frames_remaining = 0;
+    gameScene->previous_scale_line_index = -1;
 
     gameScene->isCurrentlySaving = false;
 
@@ -1615,6 +1616,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         {
             int y_offset = context->gb->gb_reg.SCY;
             scale_line_index = 2 - ((y_offset + 3 + scale_line_index) % 3);
+        }
+
+        if (gameScene->previous_scale_line_index != scale_line_index)
+        {
+            gbScreenRequiresFullRefresh = true;
+            gameScene->previous_scale_line_index = scale_line_index;
         }
 
 #if ENABLE_RENDER_PROFILER
