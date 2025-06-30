@@ -44,10 +44,13 @@ typedef struct OptionsMenuEntry
     const char* description;
     int* pref_var;
     unsigned max_value;
+    
     bool locked : 1;
     bool show_value_only_on_hover : 1;
     bool thumbnail : 1;
     bool graphics_test : 1;
+    bool header : 1;
+    
     void (*on_press)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
     void* ud;
 } OptionsMenuEntry;
@@ -385,7 +388,7 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
 
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 {
-    int max_entries = 20;  // we can overshoot, it's ok
+    int max_entries = 30;  // we can overshoot, it's ok
     OptionsMenuEntry* entries = malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
@@ -453,6 +456,11 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
+    
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Audio",
+        .header = 1
+    };
 
     // sound
     {
@@ -480,6 +488,11 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .on_press = NULL,
+    };
+    
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Display",
+        .header = 1
     };
 
     // frame skip
@@ -607,19 +620,11 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     };
     #endif
 
-    // show fps
     entries[++i] = (OptionsMenuEntry){
-        .name = "Show FPS",
-        .values = fps_labels,
-        .description =
-            "Displays the current\nframes-per-second\non screen.\n \n"
-            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)"
-        ,
-        .pref_var = &preferences_display_fps,
-        .max_value = 3,
-        .on_press = NULL
+        .name = "Behavior",
+        .header = 1
     };
-
+    
     // crank mode
     entries[++i] = (OptionsMenuEntry){
         .name = "Crank",
@@ -632,7 +637,21 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 4,
         .on_press = NULL
     };
-
+    
+    // overclocking
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Overclock",
+        .values = overclock_labels,
+        .description =
+            "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
+            "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
+            "Not a guaranteed way to\nimprove performance,\nand may introduce\ninaccuracies."
+        ,
+        .pref_var = &preferences_overclock,
+        .max_value = 3,
+        .on_press = NULL
+    };
+    
     // joypad_interrupts
     entries[++i] = (OptionsMenuEntry){
         .name = "Joypad interrupts",
@@ -646,8 +665,71 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 2,
         .on_press = NULL
     };
+    
+    #ifndef NOLUA
+    // lua scripts
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Game scripts",
+        .values = off_on_labels,
+        .description =
+            "Enable or disable Lua\nscripting support.\n \nEnabling this "
+            "may impact\nperformance.",
+        .pref_var = &preferences_lua_support,
+        .max_value = 2,
+        .on_press = NULL,
+    };
 
-#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+    if (gameScene)
+    {
+        entries[i].description = "Enable or disable Lua\nscripting support.\n \nEnabling this may impact\nperformance.\n \nYou need to restart the\ngame for the changes to\napply.";
+    }
+
+#endif
+    
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Miscellaneous",
+        .header = 1
+    };
+    
+    // show fps
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Show FPS",
+        .values = fps_labels,
+        .description =
+            "Displays the current\nframes-per-second\non screen.\n \n"
+            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)"
+        ,
+        .pref_var = &preferences_display_fps,
+        .max_value = 3,
+        .on_press = NULL
+    };
+
+    // uncap fps
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Uncapped FPS",
+        .values = off_on_labels,
+        .description =
+            "Removes the speed limit.\n \nThis is intended\njust for benchmarking\nperformance, not for\ncasual play."
+        ,
+        .pref_var = &preferences_uncap_fps,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
+    // ui sounds
+    if (!gameScene)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "UI sounds",
+            .values = off_on_labels,
+            .description = "Enable or disable\ninterface sound effects.",
+            .pref_var = &preferences_ui_sounds,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
+    
+    #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
         static char* itcm_base_desc = NULL;
         if (itcm_base_desc == NULL) {
@@ -678,70 +760,8 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         }
     #endif
 
-
-#ifndef NOLUA
-    // lua scripts
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Game scripts",
-        .values = off_on_labels,
-        .description =
-            "Enable or disable Lua\nscripting support.\n \nEnabling this "
-            "may impact\nperformance.",
-        .pref_var = &preferences_lua_support,
-        .max_value = 2,
-        .on_press = NULL,
-    };
-
-    if (gameScene)
-    {
-        entries[i].description = "Enable or disable Lua\nscripting support.\n \nEnabling this may impact\nperformance.\n \nYou need to restart the\ngame for the changes to\napply.";
-    }
-
-#endif
-
-    // show fps
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Uncapped FPS",
-        .values = off_on_labels,
-        .description =
-            "Removes the speed limit.\n \nThis is intended\njust for benchmarking\nperformance, not for\ncasual play."
-        ,
-        .pref_var = &preferences_uncap_fps,
-        .max_value = 2,
-        .on_press = NULL
-    };
-
-    // overclocking
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Overclock",
-        .values = overclock_labels,
-        .description =
-            "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
-            "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
-            "Not a guaranteed way to\nimprove performance,\nand may introduce\ninaccuracies."
-        ,
-        .pref_var = &preferences_overclock,
-        .max_value = 3,
-        .on_press = NULL
-    };
-
-    // ui sounds
-    if (!gameScene)
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "UI sounds",
-            .values = off_on_labels,
-            .description = "Enable or disable\ninterface sound effects.",
-            .pref_var = &preferences_ui_sounds,
-            .max_value = 2,
-            .on_press = NULL,
-        };
-    }
-
-
-    PGB_ASSERT(i < max_entries);
-
     /* clang-format on */
+    PGB_ASSERT(i < max_entries);
 
     // disable any entries if script requires it
     for (int i = 0; i < max_entries; ++i)
@@ -845,18 +865,28 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     // Buttons
     PDButtons pushed = PGB_App->buttons_pressed;
+    
+    int preferredAdjustment = 1;
 
     if (pushed & kButtonDown)
     {
         settingsScene->cursorIndex++;
-        if (settingsScene->cursorIndex >= menuItemCount)
-            settingsScene->cursorIndex = menuItemCount - 1;
     }
     if (pushed & kButtonUp)
     {
         settingsScene->cursorIndex--;
-        if (settingsScene->cursorIndex < 0)
-            settingsScene->cursorIndex = 0;
+        preferredAdjustment = -1;
+    }
+    
+    // don't land out of bounds or on a header
+    while (settingsScene->cursorIndex < 0 || settingsScene->cursorIndex >= settingsScene->totalMenuItemCount || settingsScene->entries[settingsScene->cursorIndex].header)
+    {
+        if (settingsScene->entries[settingsScene->cursorIndex].header) 
+            settingsScene->cursorIndex += preferredAdjustment;
+        
+        // boundary condition
+        if (settingsScene->cursorIndex < 0) settingsScene->cursorIndex = settingsScene->totalMenuItemCount-1;
+        if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount) settingsScene->cursorIndex = 0;
     }
 
     if (oldCursorIndex != settingsScene->cursorIndex)
@@ -870,13 +900,13 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    if (settingsScene->cursorIndex < settingsScene->topVisibleIndex)
+    if (settingsScene->cursorIndex - 1 < settingsScene->topVisibleIndex)
     {
-        settingsScene->topVisibleIndex = settingsScene->cursorIndex;
+        settingsScene->topVisibleIndex = MAX(0, settingsScene->cursorIndex - 1);
     }
-    else if (settingsScene->cursorIndex >= settingsScene->topVisibleIndex + MAX_VISIBLE_ITEMS)
+    else if (settingsScene->cursorIndex >= settingsScene->topVisibleIndex + MAX_VISIBLE_ITEMS - 1)
     {
-        settingsScene->topVisibleIndex = settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 1);
+        settingsScene->topVisibleIndex = MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2), settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
     }
 
     bool a_pressed = (pushed & kButtonA);
@@ -987,9 +1017,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         OptionsMenuEntry* current_entry = &settingsScene->entries[itemIndex];
         bool is_static_text = (current_entry->pref_var == NULL && current_entry->on_press == NULL);
-        bool is_locked_option =
-            (current_entry->pref_var != NULL && current_entry->max_value == 0) ||
-            current_entry->locked;
+        bool is_locked_option = current_entry->locked;
         bool is_disabled = is_static_text || is_locked_option;
 
         int y = initialY + i * rowHeight;
@@ -1019,8 +1047,27 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->setDrawMode(kDrawModeFillBlack);
         }
 
-        // Draw the option name (left-aligned)
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, kLeftPanePadding, y);
+        if (current_entry->header)
+        {
+            int t = 2;
+            
+            playdate->graphics->fillRect(
+                0, y + (rowHeight / 3) - t, kDividerX, 2*t, kColorBlack
+            );
+            
+            playdate->graphics->fillRect(
+                kDividerX/2-nameWidth/2 - t, y + (rowHeight / 3) - t, nameWidth + 2*t,2*t, kColorWhite
+            );
+            
+            
+            // Draw header, aligned
+            playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, kDividerX/2 - nameWidth/2, y);
+        }
+        else
+        {
+            // Draw the option name (left-aligned)
+            playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, kLeftPanePadding, y);
+        }
 
         if (stateText[0])
         {
@@ -1028,7 +1075,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->drawText(stateText, strlen(stateText), kUTF8Encoding, stateX, y);
         }
 
-        if (is_disabled)
+        if (is_disabled &&! current_entry->header)
         {
             const uint8_t* dither = (itemIndex != settingsScene->cursorIndex)
                                         ? black_transparent_dither
