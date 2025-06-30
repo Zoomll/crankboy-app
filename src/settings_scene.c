@@ -1139,18 +1139,28 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         if (current_entry->header)
         {
-            int t = 2;
+            int nameWidth = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
+            );
+            int textX = kDividerX / 2 - nameWidth / 2;
 
-            playdate->graphics->fillRect(0, y + (rowHeight / 3) - t, kDividerX, 2 * t, kColorBlack);
+            playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, y);
 
-            playdate->graphics->fillRect(
-                kDividerX / 2 - nameWidth / 2 - t, y + (rowHeight / 3) - t, nameWidth + 2 * t,
-                2 * t, kColorWhite
+            int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+
+            int lineY = y + (fontHeight / 2);
+            int padding = 5;
+
+            // Draw the left line segment
+            playdate->graphics->drawLine(
+                kLeftPanePadding, lineY, textX - padding, lineY, 1,
+                (itemIndex == settingsScene->cursorIndex) ? kColorWhite : kColorBlack
             );
 
-            // Draw header, aligned
-            playdate->graphics->drawText(
-                name, strlen(name), kUTF8Encoding, kDividerX / 2 - nameWidth / 2, y
+            // Draw the right line segment
+            playdate->graphics->drawLine(
+                textX + nameWidth + padding, lineY, kDividerX - kLeftPanePadding, lineY, 1,
+                (itemIndex == settingsScene->cursorIndex) ? kColorWhite : kColorBlack
             );
         }
         else
