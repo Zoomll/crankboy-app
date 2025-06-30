@@ -1108,7 +1108,10 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         OptionsMenuEntry* current_entry = &settingsScene->entries[itemIndex];
         bool is_static_text = (current_entry->pref_var == NULL && current_entry->on_press == NULL);
         bool is_locked_option = current_entry->locked;
-        bool is_disabled = is_static_text || is_locked_option;
+
+        bool is_functionally_inactive =
+            (current_entry->pref_var != NULL && current_entry->max_value == 0);
+        bool is_disabled = is_static_text || is_locked_option || is_functionally_inactive;
 
         int y = initialY + i * rowHeight;
         const char* name = current_entry->name;
