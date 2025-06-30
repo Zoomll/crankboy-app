@@ -569,7 +569,17 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
-
+    // dither
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Stabilization",
+        .values = off_on_labels,
+        .description =
+            "If enabled, distortions\n(caused by the 5:3 ratio\nbetween the GB's and\nPlaydate's vertical size)\nwill track with the camera\nas it scrolls vertically.\n \nDownside: can cause\nhorizontal lines to linger\non-screen as artifacts."
+        ,
+        .pref_var = &preferences_dither_stable,
+        .max_value = 2,
+        .on_press = NULL
+    };
     #if ENABLE_BGCACHE
     // transparency
     entries[++i] = (OptionsMenuEntry){

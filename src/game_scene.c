@@ -926,11 +926,12 @@ typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
 __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdateRows
+    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdateRows,
+    unsigned scale_line_offset
 )
 {
     framebuffer += (PGB_LCD_X / 8);
-    int scale_index = 0;
+    int scale_index = scale_line_offset;
     unsigned fb_y_playdate_current_bottom =
         PGB_LCD_Y + PGB_LCD_HEIGHT;  // Bottom of drawable area on Playdate
 
@@ -1607,6 +1608,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         // Determine if drawing is actually needed based on changes or
         // forced display
         bool actual_gb_draw_needed = true;
+        
+        unsigned scale_line_index = 2 - (context->gb->gb_reg.SCY % 3);
 
 #if ENABLE_RENDER_PROFILER
         if (PGB_run_profiler_on_next_frame)
@@ -1622,7 +1625,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows
+                playdate->graphics->markUpdatedRows, scale_line_index
             );
 
             float endTime = playdate->system->getElapsedTime();
@@ -1656,7 +1659,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows
+                playdate->graphics->markUpdatedRows, scale_line_index
             );
 
             ITCM_CORE_FN(gb_fast_memcpy_64)(
