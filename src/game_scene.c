@@ -1609,7 +1609,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         // forced display
         bool actual_gb_draw_needed = true;
         
-        unsigned scale_line_index = 2 - (context->gb->gb_reg.SCY % 3);
+        unsigned scale_line_index = 0;
+        
+        if (preferences_dither_stable)
+        {
+            scale_line_index = 2 - (context->gb->gb_reg.SCY % 3);
+        }
 
 #if ENABLE_RENDER_PROFILER
         if (PGB_run_profiler_on_next_frame)
