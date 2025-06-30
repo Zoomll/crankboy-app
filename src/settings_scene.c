@@ -605,7 +605,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     // dither line
     entries[++i] = (OptionsMenuEntry){
-        .name = "First Scaling Line",
+        .name = "First scaling line",
         .values = dynamic_level_labels,
         .description =
             "Due to the 3:5 ratio\nbetween the GB's and\nPlaydate's vertical\nresolutions, 1 in every\n3 scanlines must be\nvertically squished.\n \nThis means there are three\nchoices for which lines are\nto be the ones to squish.\n \nIf text is uneven, try\nadjusting this."
