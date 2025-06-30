@@ -64,35 +64,6 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     return 0;
 }
 
-void CB_Header(HTTPConnection* connection, const char* key, const char* value)
-{
-    printf("Header received: \"%s\": \"%s\"\n", key, value);
-}
-
-void CB_HeadersRead(HTTPConnection* connection)
-{
-    printf("Headers read\n");
-    
-    playdate->network->http->release(
-        connection
-    );
-    playdate->network->http->close(connection);
-}
-
-void CB_Closed(HTTPConnection* connection)
-{
-    struct CB_UserData* cbud = playdate->network->http->getUserdata(connection);
-    
-    if (!cbud)
-    {
-        return;
-    }
-    
-    playdate->network->http->setUserdata(connection, NULL);
-    cbud->cb(-150, "Server closed request before version information was received", cbud->ud);
-    if (cbud->data) free(cbud->data);
-    free(cbud);
-}
 
 void CB_Response(HTTPConnection* connection)
 {
@@ -195,74 +166,6 @@ static int read_local_version(void)
     
     return 1;
 }
-
-void CB_Permission(unsigned flags, void* _cbud)
-{
-    struct CB_UserData* cbud = _cbud;
-    
-    int status = -102;
-    const char* msg = "HTTP request failed";
-    
-    bool allowed = (flags & ~HTTP_ENABLE_ASKED) == 0;
-    
-    if (allowed)
-    {
-        HTTPConnection* connection = playdate->network->http->newConnection(
-            localVersionInfo->domain, 0, USE_SSL
-        );
-        
-        if (!connection) goto fail;
-        
-        // 10 seconds
-        playdate->network->http->setConnectTimeout(connection, 10*1000);
-        
-        playdate->network->http->setUserdata(connection, cbud);
-        playdate->network->http->retain(
-            connection
-        );
-        
-        playdate->network->http->setHeaderReceivedCallback(connection, CB_Header);
-        playdate->network->http->setHeadersReadCallback(
-            connection, CB_HeadersRead
-        );
-        playdate->network->http->setConnectionClosedCallback(
-            connection, CB_Closed
-        );
-        playdate->network->http->setResponseCallback(connection, CB_Response);
-        
-        PDNetErr err = playdate->network->http->get(connection, localVersionInfo->path, NULL, 0);
-        if (err != NET_OK) goto release_and_fail;
-        
-        printf("HTTP get, no immediate error\n");
-        
-        return;
-        
-    release_and_fail:
-        playdate->network->http->release(
-            connection
-        );
-        playdate->network->http->close(connection);
-        
-        goto fail;
-    }
-    else
-    {
-        if (flags & HTTP_ENABLE_ASKED)
-        {
-            status = ERR_PERMISSION_ASKED_DENIED;
-        }
-        else
-        {
-            status = ERR_PERMISSION_DENIED;
-        }
-        msg = "Permission denied";
-    fail:
-        cbud->cb(status, msg, cbud->ud);
-        if (cbud->data) free(cbud->data);
-        free(cbud);
-    }
-}
-
 
 const char* get_current_version(void)
 {
