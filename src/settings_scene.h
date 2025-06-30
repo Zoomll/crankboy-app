@@ -28,6 +28,11 @@ typedef struct PGB_SettingsScene
     bool shouldDismiss : 1;
     bool wasAudioLocked : 1;
 
+    int scroll_direction;
+    int repeatLevel;
+    float repeatIncrementTime;
+    float repeatTime;
+
     int initial_sound_mode;
     int initial_sample_rate;
     int initial_per_game;

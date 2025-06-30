@@ -44,13 +44,13 @@ typedef struct OptionsMenuEntry
     const char* description;
     int* pref_var;
     unsigned max_value;
-    
+
     bool locked : 1;
     bool show_value_only_on_hover : 1;
     bool thumbnail : 1;
     bool graphics_test : 1;
     bool header : 1;
-    
+
     void (*on_press)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
     void* ud;
 } OptionsMenuEntry;
@@ -68,6 +68,12 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     settingsScene->shouldDismiss = false;
     settingsScene->entries = getOptionsEntries(gameScene);
 
+    // Initialize continuous scrolling variables
+    settingsScene->scroll_direction = 0;
+    settingsScene->repeatLevel = 0;
+    settingsScene->repeatIncrementTime = 0.0f;
+    settingsScene->repeatTime = 0.0f;
+
     // Store the true global value for UI sounds before any potential changes.
     int global_ui_sounds = preferences_ui_sounds;
 
@@ -82,6 +88,21 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
         for (int i = 0; settingsScene->entries[i].name; i++)
         {
             settingsScene->totalMenuItemCount++;
+        }
+    }
+
+    // Ensure the initial cursor position is not on a header item.
+    if (settingsScene->totalMenuItemCount > 0)
+    {
+        while (settingsScene->entries[settingsScene->cursorIndex].header)
+        {
+            settingsScene->cursorIndex++;
+            // This check prevents an infinite loop if all items are somehow headers.
+            if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount)
+            {
+                settingsScene->cursorIndex = 0;
+                break;
+            }
         }
     }
 
@@ -456,7 +477,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "Audio",
         .header = 1
@@ -489,7 +510,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 3,
         .on_press = NULL,
     };
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "Display",
         .header = 1
@@ -581,7 +602,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .graphics_test = 1,
         .on_press = NULL
     };
-    
+
     // dither line
     entries[++i] = (OptionsMenuEntry){
         .name = "First Scaling Line",
@@ -624,7 +645,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .name = "Behavior",
         .header = 1
     };
-    
+
     // crank mode
     entries[++i] = (OptionsMenuEntry){
         .name = "Crank",
@@ -637,7 +658,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 4,
         .on_press = NULL
     };
-    
+
     // overclocking
     entries[++i] = (OptionsMenuEntry){
         .name = "Overclock",
@@ -651,7 +672,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 3,
         .on_press = NULL
     };
-    
+
     // joypad_interrupts
     entries[++i] = (OptionsMenuEntry){
         .name = "Joypad interrupts",
@@ -665,7 +686,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 2,
         .on_press = NULL
     };
-    
+
     #ifndef NOLUA
     // lua scripts
     entries[++i] = (OptionsMenuEntry){
@@ -685,12 +706,12 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     }
 
 #endif
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "Miscellaneous",
         .header = 1
     };
-    
+
     // show fps
     entries[++i] = (OptionsMenuEntry){
         .name = "Show FPS",
@@ -728,7 +749,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .on_press = NULL,
         };
     }
-    
+
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
         static char* itcm_base_desc = NULL;
@@ -838,55 +859,122 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     PGB_Scene_update(settingsScene->scene, dt);
 
-    // Crank
+    // Consolidate all inputs into a single 'steps' variable
+    int steps = 0;
+
+    // Crank Input
     float crank_change = playdate->system->getCrankChange();
     settingsScene->crankAccumulator += crank_change;
     const float crank_threshold = 45.0f;
 
     while (settingsScene->crankAccumulator >= crank_threshold)
     {
-        settingsScene->cursorIndex++;
-        if (settingsScene->cursorIndex >= menuItemCount)
-        {
-            settingsScene->cursorIndex = menuItemCount - 1;
-        }
+        steps++;
         settingsScene->crankAccumulator -= crank_threshold;
     }
 
     while (settingsScene->crankAccumulator <= -crank_threshold)
     {
-        settingsScene->cursorIndex--;
-        if (settingsScene->cursorIndex < 0)
-        {
-            settingsScene->cursorIndex = 0;
-        }
+        steps--;
         settingsScene->crankAccumulator += crank_threshold;
     }
 
-    // Buttons
+    // Button Input (discrete and continuous)
     PDButtons pushed = PGB_App->buttons_pressed;
-    
-    int preferredAdjustment = 1;
+    PDButtons pressed = PGB_App->buttons_down;
 
     if (pushed & kButtonDown)
     {
-        settingsScene->cursorIndex++;
+        steps++;
     }
     if (pushed & kButtonUp)
     {
-        settingsScene->cursorIndex--;
-        preferredAdjustment = -1;
+        steps--;
     }
-    
-    // don't land out of bounds or on a header
-    while (settingsScene->cursorIndex < 0 || settingsScene->cursorIndex >= settingsScene->totalMenuItemCount || settingsScene->entries[settingsScene->cursorIndex].header)
+
+    // --- Continuous Scrolling Logic ---
+    int old_direction = settingsScene->scroll_direction;
+    int current_direction = 0;
+
+    if (pressed & kButtonUp)
     {
-        if (settingsScene->entries[settingsScene->cursorIndex].header) 
-            settingsScene->cursorIndex += preferredAdjustment;
-        
-        // boundary condition
-        if (settingsScene->cursorIndex < 0) settingsScene->cursorIndex = settingsScene->totalMenuItemCount-1;
-        if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount) settingsScene->cursorIndex = 0;
+        current_direction = -1;
+    }
+    else if (pressed & kButtonDown)
+    {
+        current_direction = 1;
+    }
+    settingsScene->scroll_direction = current_direction;
+
+    if (settingsScene->scroll_direction == 0 || settingsScene->scroll_direction != old_direction)
+    {
+        settingsScene->repeatIncrementTime = 0;
+        settingsScene->repeatLevel = 0;
+        settingsScene->repeatTime = 0;
+    }
+    else
+    {
+        const float repeatInterval1 = 0.15f;
+        const float repeatInterval2 = 2.0f;
+
+        settingsScene->repeatIncrementTime += dt;
+
+        float repeatInterval = (settingsScene->repeatLevel > 0) ? repeatInterval2 : repeatInterval1;
+
+        if (settingsScene->repeatIncrementTime >= repeatInterval)
+        {
+            settingsScene->repeatLevel = PGB_MIN(3, settingsScene->repeatLevel + 1);
+            settingsScene->repeatIncrementTime =
+                fmodf(settingsScene->repeatIncrementTime, repeatInterval);
+        }
+
+        if (settingsScene->repeatLevel > 0)
+        {
+            settingsScene->repeatTime += dt;
+
+            float repeatRate = 0.16f;
+            if (settingsScene->repeatLevel == 2)
+            {
+                repeatRate = 0.1f;
+            }
+            else if (settingsScene->repeatLevel == 3)
+            {
+                repeatRate = 0.05f;
+            }
+
+            while (settingsScene->repeatTime >= repeatRate)
+            {
+                settingsScene->repeatTime -= repeatRate;
+                steps += settingsScene->scroll_direction;
+            }
+        }
+    }
+    // --- End Continuous Scrolling ---
+
+    // Apply cursor movement if there are steps to take
+    if (steps != 0)
+    {
+        int direction = (steps > 0) ? 1 : -1;
+        int num_steps = abs(steps);
+
+        for (int i = 0; i < num_steps; ++i)
+        {
+            // Move the cursor, skipping over any headers
+            do
+            {
+                settingsScene->cursorIndex += direction;
+
+                // Wrap the cursor index if it goes out of bounds
+                if (settingsScene->cursorIndex >= menuItemCount)
+                {
+                    settingsScene->cursorIndex = 0;
+                }
+                else if (settingsScene->cursorIndex < 0)
+                {
+                    settingsScene->cursorIndex = menuItemCount - 1;
+                }
+            } while (settingsScene->entries[settingsScene->cursorIndex].header);
+        }
     }
 
     if (oldCursorIndex != settingsScene->cursorIndex)
@@ -906,7 +994,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
     else if (settingsScene->cursorIndex >= settingsScene->topVisibleIndex + MAX_VISIBLE_ITEMS - 1)
     {
-        settingsScene->topVisibleIndex = MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2), settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
+        settingsScene->topVisibleIndex =
+            MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2),
+                settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
     }
 
     bool a_pressed = (pushed & kButtonA);
@@ -1050,18 +1140,18 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         if (current_entry->header)
         {
             int t = 2;
-            
+
+            playdate->graphics->fillRect(0, y + (rowHeight / 3) - t, kDividerX, 2 * t, kColorBlack);
+
             playdate->graphics->fillRect(
-                0, y + (rowHeight / 3) - t, kDividerX, 2*t, kColorBlack
+                kDividerX / 2 - nameWidth / 2 - t, y + (rowHeight / 3) - t, nameWidth + 2 * t,
+                2 * t, kColorWhite
             );
-            
-            playdate->graphics->fillRect(
-                kDividerX/2-nameWidth/2 - t, y + (rowHeight / 3) - t, nameWidth + 2*t,2*t, kColorWhite
-            );
-            
-            
+
             // Draw header, aligned
-            playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, kDividerX/2 - nameWidth/2, y);
+            playdate->graphics->drawText(
+                name, strlen(name), kUTF8Encoding, kDividerX / 2 - nameWidth / 2, y
+            );
         }
         else
         {
@@ -1075,7 +1165,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->drawText(stateText, strlen(stateText), kUTF8Encoding, stateX, y);
         }
 
-        if (is_disabled &&! current_entry->header)
+        if (is_disabled && !current_entry->header)
         {
             const uint8_t* dither = (itemIndex != settingsScene->cursorIndex)
                                         ? black_transparent_dither
