@@ -6,8 +6,9 @@
 #define ERR_PERMISSION_DENIED (-254)
 
 // any negative code is considered an error
-// 0: success (but no result)
-// 1: success (and result)
+// 0: success (but it's the same as our current version)
+// 1: success (but it's a version we were already aware of from a previous check)
+// 2: success (and we didn't know about this version before)
 typedef void (*update_result_cb)(
     int code, const char* text, void* ud
 );

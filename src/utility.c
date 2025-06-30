@@ -607,3 +607,69 @@ void pgb_play_ui_sound(PGB_UISound sound)
         break;
     }
 }
+
+char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
+{
+    SDFile* file = playdate->file->open(path, flags);
+    char* dat;
+    char* out;
+    int size;
+    if (!file) return NULL;
+    
+    if (playdate->file->seek(file, 0, SEEK_END) < 0) goto fail;
+    
+    size = playdate->file->tell(file);
+    if (size < 0) goto fail;
+    
+    if (o_size) *o_size = size;
+    
+    if (playdate->file->seek(file, 0, SEEK_SET)) goto fail;
+    
+    dat = malloc(size + 1);
+    if (!dat) goto fail;
+    
+    out = dat;
+    while (size > 0)
+    {
+        int read = playdate->file->read(file, out, size);
+        if (read <= 0) goto fail_free_dat;
+        
+        size -= read;
+        out += read;
+    }
+    
+    // ensure terminal 0
+    *out = 0;
+    
+    playdate->file->close(file);
+    return dat;
+    
+fail_free_dat:
+    free(dat);
+    
+fail:
+    playdate->file->close(file);
+    return NULL;
+}
+
+bool pgb_write_entire_file(const char* path, void* data, size_t size)
+{
+    SDFile* file = playdate->file->open(path, kFileWrite);
+    if (!file) return NULL;
+    
+    while (size > 0)
+    {
+        int written = playdate->file->write(file, data, size);
+        if (written <= 0) goto fail;
+        
+        size -= written;
+        data += written;
+    }
+    
+    playdate->file->close(file);
+    return true;
+    
+fail:
+    playdate->file->close(file);
+    return false;
+}

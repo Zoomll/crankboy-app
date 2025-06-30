@@ -38,7 +38,7 @@ static void CB_updatecheck(int code, const char* text, void* ud)
             "in your Playdate's settings."
         );
     }
-    else if (code == 1)
+    else if (code == 2)
     {
         modal_result = aprintf(
             "Update available: %s\n\n(Your version: %s)\n\nPlease download it manually.", text,

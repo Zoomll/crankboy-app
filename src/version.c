@@ -7,6 +7,8 @@
 
 #define ERRMEM -255
 #define STR_ERRMEM "malloc error"
+#define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
+#define UPDATE_LAST_KNOWN_VERSION "check_update_version.txt"
 
 struct CB_UserData {
     update_result_cb cb;
@@ -20,6 +22,9 @@ struct VersionInfo
     char* path;
 };
 static struct VersionInfo* localVersionInfo = NULL;
+
+// previously been alerted to this version update, so dismiss it
+char* ignore_version = NULL;
 
 // returns 0 on success, or
 // returns nonzero failure code
@@ -79,6 +84,11 @@ static int read_local_version(void)
         }
     }
     
+    if (!ignore_version)
+    {
+        ignore_version = pgb_read_entire_file(UPDATE_LAST_KNOWN_VERSION, NULL, kFileReadData);
+    }
+    
     return 1;
 }
 
@@ -130,14 +140,30 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             
             if (jname.type == kJSONString && strlen(jname.data.stringval) > 0)
             {
-                if (strcmp(jname.data.stringval, localVersionInfo->name))
+                // if this matches the last-seen version, we mention that in the callback
+                if (ignore_version && strcmp(jname.data.stringval,ignore_version) == 0)
                 {
-                    // new version available
+                    // new version available, but we already knew about it
                     cbud->cb(1, jname.data.stringval, cbud->ud);
                 }
                 else
                 {
-                    cbud->cb(0, "No update available.", cbud->ud);
+                    // update last-seen version
+                    pgb_write_entire_file(
+                        UPDATE_LAST_KNOWN_VERSION, jname.data.stringval, strlen(jname.data.stringval)
+                    );
+                    if (ignore_version) free(ignore_version);
+                    ignore_version = strdup(jname.data.stringval);
+                    
+                    if (strcmp(jname.data.stringval, localVersionInfo->name))
+                    {
+                        // new version available
+                        cbud->cb(2, jname.data.stringval, cbud->ud);
+                    }
+                    else
+                    {
+                        cbud->cb(0, "No update available.", cbud->ud);
+                    }
                 }
             }
             else
@@ -190,8 +216,6 @@ void check_for_updates(update_result_cb cb, void* ud)
         cbud
     );
 }
-
-#define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
 
 typedef uint32_t timestamp_t;
 

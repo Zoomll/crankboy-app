@@ -79,6 +79,12 @@ void pgb_sort_games_array(PGB_Array* games_array);
 void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color);
 void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 
+// result must be user-free'd. returns NULL on error.
+char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
+
+// returns false on error
+bool pgb_write_entire_file(const char* path, void* data, size_t size);
+
 void* pgb_malloc(size_t size);
 void* pgb_realloc(void* ptr, size_t size);
 void* pgb_calloc(size_t count, size_t size);
