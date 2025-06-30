@@ -11,10 +11,6 @@
 struct CB_UserData {
     update_result_cb cb;
     void* ud;
-    
-    // optional:
-    char* data;
-    size_t data_read;
 };
 
 struct VersionInfo
@@ -64,87 +60,6 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     return 0;
 }
 
-
-void CB_Response(HTTPConnection* connection)
-{
-    struct CB_UserData* cbud = playdate->network->http->getUserdata(connection);
-    
-    if (!cbud)
-    {
-        return;
-    }
-    
-    int response = playdate->network->http->getResponseStatus(connection);
-    if (response != 0 && response != 200)
-    {
-        char* s = aprintf("HTTP status code: %d", response);
-        cbud->cb(-response - 1000, s, cbud->ud);
-        free(s);
-        playdate->network->http->setUserdata(connection, NULL);
-        if (cbud->data) free(cbud->data);
-        free(cbud);
-        return;
-    }
-    
-    // status 200, data arrived
-    
-    size_t available = playdate->network->http->getBytesAvailable(connection);
-    if (available > 0)
-    {
-        cbud->data = realloc(cbud->data, available + cbud->data_read);
-        int read = playdate->network->http->read(
-            connection, cbud->data + cbud->data_read + 1, available
-        );
-        printf("read: %d/%u\n", read, (unsigned)available);
-        cbud->data_read += read;
-        
-        // paranoid terminal zero
-        cbud->data[cbud->data_read] = 0;
-        
-        // only try parsing if a '{' and '}' are in the data
-        if (strrchr(cbud->data, '}') && strchr(cbud->data, '{'))
-        {
-            // try parsing json
-            json_value jv;
-            int result = parse_json_string(strchr(cbud->data, '{'), &jv);
-            
-            // result of 0 means we couldn't parse; there must be more still on the way.
-            // (No need to json_free_data(jv) in this case.)
-            if (result == 0) return;
-            
-            // otherwise, we're done! Validate result:
-            json_value jname = json_get_table_value(jv, "name");
-            
-            if (jname.type == kJSONString && strlen(jname.data.stringval) > 0)
-            {
-                if (strcmp(jname.data.stringval, localVersionInfo->name))
-                {
-                    // new version available
-                    cbud->cb(1, jname.data.stringval, cbud->ud);
-                }
-                else
-                {
-                    cbud->cb(0, "No update available.", cbud->ud);
-                }
-            }
-            else
-            {
-            invalid:
-                cbud->cb(-650, "Invalid version information receieved", cbud->ud);
-            }
-            
-            free_json_data(jv);
-            
-            playdate->network->http->setUserdata(connection, NULL);
-            free(cbud->data);
-            free(cbud);
-            return;
-        }
-        
-        // TODO: cbud->cb error if 100% of data has arrived.
-    }
-}
-
 static int read_local_version(void)
 {
     if (!localVersionInfo)
@@ -179,6 +94,65 @@ const char* get_current_version(void)
     }
 }
 
+static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
+{
+    struct CB_UserData* cbud = ud;
+    
+    if ((flags & HTTP_ENABLE_DENIED))
+    {
+        cbud->cb(
+            (flags & HTTP_ENABLE_ASKED)
+                ? ERR_PERMISSION_ASKED_DENIED
+                : ERR_PERMISSION_DENIED,
+            "Permission denied",
+            cbud->ud
+        );
+    }
+    else if (flags & ~HTTP_ENABLE_ASKED)
+    {
+        cbud->cb(
+            -9000 - flags,
+            "Update failed",
+            cbud->ud
+        );
+    }
+    else
+    {
+        // try parsing json. We have to skip to the first `{` because
+        // the playdate HTTP API seems to put some garbage data (the http status code?) at the beginning.
+        json_value jv;
+        int result = parse_json_string(strchr(data, '{'), &jv);
+
+        if (result != 0)
+        {
+            // otherwise, we're done! Validate result:
+            json_value jname = json_get_table_value(jv, "name");
+            
+            if (jname.type == kJSONString && strlen(jname.data.stringval) > 0)
+            {
+                if (strcmp(jname.data.stringval, localVersionInfo->name))
+                {
+                    // new version available
+                    cbud->cb(1, jname.data.stringval, cbud->ud);
+                }
+                else
+                {
+                    cbud->cb(0, "No update available.", cbud->ud);
+                }
+            }
+            else
+            {
+                cbud->cb(-650, "Invalid version information receieved", cbud->ud);
+            }
+        }
+        else
+        {
+            cbud->cb(-651, "Invalid JSON response", cbud->ud);
+        }
+        free_json_data(jv);
+    }
+    free(ud);
+}
 
 void check_for_updates(update_result_cb cb, void* ud)
 {
@@ -205,10 +179,14 @@ void check_for_updates(update_result_cb cb, void* ud)
     cbud->cb = cb;
     cbud->ud = ud;
     
-    enable_http(
+    #define TIMEOUT_MS (10 * 1000)
+    
+    http_get(
         localVersionInfo->domain,
+        localVersionInfo->path,
         "to check for a version update",
-        CB_Permission,
+        CB_Get,
+        TIMEOUT_MS,
         cbud
     );
 }
@@ -222,7 +200,7 @@ void write_update_timestamp(timestamp_t time)
     SDFile* f = playdate->file->open(UPDATE_CHECK_TIMESTAMP_PATH, kFileWrite);
     
     playdate->file->write(f, &time, sizeof(time));
-    
+        
     playdate->file->close(f);
 }
 

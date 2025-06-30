@@ -10,7 +10,7 @@ char* _domain = NULL;
 char* _reason = NULL;
 
 struct HTTPUD {
-    http_result_cb;
+    http_result_cb cb;
     char* domain;
     char* path;
     char* data;
@@ -20,7 +20,7 @@ struct HTTPUD {
     void* ud;
 };
 
-void http_cleanup(HTTPConnection* connection)
+static void http_cleanup(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     playdate->network->http->setUserdata(connection, NULL);
@@ -32,7 +32,8 @@ void http_cleanup(HTTPConnection* connection)
             // resort to error if cleanup and cb not yet called
             httpud->cb(
                 HTTP_ERROR | httpud->flags,
-                httpud->ud;
+                NULL, 0,
+                httpud->ud
             );
         }
         
@@ -48,28 +49,86 @@ void http_cleanup(HTTPConnection* connection)
     playdate->network->http->close(connection);
 }
 
-void CB_Header(HTTPConnection* connection, const char* key, const char* value)
+static void CB_Header(HTTPConnection* connection, const char* key, const char* value)
 {
     printf("Header received: \"%s\": \"%s\"\n", key, value);
 }
 
-void CB_HeadersRead(HTTPConnection* connection)
+static void CB_HeadersRead(HTTPConnection* connection)
 {
     printf("Headers read\n");
 }
 
-void CB_Closed(HTTPConnection* connection)
+static void CB_Closed(HTTPConnection* connection)
 {
     http_cleanup(connection);
 }
 
-void CB_RequestComplete(HTTPConnection* connection)
+// reads available data, or if status is not 200 then
+// reports an error
+static void readAllData(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+    
+    int response = playdate->network->http->getResponseStatus(connection);
+    if (response != 0 && response != 200)
+    {
+        httpud->cb(HTTP_NON_SUCCESS_STATUS | httpud->flags, NULL, 0, httpud->ud);
+        httpud->cb = NULL;
+        http_cleanup(connection);
+        return;
+    }
+    
+    size_t available;
+    while ((available = playdate->network->http->getBytesAvailable(connection)))
+    {
+        httpud->data = realloc(httpud->data, httpud->data_len + available + 1);
+        if (httpud->data == NULL)
+        {
+            httpud->cb(HTTP_MEM_ERROR | httpud->flags, NULL, 0, httpud->ud);
+            httpud->cb = NULL;
+            http_cleanup(connection);
+            return;
+        }
+        int read = playdate->network->http->read(
+            connection, httpud->data + httpud->data_len, available
+        );
+        
+        if (read <= 0)
+        {
+            httpud->cb(HTTP_ERROR | httpud->flags, NULL, 0, httpud->ud);
+            httpud->cb = NULL;
+            http_cleanup(connection);
+        }
+        
+        httpud->data_len += read;
+        
+        // ensure null-terminator
+        httpud->data[httpud->data_len] = 0;
+    }
+}
+
+static void CB_RequestComplete(HTTPConnection* connection)
+{
+    readAllData(connection);
+    
+    struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+    
+    if (httpud->cb && httpud->data_len && httpud->data)
+    {
+        httpud->cb(
+            httpud->flags,
+            httpud->data,
+            httpud->data_len,
+            httpud->ud
+        );
+        httpud->cb = NULL;
+    }
+    
     http_cleanup(connection);
 }
 
-void CB_Permission(unsigned flags, void* ud)
+static void CB_Permission(unsigned flags, void* ud)
 {
     struct HTTPUD* httpud = ud;
     
@@ -99,7 +158,7 @@ void CB_Permission(unsigned flags, void* ud)
         playdate->network->http->setConnectionClosedCallback(
             connection, CB_Closed
         );
-        playdate->network->http->setResponseCallback(connection, CB_Response);
+        playdate->network->http->setResponseCallback(connection, readAllData);
         playdate->network->http->setRequestCompleteCallback(connection, CB_RequestComplete);
         
         PDNetErr err = playdate->network->http->get(connection, httpud->path, NULL, 0);
@@ -114,16 +173,19 @@ void CB_Permission(unsigned flags, void* ud)
         return;
         
     release_and_fail:
-        httpud->cb(flags, httpud->ud);
+        httpud->cb(flags, NULL, 0, httpud->ud);
         httpud->cb = NULL;
         http_cleanup(connection);
     }
     else
     {
     fail:
-        httpud->cb(flags, httpud->ud);
+        httpud->cb(flags, NULL, 0, httpud->ud);
         httpud->cb = NULL;
-        http_cleanup(connection);
+        if (httpud->data) free(httpud->data);
+        free(httpud->domain);
+        free(httpud->path);
+        free(httpud);
     }
 }
 
@@ -135,10 +197,10 @@ void http_get(
     int timeout,
     void* ud
 ) {
-    struct HTTPUD* httpud = malloc(sizeof(HTTPUD));
+    struct HTTPUD* httpud = malloc(sizeof(struct HTTPUD));
     if (!httpud)
     {
-        cb(HTTP_MEM_ERROR, ud);
+        cb(HTTP_MEM_ERROR, NULL, 0, ud);
         return;
     }
     

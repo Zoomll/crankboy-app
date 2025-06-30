@@ -1,4 +1,6 @@
-s#pragma once
+#pragma once
+
+#include <stdio.h>
 
 #define USE_SSL true
 
@@ -8,6 +10,7 @@ s#pragma once
 #define HTTP_ERROR 8
 #define HTTP_MEM_ERROR 16
 #define HTTP_TIMEOUT 32
+#define HTTP_NON_SUCCESS_STATUS 64
 
 typedef void (*enable_cb_t)(unsigned flags, void* ud);
 
@@ -19,7 +22,6 @@ void enable_http(
     void* ud
 );
 
-// if no error indicated by flags,
 typedef void (*http_result_cb)(
     unsigned flags,
     char* data,
