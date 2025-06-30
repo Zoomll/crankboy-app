@@ -8,6 +8,7 @@ PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 // display
 PREF(frame_skip, true)
 PREF(dither_pattern, 0)
+PREF(dither_line, 2)
 PREF(dither_stable, 0)
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)
 PREF(dynamic_level, 5)
