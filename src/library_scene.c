@@ -30,7 +30,7 @@ static void CB_updatecheck(int code, const char* text, void* ud)
     printf("UPDATE RESULT %d: %s\n", code, text);
 
     char* modal_result = NULL;
-    
+
     if (code == ERR_PERMISSION_ASKED_DENIED)
     {
         modal_result = aprintf(
@@ -490,15 +490,17 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             static const char* message1 = "To add games:";
 
             static const char* message2_num = "1.";
-            static const char* message2_text = "Connect to a computer";
+            static const char* message2_text = "Connect to a computer via USB";
 
             static const char* message3_num = "2.";
-            static const char* message3_text1 = "Then hold ";
+            static const char* message3_text1 = "For about 10s, hold ";
             static const char* message3_text2 = "LEFT + MENU + POWER";
 
             static const char* message4_num = "3.";
             static const char* message4_text1 = "Copy games to ";
             static const char* message4_text2 = "Data/*.crankboy/games";
+
+            static const char* message5_text = "(Filenames must end with .gb or .gbc)";
 
             playdate->graphics->clear(kColorWhite);
 
@@ -546,13 +548,16 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             int containerHeight = titleHeight + titleToMessageSpacing + messageHeight +
                                   messageLineSpacing + messageHeight + messageLineSpacing +
-                                  compositeLineHeight + messageLineSpacing + compositeLineHeight;
+                                  compositeLineHeight + messageLineSpacing + compositeLineHeight +
+                                  messageLineSpacing + messageHeight;
+
             int titleY = (playdate->display->getHeight() - containerHeight) / 2;
 
             int message1_Y = titleY + titleHeight + titleToMessageSpacing;
             int message2_Y = message1_Y + messageHeight + messageLineSpacing;
             int message3_Y = message2_Y + messageHeight + messageLineSpacing;
             int message4_Y = message3_Y + compositeLineHeight + messageLineSpacing;
+            int message5_Y = message4_Y + compositeLineHeight + messageLineSpacing;
 
             playdate->graphics->setFont(PGB_App->titleFont);
             playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
@@ -598,6 +603,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->drawText(
                 message4_text2, strlen(message4_text2), kUTF8Encoding,
                 textColX + message4_text1_width + textPartSpacing, message4_Y + verticalOffset
+            );
+
+            playdate->graphics->setFont(PGB_App->bodyFont);
+            playdate->graphics->drawText(
+                message5_text, strlen(message5_text), kUTF8Encoding, textColX, message5_Y
             );
         }
     }
