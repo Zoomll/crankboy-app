@@ -15,27 +15,13 @@
 typedef void (*enable_cb_t)(unsigned flags, void* ud);
 
 // attempts to enable HTTP, then invokes the given callback
-void enable_http(
-    const char* domain,
-    const char* reason,
-    enable_cb_t cb,
-    void* ud
-);
+void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* ud);
 
-typedef void (*http_result_cb)(
-    unsigned flags,
-    char* data,
-    size_t data_len,
-    void* ud
-);
+typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void* ud);
 
 // performs an HTTP request, then invokes the callback.
 // automatically does enable_http as part of this.
 void http_get(
-    const char* domain,
-    const char* path,
-    const char* reason,
-    http_result_cb cb,
-    int timeout_ms,
+    const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
     void* ud
 );

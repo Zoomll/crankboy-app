@@ -1609,9 +1609,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         // Determine if drawing is actually needed based on changes or
         // forced display
         bool actual_gb_draw_needed = true;
-        
+
         unsigned scale_line_index = preferences_dither_line;
-        
+
         if (preferences_dither_stable)
         {
             int y_offset = context->gb->gb_reg.SCY;

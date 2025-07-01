@@ -181,7 +181,7 @@ PGB_Modal* PGB_Modal_new(
 {
     PGB_Modal* modal = pgb_malloc(sizeof(PGB_Modal));
     memset(modal, 0, sizeof(*modal));
-    
+
     modal->width = 250;
     modal->height = 120;
 

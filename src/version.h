@@ -9,9 +9,7 @@
 // 0: success (but it's the same as our current version)
 // 1: success (but it's a version we were already aware of from a previous check)
 // 2: success (and we didn't know about this version before)
-typedef void (*update_result_cb)(
-    int code, const char* text, void* ud
-);
+typedef void (*update_result_cb)(int code, const char* text, void* ud);
 
 void check_for_updates(update_result_cb cb, void* ud);
 

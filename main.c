@@ -54,7 +54,7 @@ __section__(".text.main") DllExport
         pd_revcheck();
         playdate = pd;
         playdate->system->logToConsole("Device: %s", pd_rev_description);
-        
+
         srand(time(NULL));
 
 #ifdef TARGET_PLAYDATE
@@ -110,11 +110,11 @@ int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 // very short entrypoint function that pre-empts the eventHandlerShim.
 // This must be located at exactly the segment start, so that it aligns with the
 // entrypoint in the bootstrapper
-__attribute__((section(".entry")))
-__attribute__((naked))
-void _entrypoint_(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
+__attribute__((section(".entry"))) __attribute__((naked)) void _entrypoint_(
+    PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg
+)
 {
-    asm volatile (
+    asm volatile(
         "ldr r3, =eventHandlerShim\n\t"
         "bx r3\n\t"
     );

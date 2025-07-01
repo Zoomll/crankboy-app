@@ -241,13 +241,14 @@ ret_null:
 int read_string(const char** text, uint8_t* out, int bufsize)
 {
     int maxlen = strnlen(*text, bufsize);
-    if (maxlen == 0) return 0;
+    if (maxlen == 0)
+        return 0;
     memcpy(out, *text, maxlen);
     *text += maxlen;
     return maxlen;
 }
 
-__section__(".rare") int parse_json_string(const char *text, json_value *out)
+__section__(".rare") int parse_json_string(const char* text, json_value* out)
 {
     if (!out)
         return 0;
@@ -263,13 +264,11 @@ __section__(".rare") int parse_json_string(const char *text, json_value *out)
         .didDecodeSublist = SI_didDecodeSublist,
         .userdata = NULL,
         .returnString = 0,
-        .path = NULL};
+        .path = NULL
+    };
 
     // (gets binary data for json file)
-    json_reader reader = {
-        .read = (int (*)(void *, uint8_t *, int))read_string,
-        .userdata = &text
-    };
+    json_reader reader = {.read = (int (*)(void*, uint8_t*, int))read_string, .userdata = &text};
 
     int ok = playdate->json->decode(&decoder, reader, out);
 
