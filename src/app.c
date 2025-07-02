@@ -11,16 +11,24 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "dtcm.h"
 #include "game_scene.h"
+#include "image_conversion_scene.h"
 #include "library_scene.h"
 #include "preferences.h"
 #include "userstack.h"
-#include "image_conversion_scene.h"
 
 PGB_Application* PGB_App;
 
 #if defined(TARGET_SIMULATOR)
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
+static void checkForPngCallback(const char* filename, void* userdata)
+{
+    if (filename_has_stbi_extension(filename))
+    {
+        *(bool*)userdata = true;
+    }
+}
 
 void PGB_init(void)
 {
@@ -91,20 +99,11 @@ void PGB_init(void)
 
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
-    
+
     // check if any PNGs are in the covers/ folder
     bool png_found = false;
-    playdate->file->listfiles(
-        PGB_coversPath,
-        LAMBDA(void, (const char* fname, void* ud), ({
-            if (filename_has_stbi_extension(fname))
-            {
-                *(bool*)ud = true;
-            }
-        })),
-        &png_found, true
-    );
-    
+    playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, true);
+
     if (png_found)
     {
         PGB_ImageConversionScene* imageConversionScene = PGB_ImageConversionScene_new();
