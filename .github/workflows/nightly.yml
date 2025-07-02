@@ -55,7 +55,7 @@ jobs:
 
             # Step 5: Build the Project
             - name: Build Project
-              run: make
+              run: make device
 
             # Step 6: Get Artifact Name
             - name: Get Artifact Name
