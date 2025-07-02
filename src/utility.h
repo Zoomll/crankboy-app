@@ -138,7 +138,8 @@ void pgb_play_ui_sound(PGB_UISound sound);
 #define PGB_ASSERT(x)
 #endif
 
-// compute the next highest power of 2 of 32-bit v
+// compute the next highest power of 2 of 32-bit v,
+// or v if v is a power of 2
 // https://stackoverflow.com/a/466242
 static inline unsigned next_pow2(unsigned v)
 {
@@ -151,7 +152,7 @@ static inline unsigned next_pow2(unsigned v)
     return ++v;
 }
 
-#define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ^_RESULT_TYPE_ _fn_ _ARGS_ _BODY_
+#define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ({_RESULT_TYPE_ _fn_ _ARGS_ {_BODY_;}; _fn_; })
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -177,5 +178,10 @@ static inline unsigned next_pow2(unsigned v)
 
 #define STRINGIFY_(x) #x
 #define STRINGIFY(x) STRINGIFY_(x)
+
+bool startswith(const char *str, const char *prefix);
+bool startswithi(const char *str, const char *prefix);
+bool endswith(const char *str, const char *suffix);
+bool endswithi(const char *str, const char *suffix);
 
 #endif /* utility_h */

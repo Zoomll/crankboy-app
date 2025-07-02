@@ -28,6 +28,7 @@ VPATH += peanut_gb
 VPATH += minigb_apu
 
 # List C source files here
+SRC += src/image_conversion_scene.c
 SRC += src/http.c
 SRC += src/version.c
 SRC += src/credits_scene.c

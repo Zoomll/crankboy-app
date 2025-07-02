@@ -304,7 +304,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 if (selectedGame->coverPath != NULL)
                 {
                     PGB_App->coverArtCache.art =
-                        pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, 240, 240);
+                        pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
                     PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
                 }
             }

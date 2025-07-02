@@ -14,6 +14,7 @@
 #include "library_scene.h"
 #include "preferences.h"
 #include "userstack.h"
+#include "image_conversion_scene.h"
 
 PGB_Application* PGB_App;
 
@@ -90,9 +91,30 @@ void PGB_init(void)
 
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
-
-    PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
-    PGB_present(libraryScene->scene);
+    
+    // check if any PNGs are in the covers/ folder
+    bool png_found = false;
+    playdate->file->listfiles(
+        PGB_coversPath,
+        LAMBDA(void, (const char* fname, void* ud), ({
+            if (filename_has_stbi_extension(fname))
+            {
+                *(bool*)ud = true;
+            }
+        })),
+        &png_found, true
+    );
+    
+    if (png_found)
+    {
+        PGB_ImageConversionScene* imageConversionScene = PGB_ImageConversionScene_new();
+        PGB_present(imageConversionScene->scene);
+    }
+    else
+    {
+        PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
+        PGB_present(libraryScene->scene);
+    }
 }
 
 __section__(".rare") static void switchToPendingScene(void)

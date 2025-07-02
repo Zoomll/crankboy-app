@@ -145,4 +145,7 @@ void itcm_core_init(void);
 // how far one has to turn the crank before getting to the next menu item
 #define CRANK_MENU_DELTA_BINANGLE 0x2800
 
+#define THUMBNAIL_WIDTH 240
+#define THUMBNAIL_HEIGHT 240
+
 #endif /* app_h */
