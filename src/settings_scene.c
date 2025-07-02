@@ -672,6 +672,18 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 3,
         .on_press = NULL
     };
+    
+    // BIOS
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Boot Sequence",
+        .values = off_on_labels,
+        .description =
+            "Enables \"Boot ROM\" on\ngame start.\n \n\"dmg_boot.bin\" must\nbe present."
+        ,
+        .pref_var = &preferences_bios,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     // joypad_interrupts
     entries[++i] = (OptionsMenuEntry){

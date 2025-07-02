@@ -18,6 +18,7 @@ PREF(transparency, 0)
 PREF(crank_mode, CRANK_MODE_START_SELECT)
 PREF(joypad_interrupts, 0)
 PREF(overclock, 0)
+PREF(bios, true)
 PREF(lua_support, false)
 
 // misc

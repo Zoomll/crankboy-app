@@ -332,12 +332,14 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
         );
 
-        if (PGB_App->bootRomData)
+        if (PGB_App->bootRomData && preferences_bios)
         {
             gb_init_boot_rom(context->gb, PGB_App->bootRomData);
         }
 
         gb_reset(context->gb);
+        
+        printf("Interrupts detected: Joypad=%d\n", context->gb->joypad_interrupt);
 
         if (gb_ret == GB_INIT_NO_ERROR)
         {
@@ -1297,7 +1299,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     }
 #endif
 
-    context->gb->direct.joypad_interrupts = preferences_joypad_interrupts;
+    context->gb->direct.joypad_interrupts = preferences_joypad_interrupts && context->gb->joypad_interrupt;
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;

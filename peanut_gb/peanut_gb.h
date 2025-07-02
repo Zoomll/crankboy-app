@@ -33,8 +33,9 @@
 #define PEANUT_GB_H
 
 #include "../minigb_apu/minigb_apu.h"
-#include "../src/app.h"
-#include "../src/utility.h"
+#include "app.h"
+#include "utility.h"
+#include "preferences.h"
 #include "version.all" /* Version information */
 
 #include <stddef.h> /* Required for offsetof */
@@ -447,6 +448,7 @@ struct gb_s
     // state flags for cart ram
     uint8_t enable_cart_ram : 1;
     uint8_t cart_mode_select : 1;  // 1 if ram mode
+    uint8_t joypad_interrupt : 1;
 
     uint8_t overclock : 2;
 
@@ -644,10 +646,40 @@ struct gb_s
 };
 
 #ifdef PGB_IMPL
+__section__(".rare") bool gb_detect_interrupt(struct gb_s* gb, unsigned addr)
+{
+    const uint8_t* rom = gb->gb_rom;
+    
+    // RETI
+    if (rom[addr] == 0xD9) return false;
+    
+    // RET
+    if (rom[addr] == 0xC9) return false;
+    
+    // EI; RET
+    if (rom[addr] == 0xFB && rom[addr+1] == 0xC9) return false;
+    
+    // nops (technically not safe)
+    // if (rom[addr] == 0 && rom[addr+1] == 0 && rom[addr + 2] == 0 && rom[addr+3] == 0 && rom[addr+4] == 0) return false;
+    
+    // RST 38 to RST 38
+    if (rom[addr] == 0xFF && rom[0x38] == 0xFF) return false;
+    
+    return true;
+}
+
+__section__(".rare") void gb_detect_interrupts(struct gb_s* gb)
+{
+    gb->joypad_interrupt = gb_detect_interrupt(gb, 0x60);
+    //gb->timer_interrupt = gb_detect_interrupt(gb, 0x50);
+    //gb->serial_interrupt = gb_detect_interrupt(gb, 0x58);
+}
+
 __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
 {
     gb->gb_boot_rom = boot_rom;
     memcpy(gb->gb_rom, boot_rom, 0x100);
+    gb_detect_interrupts(gb);
 }
 
 /**
@@ -851,6 +883,7 @@ __section__(".rare.pgb") static void __gb_rare_write(
             {
                 gb->gb_bios_enable = 0;
                 memcpy(gb->gb_rom, gb_original_rom, sizeof(gb_original_rom));
+                gb_detect_interrupts(gb);
             }
             return;
 
@@ -1702,77 +1735,43 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         /* Joypad */
         case 0x00:
         {
+            /* We need the P1 state before the game writes to it to detect a falling edge. */
+            uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
+
+            /* The game writes to bits 4 & 5 to select an input group. */
+            gb->gb_reg.P1 = val & 0x30;
+
+            /* Start with all input lines high (unpressed). */
+            uint8_t new_input_state = 0x0F;
+
+            /* If Direction keys are selected (bit 4 is low), read their state. */
+            if ((gb->gb_reg.P1 & 0x10) == 0)
+            {
+                new_input_state &= (gb->direct.joypad >> 4);
+            }
+
+            /* If Button keys are selected (bit 5 is low), read their state. */
+            if ((gb->gb_reg.P1 & 0x20) == 0)
+            {
+                new_input_state &= (gb->direct.joypad & 0x0F);
+            }
+
             if (gb->direct.joypad_interrupts)
             {
-                /****************************************************************
-                 * ACCURACY MODE: Correctly handles interrupts on button press.
-                 * Crucial for games that use HALT to wait for input.
-                 ****************************************************************/
-
-                /* We need the P1 state before the game writes to it to detect a falling edge. */
-                uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
-
-                /* The game writes to bits 4 & 5 to select an input group. */
-                gb->gb_reg.P1 = val & 0x30;
-
-                /* Start with all input lines high (unpressed). */
-                uint8_t new_input_state = 0x0F;
-
-                /* If Direction keys are selected (bit 4 is low), read their state. */
-                if ((gb->gb_reg.P1 & 0x10) == 0)
-                {
-                    new_input_state &= (gb->direct.joypad >> 4);
-                }
-
-                /* If Button keys are selected (bit 5 is low), read their state. */
-                if ((gb->gb_reg.P1 & 0x20) == 0)
-                {
-                    new_input_state &= (gb->direct.joypad & 0x0F);
-                }
-
                 /*
-                 * An interrupt is triggered if any input line transitions from high (1) to low (0).
-                 * We find these lines by seeing which bits were 1 in the old state
-                 * AND are now 0 in the new state (which is represented by ~new_input_state).
-                 */
+                * An interrupt is triggered if any input line transitions from high (1) to low (0).
+                * We find these lines by seeing which bits were 1 in the old state
+                * AND are now 0 in the new state (which is represented by ~new_input_state).
+                */
                 if (old_input_state & (~new_input_state))
                 {
                     gb->gb_reg.IF |= CONTROL_INTR; /* Request a Joypad interrupt */
                 }
-
-                /* Combine the selection bits with the new input state. The upper 2 bits are unused
-                   and read high. */
-                gb->gb_reg.P1 |= new_input_state | 0xC0;
             }
-            else
-            {
-                /****************************************************************
-                 * PERFORMANCE MODE: Faster, but will fail in games that
-                 * rely on joypad interrupts to wake the CPU from HALT.
-                 ****************************************************************/
 
-                /* The game writes to bits 4 & 5 to select an input group. */
-                gb->gb_reg.P1 = val & 0x30;
-
-                /* Start with all input lines high (unpressed). */
-                uint8_t input_state = 0x0F;
-
-                /* If Direction keys are selected (bit 4 is low), read their state. */
-                if ((gb->gb_reg.P1 & 0x10) == 0)
-                {
-                    input_state &= (gb->direct.joypad >> 4);
-                }
-
-                /* If Button keys are selected (bit 5 is low), read their state. */
-                if ((gb->gb_reg.P1 & 0x20) == 0)
-                {
-                    input_state &= (gb->direct.joypad & 0x0F);
-                }
-
-                /* Combine the selection bits with the input state. The upper 2 bits are unused and
-                   read high. */
-                gb->gb_reg.P1 |= input_state | 0xC0;
-            }
+            /* Combine the selection bits with the new input state. The upper 2 bits are unused
+                and read high. */
+            gb->gb_reg.P1 |= new_input_state | 0xC0;
 
             return;
         }
@@ -6030,6 +6029,8 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     {
         memcpy(gb->gb_rom, gb_original_rom, 0x100);
     }
+    
+    gb_detect_interrupts(gb);
 
     return NULL;
 }
@@ -6121,7 +6122,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
 
-    if (gb->gb_boot_rom)
+    if (gb->gb_boot_rom && preferences_bios)
     {
         /* With a boot ROM, we start from 0x0000 and enable the BIOS flag. */
         gb->gb_bios_enable = 1;
@@ -6295,6 +6296,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
+    
+    gb_detect_interrupts(gb);
 
     return GB_INIT_NO_ERROR;
 }
