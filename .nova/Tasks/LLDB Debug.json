@@ -30,7 +30,7 @@
     "launchArgs" : [
       "CrankBoy.pdx"
     ],
-    "launchPath" : "..\/PlaydateSDK\/bin\/Playdate Simulator.app",
+    "launchPath" : "~\/Developer\/PlaydateSDK\/bin\/Playdate Simulator.app",
     "stopAtEntry" : false
   },
   "openLogOnRun" : "fail"
