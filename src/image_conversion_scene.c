@@ -90,7 +90,7 @@ bool errdiff_dither(
             }
             
             fw_t g = gray / GRAYDIV;
-            fw_t e = error[err_row_idx[0] * err_stride + x] / mdiv;
+            fw_t e = error[err_row_idx[0] * out_width + x] / mdiv;
             fw_t ediff;
             if (g + e > FW_HALF)
             {
@@ -111,7 +111,7 @@ bool errdiff_dither(
                     if (j + x - mx >= 0 && j + x - mx < out_width)
                     {
                         int c = matrix[i * mh + j];
-                        error[err_row_idx[i]*err_stride + j + x - mx] += c*ediff;
+                        error[err_row_idx[i]*out_width + j + x - mx] += c*ediff;
                     }
                 }
             }
@@ -342,6 +342,8 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             
             free(msg);
         }
+        
+        playdate->graphics->display();
         
         bool result = process_png(full_fname);
         free(full_fname);
