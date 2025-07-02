@@ -113,5 +113,10 @@
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/version.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/version.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lua-5.4.7 src/version.c -o build/src/version.o",
         "directory": "${workspaceFolder}",
         "file": "src/version.c"
+    },
+    {
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/image_conversion_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/image_conversion_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lua-5.4.7 src/image_conversion_scene.c -o build/src/image_conversion_scene.o",
+        "directory": "${workspaceFolder}",
+        "file": "src/image_conversion_scene.c"
     }
 ]
