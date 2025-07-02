@@ -33,12 +33,12 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
   or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
 - Copy the pdx through the [Web sideload](https://play.date/account/sideload/) or USB.
 - Launch the app.
-- Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home
-  screen. Or go to `Settings > System > Reboot to Data Disk`.
-- Place the ROMs in the app data folder, the folder name depends on the sideload method.
+- Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
+- Place the ROMs in the app data folder; the folder name depends on the sideload method.
     - For Web sideload: `/Data/user.*.app.crankboyhq.crankboy/games/`
     - For USB: `/Data/app.crankboyhq.crankboy/games/`
-- Filenames must end with `.gb` or `.gbc`
+- ROM filenames must end with `.gb` or `.gbc`
+- Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, or `.bmp`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
 ## Contributions
 
