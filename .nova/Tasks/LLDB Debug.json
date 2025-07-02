@@ -1,4 +1,25 @@
 {
+  "actions" : {
+    "build" : {
+      "postActions" : [
+        {
+          "action" : "build",
+          "taskName" : "Playdate Simulator",
+          "type" : "runTask"
+        }
+      ]
+    },
+    "clean" : {
+      "postActions" : [
+        {
+          "action" : "clean",
+          "taskName" : "Playdate Simulator",
+          "type" : "runTask"
+        }
+      ]
+    }
+  },
+  "buildBeforeRunning" : true,
   "extension" : {
     "identifier" : "panic.Icarus",
     "name" : "Icarus"
@@ -6,7 +27,11 @@
   "extensionTemplate" : "lldbDebug",
   "extensionValues" : {
     "cwd" : ".",
-    "launchPath" : "..\/PlaydateSDK\/bin\/Playdate Simulator.app"
+    "launchArgs" : [
+      "CrankBoy.pdx"
+    ],
+    "launchPath" : "..\/PlaydateSDK\/bin\/Playdate Simulator.app",
+    "stopAtEntry" : false
   },
   "openLogOnRun" : "fail"
 }

@@ -1,14 +1,4 @@
 {
-  "actions" : {
-    "build" : {
-      "preActions" : [
-        {
-          "script" : "make clean",
-          "type" : "runScript"
-        }
-      ]
-    }
-  },
   "extension" : {
     "identifier" : "com.panic.Playdate",
     "name" : "Playdate"
