@@ -2,12 +2,16 @@
 
 #include "app.h"
 #include "jparse.h"
+#include "version.h"
 
 #include <stdlib.h>
 #include <time.h>
 
 // pixels per second
 #define AUTO_SCROLL_RATE 20.3f
+
+// how long to wait before starting to scroll
+#define INITIAL_WAIT 0.8f
 
 // pixels per degree
 #define CRANK_RATE 1.1f
@@ -185,19 +189,47 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
                 }
             }
         }
+        
+        json_value logo = json_get_table_value(entry, "logo");
+        if (logo.type == kJSONTrue)
+        {
+            playdate->graphics->setFont(PGB_App->labelFont);
+            const char* version = get_current_version();
+            
+            if (version)
+            {
+                playdate->graphics->drawTextInRect(
+                    version, strlen(version), kUTF8Encoding, margin + creditsScene->scroll * 8, margin,
+                    width, 100, kWrapWord, kAlignTextRight
+                );
+            }
+            
+            if(creditsScene->logo)
+            {
+                int lwidth, lheight;
+                playdate->graphics->getBitmapData(creditsScene->logo, &lwidth, &lheight, NULL, NULL, NULL);
+                playdate->graphics->drawBitmap(creditsScene->logo, (width - lwidth)/2, y, kBitmapUnflipped);
+                ADVANCE(i, lheight + 24);
+            }
+        }
 
         if (i + 1 != carray->n)
             ADVANCE(i, space_after_each);
     }
 
     int credits_height = y + FOOTER_SPACE + creditsScene->scroll;
+    
+    creditsScene->initial_wait += dt;
 
     if (playdate->system->isCrankDocked())
     {
-        creditsScene->time += dt * 0.5f;
-        creditsScene->scroll +=
-            AUTO_SCROLL_RATE * dt * (creditsScene->time > 1 ? 1 : creditsScene->time);
-        creditsScene->time += dt * 0.5f;
+        if (creditsScene->initial_wait > INITIAL_WAIT)
+        {
+            creditsScene->time += dt * 0.5f;
+            creditsScene->scroll +=
+                AUTO_SCROLL_RATE * dt * (creditsScene->time > 1 ? 1 : creditsScene->time);
+            creditsScene->time += dt * 0.5f;
+        }
     }
     else
     {
@@ -231,6 +263,8 @@ static void PGB_CreditsScene_free(void* object)
     PGB_CreditsScene* creditsScene = object;
     PGB_Scene_free(creditsScene->scene);
     free_json_data(creditsScene->jcred);
+    if (creditsScene->logo) playdate->graphics->freeBitmap(creditsScene->logo);
+    free(creditsScene);
 }
 
 PGB_CreditsScene* PGB_CreditsScene_new(void)
@@ -256,6 +290,7 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     scene->menu = PGB_CreditsScene_menu;
 
     creditsScene->scene = scene;
+    creditsScene->logo = playdate->graphics->loadBitmap("images/logo", NULL);
 
     json_value j;
     int result = parse_json("./credits.json", &j, kFileRead);

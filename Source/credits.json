@@ -1,6 +1,9 @@
 [
     {
-        "section": "CrankBoy, Primary Coding",
+        "logo": true
+    },
+    {
+        "section": "Primary Coding",
         "contributors": ["NaOH (Sodium Hydroxide)", "stonerl"]
     },
     {
