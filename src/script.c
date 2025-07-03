@@ -17,6 +17,7 @@
 #include "game_scene.h"
 #include "jparse.h"
 #include "script.h"
+#include "userstack.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -487,11 +488,6 @@ static void set_package_path_l(lua_State* L)
     lua_pop(L, 1);
 }
 
-typedef struct ScriptInfo
-{
-    char* script_path;
-} ScriptInfo;
-
 __section__(".rare") void script_info_free(ScriptInfo* info)
 {
     if (!info)
@@ -532,9 +528,11 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 
         json_value jname = json_get_table_value(item, "name");
         json_value jscript = json_get_table_value(item, "script");
+        json_value jinfo = json_get_table_value(item, "info");
 
         const char* name = (jname.type == kJSONString) ? jname.data.stringval : NULL;
         const char* script_path = (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
+        const char* script_info = (jinfo.type == kJSONString) ? jinfo.data.stringval : NULL;
 
         if (script_path)
         {
@@ -548,7 +546,11 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         if (name && script_path && strcmp(name, game_name) == 0)
         {
             ScriptInfo* info = malloc(sizeof(ScriptInfo));
+            memset(info, 0, sizeof(ScriptInfo));
             info->script_path = strdup(script_path);
+            info->info = script_info ? strdup(strltrim(script_info)) : NULL;
+            strncpy(info->rom_name, game_name, 16);
+            info->rom_name[16] = 0; // paranoia
             free_json_data(v);
             return info;
         }
@@ -673,6 +675,47 @@ __section__(".rare") void script_on_breakpoint(lua_State* L, int index)
     }
 
     lua_settop(L, top);
+}
+
+const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
+
+ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
+{
+    // first, open the ROM to read the game name
+    size_t len;
+    SDFile* file = playdate->file->open(game_path, kFileReadData);
+    if (!file) return NULL;
+    
+    uint8_t buff[0x200];
+    
+    int read = playdate->file->read(file, buff, sizeof(buff));
+    playdate->file->close(file);
+    if (read != sizeof(buff))
+    {
+        return NULL;
+    }
+    
+    char title[17];
+    gb_get_rom_name(buff, title);
+    
+    ScriptInfo* info = get_script_info(title);
+    
+    return info;
+}
+
+ScriptInfo* script_get_info_by_rom_path(const char* game_path)
+{
+    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
+}
+
+bool script_exists(const char* game_path)
+{
+    ScriptInfo* info = script_get_info_by_rom_path(game_path);
+
+    if (!info) return false;
+    
+    script_info_free(info);
+    return true;
 }
 
 #endif

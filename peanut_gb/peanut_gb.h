@@ -6314,7 +6314,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
  * \param title_str Allocated string at least 16 characters.
  * \returns         Pointer to start of string, null terminated.
  */
-const char* gb_get_rom_name(struct gb_s* gb, char* title_str)
+const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
 {
     uint_fast16_t title_loc = 0x134;
     /* End of title may be 0x13E for newer games. */
@@ -6323,7 +6323,7 @@ const char* gb_get_rom_name(struct gb_s* gb, char* title_str)
 
     for (; title_loc <= title_end; title_loc++)
     {
-        const char title_char = gb->gb_rom[title_loc];
+        const char title_char = gb_rom[title_loc];
 
         if (title_char >= ' ' && title_char <= '_')
         {

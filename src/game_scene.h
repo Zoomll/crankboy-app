@@ -154,4 +154,7 @@ void PGB_GameScene_didSelectLibrary(void* userdata);
 unsigned get_save_state_timestamp(PGB_GameScene *gameScene, unsigned slot);
 bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out);
 
+struct PGB_Game;
+void show_game_script_info(struct PGB_Game* game);
+
 #endif /* game_scene_h */

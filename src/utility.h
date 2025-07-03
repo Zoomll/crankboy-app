@@ -72,6 +72,13 @@ char* pgb_extract_fs_error_code(const char* filename);
 
 float pgb_easeInOutQuad(float x);
 
+int pgb_listfiles(
+    const char* path, void (*callback)(const char* filename, void* userdata), void* userdata,
+    int showhidden, FileOptions fopts
+);
+
+int pgb_file_exists(const char* path, FileOptions fopts);
+
 int pgb_compare_games_by_display_name(const void* a, const void* b);
 
 void pgb_sanitize_string_for_filename(char* str);
@@ -99,6 +106,8 @@ char* pgb_find_cover_art_path(
     const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
 );
 
+char* pgb_game_config_path(const char* rom_filename);
+
 // allocate-print-to-string
 char* aprintf(const char* fmt, ...);
 
@@ -113,6 +122,9 @@ void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result);
 void pgb_clear_global_cover_cache(void);
 
 void pgb_play_ui_sound(PGB_UISound sound);
+
+
+char *strltrim(const char *str);
 
 #ifdef TARGET_PLAYDATE
 #define __section__(x) __attribute__((section(x)))

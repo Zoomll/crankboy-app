@@ -26,7 +26,7 @@ typedef struct
     PGB_LibrarySceneTab tab;
 } PGB_LibrarySceneModel;
 
-typedef struct
+typedef struct PGB_Game
 {
     char* filename;
     char* fullpath;

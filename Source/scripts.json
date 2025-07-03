@@ -1,19 +1,23 @@
 [
     {
         "name": "POKEMON RED",
-        "script": "scripts/pokemon_gen1.l"
+        "script": "scripts/pokemon_gen1.l",
+        "info": "- Menu opens/closes by docking/undocking crank.\n- Most menus are crank-navigable."
     },
     {
         "name": "POKEMON BLUE",
-        "script": "scripts/pokemon_gen1.l"
+        "script": "scripts/pokemon_gen1.l",
+        "info": "- Menu opens/closes by docking/undocking crank.\n- Most menus are crank-navigable."
     },
     {
         "name": "POKEMON YELLOW",
-        "script": "scripts/pokemon_gen1.l"
+        "script": "scripts/pokemon_gen1.l",
+        "info": "- Menu opens/closes by docking/undocking crank.\n- Most menus are crank-navigable."
     },
     {
         "name": "KIRBY DREAM LAND",
         "script": "scripts/kirby_dreamland.l",
-        "enabled": true
+        "enabled": true,
+        "info": "(Experimental)\n\n- Use the crank to flap!\n- Start and Select buttons are no longer required anywhere."
     }
 ]

@@ -788,3 +788,62 @@ bool endswithi(const char* str, const char* suffix)
 
     return strncasecmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
 }
+
+int pgb_file_exists(const char* path, FileOptions fopts)
+{
+    SDFile* file = playdate->file->open(path, fopts);
+    
+    if (!file) return false;
+    
+    playdate->file->close(file);
+    return true;
+}
+
+struct listfiles_ud
+{
+    void* ud;
+    void (*callback)(const char* filename, void* userdata);
+    const char* path;
+    FileOptions opts;
+};
+
+static void process_file(const char* path, void* ud)
+{
+    struct listfiles_ud* lud = ud;
+
+    // TODO: strip `/` from lud->path
+    char* fullpath = aprintf("%s/%s", lud->path, path);
+
+    SDFile* file = playdate->file->open(fullpath, lud->opts);
+    free(fullpath);
+    if (!file)
+        return;
+    playdate->file->close(file);
+
+    lud->callback(path, lud->ud);
+}
+
+int pgb_listfiles(
+    const char* path, void (*callback)(const char* filename, void* userdata), void* ud,
+    int showhidden, FileOptions fopts
+)
+{
+    struct listfiles_ud lud;
+    lud.ud = ud;
+    lud.callback = callback;
+    lud.path = path;
+    lud.opts = fopts;
+
+    return playdate->file->listfiles(path, process_file, &lud, showhidden);
+}
+
+char *strltrim(const char *str)
+{
+    if (str == NULL)
+        return NULL;
+        
+    while (*str != '\0' && (*str == '\n' || *str == ' ' || *str == '\t'))
+        str++;
+        
+    return (char *)str;
+}

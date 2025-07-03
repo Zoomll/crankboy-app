@@ -11,12 +11,15 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "credits_scene.h"
+#include "info_scene.h"
 #include "dtcm.h"
 #include "game_scene.h"
 #include "modal.h"
 #include "preferences.h"
 #include "settings_scene.h"
 #include "version.h"
+#include "script.h"
+#include "userstack.h"
 
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void PGB_LibraryScene_free(void* object);
@@ -24,6 +27,110 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene);
 static void PGB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
 static bool has_checked_for_update = false;
+
+static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
+{
+    void* stored = preferences_store_subset(-1);
+    bool useGame = false;
+    char* settings_path = pgb_game_config_path(game_path);
+    if (settings_path)
+    {
+        call_with_main_stack_1(preferences_read_from_disk, settings_path);
+        free(settings_path);
+        
+        if (!preferences_per_game && onlyIfPerGameEnabled)
+        {
+            useGame = false;
+        }
+        else
+        {
+            useGame = true;
+        }
+    }
+    
+    if (!useGame)
+    {
+        preferences_restore_subset(stored);
+    }
+    free(stored);
+}
+
+static void launch_game(void* ud, int option)
+{
+    PGB_Game* game = ud;
+    switch (option)
+    {
+    case 0: // launch w/ scripts enabled
+        {
+            char* settings_path = pgb_game_config_path(game->fullpath);
+            if (settings_path)
+            {
+                void* prefs = preferences_store_subset(-1);
+                
+                load_game_prefs(game->fullpath, false);
+                
+                // enable lua script and per-game support
+                preferences_lua_support = 1;
+                preferences_per_game = 1;
+                preferences_lua_has_prompted = 1;
+                
+                call_with_user_stack_2(preferences_save_to_disk, settings_path, ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game));
+                
+                preferences_restore_subset(prefs);
+                if (prefs) free(prefs);
+                free(settings_path);
+            }
+        }
+        goto launch_normal;
+    
+    case 1: // launch w/ scripts disabled
+        {
+            char* settings_path = pgb_game_config_path(game->fullpath);
+            if (settings_path)
+            {
+                void* prefs = preferences_store_subset(-1);
+                
+                load_game_prefs(game->fullpath, false);
+                
+                // disable lua script and enable per-game support
+                preferences_lua_support = 0;
+                preferences_per_game = 1;
+                preferences_lua_has_prompted = 1;
+                
+                call_with_user_stack_2(preferences_save_to_disk, settings_path, ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game));
+                
+                preferences_restore_subset(prefs);
+                if (prefs) free(prefs);
+                free(settings_path);
+            }
+        }
+        goto launch_normal;
+        
+    case 2:
+        // display information
+        {
+            show_game_script_info(game);
+        }
+        break;
+    
+    case 3: // launch game
+    launch_normal:
+        {
+            PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath);
+            if (gameScene)
+            {
+                PGB_present(gameScene->scene);
+            }
+
+            playdate->system->logToConsole("Present gameScene");
+        }
+        break;
+        
+    default:
+        // do nothing
+        break;
+    }
+}
 
 static void CB_updatecheck(int code, const char* text, void* ud)
 {
@@ -220,18 +327,51 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
         {
             pgb_play_ui_sound(PGB_UISound_Confirm);
-
             last_selected_game_index = selectedItem;
-
+            
             PGB_Game* game = libraryScene->games->items[selectedItem];
+            bool launch = true;
+            
+            #ifndef NOLUA
+            // Prompt for use game script
+            
+            // check if user has already accepted/rejected script prompt for this game before
+            void* prefs = preferences_store_subset(-1);
+            preferences_lua_has_prompted = 0;
+            load_game_prefs(game->fullpath, false);
+            int has_prompted = preferences_lua_has_prompted;
+            preferences_restore_subset(prefs);
+            free(prefs);
 
-            PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath);
-            if (gameScene)
+            if (!has_prompted)
             {
-                PGB_present(gameScene->scene);
+                ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+                if (info)
+                {
+                    const char* options[] = {
+                        "Yes", "No", "About", NULL
+                    };
+                    if (!info->info) options[2] = NULL;
+                    PGB_Modal* modal = PGB_Modal_new(
+                        "There is native Playdate support for this game.\nWould you like to enable it?",
+                        options, launch_game, game
+                    );
+                    
+                    script_info_free(info);
+                    
+                    modal->width = 298;
+                    modal->height = 148;
+                    
+                    PGB_presentModal(modal->scene);
+                    launch = false;
+                }
             }
+            #endif
 
-            playdate->system->logToConsole("Present gameScene");
+            if (launch)
+            {
+                launch_game(game, 3);
+            }
         }
     }
 
@@ -683,19 +823,19 @@ PGB_Game* PGB_Game_new(const char* filename)
 
     game->coverPath = pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
 
+    #if 0
     if (game->coverPath)
     {
         playdate->system->logToConsole("Cover for '%s': '%s'", game->displayName, game->coverPath);
     }
     else
     {
-        /*
         playdate->system->logToConsole(
             "No cover found for '%s' (basename: '%s', clean: '%s')", game->displayName,
             basename_no_ext, cleanName_no_ext
         );
-        */
     }
+    #endif
 
     pgb_free(basename_no_ext);
     pgb_free(cleanName_no_ext);

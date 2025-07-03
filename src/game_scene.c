@@ -19,6 +19,8 @@
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
+#include "info_scene.h"
+#include "library_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -170,7 +172,7 @@ void itcm_core_init(void)
 #endif
 
 // Helper function to generate the config file path for a game
-static char* pgb_game_config_path(const char* rom_filename)
+char* pgb_game_config_path(const char* rom_filename)
 {
     char* basename = pgb_basename(rom_filename, true);
     char* path;
@@ -496,7 +498,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     if (preferences_lua_support)
     {
         char name[17];
-        gb_get_rom_name(context->gb, name);
+        gb_get_rom_name(context->gb->gb_rom, name);
         playdate->system->logToConsole("ROM name: \"%s\"", name);
         gameScene->script = script_begin(name, gameScene);
         gameScene->prev_dt = 0;
@@ -2864,4 +2866,26 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
         call_with_user_stack_2(script_on_breakpoint, gameScene->script, breakpoint_number);
     }
 #endif
+}
+
+void show_game_script_info(struct PGB_Game* game)
+{
+    ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+    if (!info) return;
+    
+    if (!info->info)
+    {
+        script_info_free(info);
+        return;
+    }
+    
+    char* text = aprintf("\"%s\"\nScript information:\n\n%s", info->rom_name, info->info);
+    script_info_free(info);
+    if (!text) return;
+    
+    PGB_InfoScene* infoScene = PGB_InfoScene_new(text);
+    
+    free(text);
+    
+    PGB_presentModal(infoScene->scene);
 }
