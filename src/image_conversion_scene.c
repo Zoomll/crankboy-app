@@ -430,6 +430,7 @@ PGB_ImageConversionScene* PGB_ImageConversionScene_new(void)
     scene->managedObject = convScene;
     scene->update = PGB_ImageConversionScene_update;
     scene->free = PGB_ImageConversionScene_free;
+    scene->use_user_stack = false;
 
     convScene->idx = 0;
     convScene->files = NULL;
