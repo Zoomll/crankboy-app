@@ -346,6 +346,8 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
         if (msg)
         {
+            playdate->graphics->clear(kColorWhite);
+
             // Draw the message in the center of the screen
             int textWidth = playdate->graphics->getTextWidth(
                 PGB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
@@ -398,6 +400,18 @@ bool filename_has_stbi_extension(const char* fname)
 void on_list_file(const char* fname, void* ud)
 {
     PGB_ImageConversionScene* convScene = ud;
+
+    // Ignore all dot-prefixed files.
+    if (fname[0] == '.')
+    {
+        return;
+    }
+
+    // Explicitly ignore other known system files.
+    if (strcasecmp(fname, "Thumbs.db") == 0)
+    {
+        return;
+    }
 
     if (filename_has_stbi_extension(fname))
     {
