@@ -1,6 +1,7 @@
 *.xcodeproj
 *.pdx
 /build/
+/doxygen/
 /Source/pdex.bin
 /Source/pdex.dylib
 /Source/pdex.elf
