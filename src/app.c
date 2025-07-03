@@ -344,6 +344,9 @@ void PGB_dismiss(PGB_Scene* sceneToDismiss)
 
 void PGB_goToLibrary(void)
 {
+    pgb_draw_logo_with_message("Returning to Library…", 12);
+    playdate->graphics->display();
+
     PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
     PGB_present(libraryScene->scene);
 }
