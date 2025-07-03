@@ -340,6 +340,48 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
+        LCDBitmap* logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
+        const char* scanning_msg = "Scanning for new images...";
+
+        if (logoBitmap)
+        {
+            playdate->graphics->clear(kColorWhite);
+
+            int screenWidth = LCD_COLUMNS;
+            int screenHeight = LCD_ROWS;
+            LCDFont* font = PGB_App->bodyFont;
+
+            int logoWidth, logoHeight, textWidth, textHeight;
+            playdate->graphics->getBitmapData(
+                logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL
+            );
+            textHeight = playdate->graphics->getFontHeight(font);
+            textWidth = playdate->graphics->getTextWidth(
+                font, scanning_msg, strlen(scanning_msg), kUTF8Encoding, 0
+            );
+
+            int lineSpacing = textHeight;
+            int totalBlockHeight = logoHeight + lineSpacing + textHeight;
+            int blockY_start = (screenHeight - totalBlockHeight) / 2;
+
+            int logoX = (screenWidth - logoWidth) / 2;
+            int logoY = blockY_start;
+
+            int textX = (screenWidth - textWidth) / 2;
+            int textY = logoY + logoHeight + lineSpacing;
+
+            playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
+            playdate->graphics->drawText(
+                scanning_msg, strlen(scanning_msg), kUTF8Encoding, textX, textY
+            );
+
+            playdate->graphics->freeBitmap(logoBitmap);
+
+            playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+        }
+
+        playdate->graphics->display();
+
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
 
         if (convScene->files_count == 0)
@@ -367,47 +409,58 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
 
-            const char* msg1 = "Converting";
-            char* msg2 = aprintf("\"%s\"", fname);
-            char* msg3 = aprintf(
-                "(%d of %d) to .pdi format...", (int)convScene->idx, (int)convScene->files_count
+            LCDBitmap* logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
+
+            char* progress_msg = aprintf(
+                "Converting image (%d of %d) to .pdi...", (int)convScene->idx,
+                (int)convScene->files_count
             );
 
-            if (msg2 && msg3)
+            if (logoBitmap && progress_msg)
             {
                 playdate->graphics->clear(kColorWhite);
 
                 int screenWidth = LCD_COLUMNS;
                 int screenHeight = LCD_ROWS;
                 LCDFont* font = PGB_App->bodyFont;
-                int lineHeight = playdate->graphics->getFontHeight(font);
 
-                int y2 = screenHeight / 2 - lineHeight / 2;
-                int y1 = y2 - lineHeight;
-                int y3 = y2 + lineHeight;
-
-                playdate->graphics->drawTextInRect(
-                    msg1, strlen(msg1), kUTF8Encoding, 0, y1, screenWidth, lineHeight, kWrapClip,
-                    kAlignTextCenter
+                int logoWidth, logoHeight, textWidth, textHeight;
+                playdate->graphics->getBitmapData(
+                    logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL
+                );
+                textHeight = playdate->graphics->getFontHeight(font);
+                textWidth = playdate->graphics->getTextWidth(
+                    font, progress_msg, strlen(progress_msg), kUTF8Encoding, 0
                 );
 
-                playdate->graphics->drawTextInRect(
-                    msg2, strlen(msg2), kUTF8Encoding, 0, y2, screenWidth, lineHeight, kWrapClip,
-                    kAlignTextCenter
-                );
+                int lineSpacing = textHeight;
 
-                playdate->graphics->drawTextInRect(
-                    msg3, strlen(msg3), kUTF8Encoding, 0, y3, screenWidth, lineHeight, kWrapClip,
-                    kAlignTextCenter
+                int totalBlockHeight = logoHeight + lineSpacing + textHeight;
+
+                int blockY_start = (screenHeight - totalBlockHeight) / 2;
+
+                int logoX = (screenWidth - logoWidth) / 2;
+                int logoY = blockY_start;
+
+                int textX = (screenWidth - textWidth) / 2;
+                int textY = logoY + logoHeight + lineSpacing;
+
+                playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
+                playdate->graphics->drawText(
+                    progress_msg, strlen(progress_msg), kUTF8Encoding, textX, textY
                 );
 
                 playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
             }
 
-            if (msg2)
-                free(msg2);
-            if (msg3)
-                free(msg3);
+            if (logoBitmap)
+            {
+                playdate->graphics->freeBitmap(logoBitmap);
+            }
+            if (progress_msg)
+            {
+                free(progress_msg);
+            }
 
             playdate->graphics->display();
 

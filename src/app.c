@@ -198,13 +198,33 @@ void PGB_init(void)
 
     if (logoBitmap)
     {
+        const char* init_msg = "Initializing...";
+
+        int screenWidth = LCD_COLUMNS;
+        int screenHeight = LCD_ROWS;
+        LCDFont* font = PGB_App->bodyFont;
+
         int logoWidth, logoHeight;
         playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
 
-        int x = (LCD_COLUMNS - logoWidth) / 2;
-        int y = (LCD_ROWS - logoHeight) / 2;
+        int textWidth =
+            playdate->graphics->getTextWidth(font, init_msg, strlen(init_msg), kUTF8Encoding, 0);
+        int textHeight = playdate->graphics->getFontHeight(font);
 
-        playdate->graphics->drawBitmap(logoBitmap, x, y, kBitmapUnflipped);
+        int lineSpacing = textHeight;
+
+        int totalBlockHeight = logoHeight + lineSpacing + textHeight;
+
+        int blockY_start = (screenHeight - totalBlockHeight) / 2;
+
+        int logoX = (screenWidth - logoWidth) / 2;
+        int logoY = blockY_start;
+
+        int textX = (screenWidth - textWidth) / 2;
+        int textY = logoY + logoHeight + lineSpacing;
+
+        playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
+        playdate->graphics->drawText(init_msg, strlen(init_msg), kUTF8Encoding, textX, textY);
 
         playdate->graphics->freeBitmap(logoBitmap);
     }
