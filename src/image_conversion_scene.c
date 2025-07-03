@@ -119,7 +119,7 @@ bool errdiff_dither(
         }
 
         // reset this error row (for next row's use)
-        memset(error, 0, err_stride);
+        memset(&error[err_row_idx[0] * out_width], 0, err_stride);
     }
 
     free(error);
@@ -296,32 +296,37 @@ static bool process_png(const char* fname)
 {
     size_t len;
     void* data = pgb_read_entire_file(fname, &len, kFileReadData);
+    bool success = false;
 
     if (data)
     {
-        size_t pdi_len;
+        size_t pdi_len = 0;
         void* pdi = png_to_pdi(data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+
+        free(data);
+
         if (pdi && pdi_len > 0)
         {
             char* basename = pgb_basename(fname, true);
             char* pdi_name = aprintf("%s/%s.pdi", PGB_coversPath, basename);
             free(basename);
 
-            if (pgb_write_entire_file(pdi_name, pdi, pdi_len) == false)
+            if (pgb_write_entire_file(pdi_name, pdi, pdi_len))
             {
-                free(pdi_name);
-                return false;
-            }
-            else
-            {
-                free(pdi_name);
                 playdate->file->unlink(fname, false);
-                return true;
+                success = true;
             }
+
+            free(pdi_name);
+        }
+
+        if (pdi)
+        {
+            free(pdi);
         }
     }
 
-    return false;
+    return success;
 }
 
 void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
