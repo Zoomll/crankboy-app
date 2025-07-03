@@ -1194,6 +1194,12 @@ __section__(".text.tick") __space
 
 __section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
 {
+    // This prevents flicker when transitioning to the Library Scene.
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     PGB_GameScene* gameScene = object;
     PGB_GameSceneContext* context = gameScene->context;
