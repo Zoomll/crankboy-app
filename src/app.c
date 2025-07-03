@@ -222,6 +222,9 @@ void PGB_init(void)
     }
     else
     {
+        pgb_draw_logo_with_message("Loading Library…", 9);
+        playdate->graphics->display();
+
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
     }
