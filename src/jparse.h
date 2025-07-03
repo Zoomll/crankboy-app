@@ -35,3 +35,6 @@ int parse_json_string(const char* text, json_value* out);
 int write_json_to_disk(const char* path, json_value out);
 
 json_value json_get_table_value(json_value table, const char* key);
+
+// returns true on success
+bool json_set_table_value(json_value* table, const char* key, json_value value);

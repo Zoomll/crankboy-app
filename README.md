@@ -29,16 +29,30 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 
 **Currently, we do not provide stable releases, since CrankBoy is still under heavy development.**
 
-- Download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest),
-  or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
+First, download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest), or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml) (you must be logged into GitHub to access the nightly).
+
+There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
+
+### Installing ROMs (USB)
+
 - Copy the pdx through the [Web sideload](https://play.date/account/sideload/) or USB.
-- Launch the app.
+- Launch the app at least once.
 - Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder; the folder name depends on the sideload method.
     - For Web sideload: `/Data/user.*.app.crankboyhq.crankboy/games/`
     - For USB: `/Data/app.crankboyhq.crankboy/games/`
 - ROM filenames must end with `.gb` or `.gbc`
 - Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, or `.bmp`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
+
+### Installing ROMs (PDX)
+
+- Add your ROMs (`.gb` or `.gbc`) to the PDX zip file. On some operating systems like Linux, this is as simple as dragging the ROM into the zip file, but on others (such as Mac) you may need to extract the PDX zip, copy the roms into the extracted directory, then re-zip the directory.
+- Cover art can be added this way as well (see above for accepted formats)
+- Install the PDX onto your Playdate as normal. Then, on first launch, the ROMs will be copied automatically from the PDX to the data directory.
+
+Please note that the copy of the files in the PDX will not be deleted, so this could waste some disk space on your Playdate unnecessarily. However, even if you then re-install a fresh copy of CrankBoy without any additions to the PDX, the ROMs will still be present (and any new ROMs will be copied in).
+
+Also note that ROMs and cover art cannot be *replaced* or *deleted* through this method, as it will not overwrite a previously-copied ROM from the PDX.
 
 ## Contributions
 

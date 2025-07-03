@@ -108,6 +108,38 @@ __section__(".rare") static void decodeError(
     playdate->system->logToConsole("Error decoding json: %s", error);
 }
 
+bool json_set_table_value(json_value* table, const char* key, json_value value)
+{
+    if (table->type != kJSONTable) return false;
+    
+    JsonObject* obj = table->data.tableval;
+    
+    // check for existing matching key
+    for (size_t i = 0; i < obj->n; ++i)
+    {
+        if (!strcmp(obj->data[i].key, key))
+        {
+            free_json_data(obj->data[i].value);
+            obj->data[i].value = value;
+            goto done;
+        }
+    }
+    
+    char* key2 = strdup(key);
+    if (!key2) return false;
+    
+    // add new key
+    obj = realloc(obj, sizeof(*obj) + sizeof(obj->data[0])*(obj->n + 1));
+    if (!obj) return false;
+    
+    obj->data[obj->n].value = value;
+    obj->data[obj->n++].key = key2;
+    
+done:
+    table->data.tableval = obj;
+    return true;
+}
+
 __section__(".rare") int parse_json(const char* path, json_value* out, FileOptions opts)
 {
     if (!out)

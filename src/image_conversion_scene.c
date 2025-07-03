@@ -402,10 +402,10 @@ PGB_ImageConversionScene* PGB_ImageConversionScene_new(void)
     convScene->files = NULL;
     convScene->files_count = 0;
     
-    playdate->file->listfiles(
+    pgb_listfiles(
         PGB_coversPath,
         on_list_file,
-        convScene, true
+        convScene, true, kFileReadData
     );
     
     return convScene;

@@ -161,7 +161,7 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene)
 
     DTCM_VERIFY();
 
-    playdate->file->listfiles(PGB_gamesPath, PGB_LibraryScene_listFiles, libraryScene, 0);
+    pgb_listfiles(PGB_gamesPath, PGB_LibraryScene_listFiles, libraryScene, 0, kFileReadData);
 
     DTCM_VERIFY();
     pgb_sort_games_array(libraryScene->games);

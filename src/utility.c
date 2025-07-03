@@ -663,7 +663,7 @@ bool pgb_write_entire_file(const char* path, void* data, size_t size)
 {
     SDFile* file = playdate->file->open(path, kFileWrite);
     if (!file)
-        return NULL;
+        return false;
 
     while (size > 0)
     {
@@ -725,4 +725,39 @@ bool endswithi(const char *str, const char *suffix) {
     if (suffix_len > str_len) return false;
 
     return strncasecmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
+}
+
+struct listfiles_ud {
+    void* ud;
+    void (*callback)(const char* filename, void* userdata);
+    const char* path;
+    FileOptions opts;
+};
+
+static void process_file(const char* path, void* ud)
+{
+    struct listfiles_ud* lud = ud;
+    
+    // TODO: strip `/` from lud->path
+    char* fullpath = aprintf("%s/%s", lud->path, path);
+    
+    SDFile* file = playdate->file->open(fullpath, lud->opts);
+    free(fullpath);
+    if (!file) return;
+    playdate->file->close(file);
+    
+    lud->callback(path, lud->ud);
+}
+
+int pgb_listfiles(const char* path, void (*callback)(const char* filename, void* userdata), void* ud, int showhidden, FileOptions fopts)
+{
+    struct listfiles_ud lud;
+    lud.ud = ud;
+    lud.callback = callback;
+    lud.path = path;
+    lud.opts = fopts;
+    
+    return playdate->file->listfiles(
+        path, process_file, &lud, showhidden
+    );
 }
