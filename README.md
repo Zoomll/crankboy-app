@@ -46,7 +46,7 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 
 ### Installing ROMs (PDX)
 
-- Add your ROMs (`.gb` or `.gbc`) to the PDX zip file. On some operating systems like Linux, this is as simple as dragging the ROM into the zip file, but on others (such as Mac) you may need to extract the PDX zip, copy the roms into the extracted directory, then re-zip the directory.
+- Add your ROMs (`.gb` or `.gbc`) to the PDX zip file. On some operating systems like Linux Mint, this is as simple as dragging the ROM into the zip file, but on others (such as Mac) you may need to extract the PDX zip, copy the roms into the extracted directory, then re-zip the directory.
 - Cover art can be added this way as well (see above for accepted formats)
 - Install the PDX onto your Playdate as normal. Then, on first launch, the ROMs will be copied automatically from the PDX to the data directory.
 
