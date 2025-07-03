@@ -1,7 +1,0 @@
-<map id="preferences_init" name="preferences_init">
-<area shape="rect" id="Node000001" title=" " alt="" coords="266,5,379,31"/>
-<area shape="rect" id="Node000002" href="$app_8c.html#af256ea7a9c51fcbd49cb0007facbb8ea" title=" " alt="" coords="145,5,218,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="251,21,218,21,218,16,251,16"/>
-<area shape="rect" id="Node000003" href="$main_8c.html#a77034286b8c64d0735c69535c5e9b732" title=" " alt="" coords="5,5,97,31"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,21,97,21,97,16,129,16"/>
-</map>

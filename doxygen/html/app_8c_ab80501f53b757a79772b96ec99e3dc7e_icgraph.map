@@ -1,7 +1,0 @@
-<map id="PGB_goToLibrary" name="PGB_goToLibrary">
-<area shape="rect" id="Node000001" title=" " alt="" coords="369,5,492,31"/>
-<area shape="rect" id="Node000002" href="$game__scene_8c.html#a6a4a6f0408da311dc566eb187e497889" title=" " alt="" coords="145,5,321,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="354,21,321,21,321,16,354,16"/>
-<area shape="rect" id="Node000003" href="$game__scene_8c.html#a113df24bb94bafcdbb9235ec8648e02f" title=" " alt="" coords="5,5,97,31"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,21,97,21,97,16,129,16"/>
-</map>

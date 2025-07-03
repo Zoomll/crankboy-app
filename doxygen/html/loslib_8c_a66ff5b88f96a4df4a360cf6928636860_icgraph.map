@@ -1,9 +1,0 @@
-<map id="setboolfield" name="setboolfield">
-<area shape="rect" id="Node000001" title=" " alt="" coords="252,31,339,56"/>
-<area shape="rect" id="Node000002" href="$loslib_8c.html#ae4eca277a29a763a64ef611692c4b894" title=" " alt="" coords="121,31,204,56"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="237,46,204,46,204,41,237,41"/>
-<area shape="rect" id="Node000003" href="$loslib_8c.html#a6520f2562b500aee87a6a475995adefb" title=" " alt="" coords="5,5,73,31"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="105,34,73,28,74,22,106,29"/>
-<area shape="rect" id="Node000004" href="$loslib_8c.html#ae32288bc9696b48450146e11c241f943" title=" " alt="" coords="5,55,73,80"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="106,57,74,64,73,58,105,52"/>
-</map>

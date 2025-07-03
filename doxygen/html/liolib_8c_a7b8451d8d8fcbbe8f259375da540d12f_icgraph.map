@@ -1,8 +1,0 @@
-<map id="io_noclose" name="io_noclose">
-<area shape="rect" id="Node000001" title=" " alt="" coords="277,29,360,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="341,16,333,10,319,8,305,10,298,14,296,20,300,28,295,30,291,21,293,11,303,5,319,3,336,5,344,12"/>
-<area shape="rect" id="Node000002" href="$liolib_8c.html#a0a80ad2f9dbb3b7238efae7738bb7569" title=" " alt="" coords="137,29,229,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="261,45,229,45,229,40,261,40"/>
-<area shape="rect" id="Node000003" href="$liolib_8c.html#a2d3f245e532f3d582a4ff62bbd567149" title=" " alt="" coords="5,29,89,55"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="121,45,89,45,89,40,121,40"/>
-</map>

@@ -1,9 +1,0 @@
-<map id="src/settings_scene.h" name="src/settings_scene.h">
-<area shape="rect" id="Node000001" title=" " alt="" coords="152,5,294,31"/>
-<area shape="rect" id="Node000002" href="$game__scene_8c.html" title=" " alt="" coords="5,79,134,105"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="184,40,97,81,95,76,182,36"/>
-<area shape="rect" id="Node000003" href="$library__scene_8c.html" title=" " alt="" coords="157,79,288,105"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="226,46,226,79,220,79,220,46"/>
-<area shape="rect" id="Node000004" href="$settings__scene_8c.html" title=" " alt="" coords="313,79,455,105"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="265,35,358,76,356,81,263,40"/>
-</map>

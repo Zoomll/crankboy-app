@@ -1,7 +1,0 @@
-<map id="getendpos" name="getendpos">
-<area shape="rect" id="Node000001" title=" " alt="" coords="122,31,203,56"/>
-<area shape="rect" id="Node000002" href="$lstrlib_8c.html#ae561770420cfd1894054415df9d4c423" title=" " alt="" coords="5,5,74,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="106,35,73,28,75,23,107,29"/>
-<area shape="rect" id="Node000003" href="$lstrlib_8c.html#a039b391d5f43533a0ce750c5e40d7752" title=" " alt="" coords="7,55,72,80"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,57,73,64,72,59,106,52"/>
-</map>
