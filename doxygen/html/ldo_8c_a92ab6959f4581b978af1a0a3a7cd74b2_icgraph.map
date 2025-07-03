@@ -1,0 +1,13 @@
+<map id="precover" name="precover">
+<area shape="rect" id="Node000001" title=" " alt="" coords="579,31,650,56"/>
+<area shape="rect" id="Node000002" href="$ldo_8c.html#ad07756c576e4e989a7ca417c1d691d2a" title=" " alt="" coords="442,31,531,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="563,46,531,46,531,41,563,41"/>
+<area shape="rect" id="Node000003" href="$lcorolib_8c.html#aaa37b3a30ab0c6daef7fae8951fef3e7" title=" " alt="" coords="309,31,394,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="427,46,395,46,395,41,427,41"/>
+<area shape="rect" id="Node000004" href="$lcorolib_8c.html#a777abb20385a69ce4787f72bd90375a7" title=" " alt="" coords="154,5,257,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="293,36,257,30,258,25,294,31"/>
+<area shape="rect" id="Node000006" href="$lcorolib_8c.html#a76f5d80387eeb1c7d31eb5f9cb6c9392" title=" " alt="" coords="150,55,261,80"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="294,56,262,61,261,56,293,50"/>
+<area shape="rect" id="Node000005" href="$lcorolib_8c.html#a1c0429e27f504b08e25f437f733edad1" title=" " alt="" coords="5,5,102,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="138,21,102,21,102,16,138,16"/>
+</map>

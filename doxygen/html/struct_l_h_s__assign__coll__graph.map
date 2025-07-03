@@ -1,0 +1,9 @@
+<map id="LHS_assign" name="LHS_assign">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,199,98,224"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="115,202,124,211,116,220,98,223,98,218,114,216,119,212,111,207"/>
+<area shape="rect" id="Node000002" href="$structexpdesc.html" title=" " alt="" coords="16,102,87,128"/>
+<area shape="poly" id="edge2_Node000001_Node000002" title=" " alt="" coords="54,143,54,198,49,198,49,143"/>
+<area shape="rect" id="Node000003" href="$struct_t_string.html" title=" " alt="" coords="20,5,83,31"/>
+<area shape="poly" id="edge3_Node000002_Node000003" title=" " alt="" coords="54,46,54,101,49,101,49,46"/>
+<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="100,8,107,12,110,19,101,28,84,30,83,25,99,23,105,18,103,15,97,13"/>
+</map>

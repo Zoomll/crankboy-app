@@ -1,0 +1,15 @@
+<map id="lua&#45;5.4.7/lcode.h" name="lua&#45;5.4.7/lcode.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="224,5,341,31"/>
+<area shape="rect" id="Node000002" href="$lcode_8c.html" title=" " alt="" coords="5,79,123,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="232,39,102,81,100,76,230,34"/>
+<area shape="rect" id="Node000004" href="$ldebug_8c.html" title=" " alt="" coords="147,79,272,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="261,44,224,80,220,77,258,40"/>
+<area shape="rect" id="Node000005" href="$lparser_8c.html" title=" " alt="" coords="295,79,420,105"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="308,40,347,77,343,81,304,44"/>
+<area shape="rect" id="Node000006" href="$ltests_8c.html" title=" " alt="" coords="444,79,562,105"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="335,34,466,76,464,81,334,39"/>
+<area shape="rect" id="Node000003" href="$onelua_8c.html" title=" " alt="" coords="147,153,272,178"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="103,109,186,150,183,154,101,114"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="212,120,212,152,207,152,207,120"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="320,114,236,154,233,150,317,109"/>
+</map>

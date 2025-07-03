@@ -1,0 +1,64 @@
+# Doxyfile for CrankBoy
+
+#---------------------------------------------------------------------------
+# Project related configuration options
+#---------------------------------------------------------------------------
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "CrankBoy"
+PROJECT_NUMBER         = 0.2.1
+PROJECT_BRIEF          = "A full-speed Game Boy emulator for Playdate."
+OUTPUT_DIRECTORY       = doxygen
+CREATE_SUBDIRS         = NO
+OUTPUT_LANGUAGE        = English
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+TYPEDEF_HIDES_STRUCT   = YES
+
+#---------------------------------------------------------------------------
+# Build related configuration options
+#---------------------------------------------------------------------------
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = NO
+SKIP_FUNCTION_MACROS   = YES
+SEARCH_INCLUDES        = YES
+
+#---------------------------------------------------------------------------
+# Input files configuration
+#---------------------------------------------------------------------------
+INPUT                  = .
+RECURSIVE              = YES
+FILE_PATTERNS          = *.c *.h *.x
+EXTENSION_MAPPING      = .x=C
+
+#---------------------------------------------------------------------------
+# HTML output configuration
+#---------------------------------------------------------------------------
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_COLORSTYLE_HUE    = 55
+HTML_COLORSTYLE_SAT    = 200
+GENERATE_TREEVIEW      = YES
+TREEVIEW_WIDTH         = 280
+
+#---------------------------------------------------------------------------
+# LaTeX output configuration
+#---------------------------------------------------------------------------
+GENERATE_LATEX         = NO
+
+#---------------------------------------------------------------------------
+# Diagram generator tools configuration (using Dot)
+#---------------------------------------------------------------------------
+HAVE_DOT               = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+GRAPHICAL_HIERARCHY    = YES
+DIRECTORY_GRAPH        = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+GENERATE_LEGEND        = YES

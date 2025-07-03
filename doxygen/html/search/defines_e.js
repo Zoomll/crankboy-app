@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['oam_5faddr_0',['OAM_ADDR',['../peanut__gb_8h.html#a688d79b78eea7a2c4c6f21f3bdd3df9d',1,'peanut_gb.h']]],
+  ['oam_5fsize_1',['OAM_SIZE',['../peanut__gb_8h.html#a66fdb2b0624111b109e271ee9f829df8',1,'peanut_gb.h']]],
+  ['obj2gco_2',['obj2gco',['../lstate_8h.html#a254ca29aba03e47440082d4591a9734e',1,'lstate.h']]],
+  ['obj_5fflip_5fx_3',['OBJ_FLIP_X',['../peanut__gb_8h.html#a029bfd4e1e8d69941e676632a63753f2',1,'peanut_gb.h']]],
+  ['obj_5fflip_5fy_4',['OBJ_FLIP_Y',['../peanut__gb_8h.html#a672fd757bec8948e9f190bbf8fcc77f3',1,'peanut_gb.h']]],
+  ['obj_5fpalette_5',['OBJ_PALETTE',['../peanut__gb_8h.html#aabd5918d812c5697213ce5dbde81b037',1,'peanut_gb.h']]],
+  ['obj_5fpriority_6',['OBJ_PRIORITY',['../peanut__gb_8h.html#a77dfd0ba1219044fd0342623ef28b6dc',1,'peanut_gb.h']]],
+  ['offset_5fsbx_7',['OFFSET_sBx',['../lopcodes_8h.html#afda4d6a4b816b12ffd722e04b20f0884',1,'lopcodes.h']]],
+  ['offset_5fsc_8',['OFFSET_sC',['../lopcodes_8h.html#aa857ab7e20a7c4cb44ec3b6d3d2ec2bd',1,'lopcodes.h']]],
+  ['offset_5fsj_9',['OFFSET_sJ',['../lopcodes_8h.html#a1618fbbbf634a1b231240cfd6f3a3e5f',1,'lopcodes.h']]],
+  ['op_5farith_10',['op_arith',['../lvm_8c.html#accac296bbdd639e9a290dd90e6ee97bc',1,'lvm.c']]],
+  ['op_5farith_5faux_11',['op_arith_aux',['../lvm_8c.html#a293974e782860ba3cc56e8357d0c2ac4',1,'lvm.c']]],
+  ['op_5farithf_12',['op_arithf',['../lvm_8c.html#a3a4f9c96d42bbb54c163fd3f3799a53c',1,'lvm.c']]],
+  ['op_5farithf_5faux_13',['op_arithf_aux',['../lvm_8c.html#a27c82162e3bd29ab27ae1cd6660207ca',1,'lvm.c']]],
+  ['op_5farithfk_14',['op_arithfK',['../lvm_8c.html#a2bf3c022ca2f380a54b253dcb57ed4fc',1,'lvm.c']]],
+  ['op_5farithi_15',['op_arithI',['../lvm_8c.html#a64f748f1270f46a82d9740b510e0cd3a',1,'lvm.c']]],
+  ['op_5farithk_16',['op_arithK',['../lvm_8c.html#af99dda342975a0c5aa932cd408476008',1,'lvm.c']]],
+  ['op_5fbitwise_17',['op_bitwise',['../lvm_8c.html#a65ec8fe21615050150ecc5aed115bc1b',1,'lvm.c']]],
+  ['op_5fbitwisek_18',['op_bitwiseK',['../lvm_8c.html#a58d4f607b71631156a48372cf05d403e',1,'lvm.c']]],
+  ['op_5forder_19',['op_order',['../lvm_8c.html#a427d042b492c9feb6beaeea80f6bd594',1,'lvm.c']]],
+  ['op_5forderi_20',['op_orderI',['../lvm_8c.html#ac2b4fecc5abdaf3ec282df9a7b728e13',1,'lvm.c']]],
+  ['opmode_21',['opmode',['../lopcodes_8h.html#a55f7a6110b36e7c0958f22fa82cd3c45',1,'lopcodes.h']]],
+  ['otherwhite_22',['otherwhite',['../lgc_8h.html#a486df16493498577d4081a8c231154f0',1,'lgc.h']]]
+];

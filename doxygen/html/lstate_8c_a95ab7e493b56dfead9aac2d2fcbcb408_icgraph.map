@@ -1,0 +1,11 @@
+<map id="lua_closethread" name="lua_closethread">
+<area shape="rect" id="Node000001" title=" " alt="" coords="308,55,420,80"/>
+<area shape="rect" id="Node000002" href="$lstate_8c.html#afd03e385a4f4f8fcc25230c0e04f48ff" title=" " alt="" coords="150,5,260,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="305,52,248,34,250,29,306,47"/>
+<area shape="rect" id="Node000003" href="$lcorolib_8c.html#a777abb20385a69ce4787f72bd90375a7" title=" " alt="" coords="153,55,256,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="293,70,257,70,257,65,293,65"/>
+<area shape="rect" id="Node000005" href="$lcorolib_8c.html#a3c6a70201b343432bfeb1f3e09cdde6f" title=" " alt="" coords="162,104,248,130"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="307,88,249,106,247,101,305,83"/>
+<area shape="rect" id="Node000004" href="$lcorolib_8c.html#a1c0429e27f504b08e25f437f733edad1" title=" " alt="" coords="5,55,102,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="138,70,102,70,102,65,138,65"/>
+</map>

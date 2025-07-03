@@ -1,0 +1,29 @@
+<map id="peanut_gb/peanut_gb.h" name="peanut_gb/peanut_gb.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="201,5,358,31"/>
+<area shape="rect" id="Node000002" href="$minigb__apu_8c.html" title=" " alt="" coords="23,153,192,178"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="256,43,124,154,120,150,252,39"/>
+<area shape="rect" id="Node000003" href="$game__scene_8c.html" title=" " alt="" coords="109,226,237,252"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="201,38,150,54,99,78,51,111,31,131,14,154,9,168,10,180,18,191,31,200,67,216,109,226,108,231,65,221,28,205,14,194,5,182,3,167,9,151,27,128,48,107,96,73,148,49,199,33"/>
+<area shape="rect" id="Node000004" href="$game__scene_8h.html" title=" " alt="" coords="326,79,454,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="312,37,373,76,370,81,309,42"/>
+<area shape="rect" id="Node000009" href="$script_8c.html" title=" " alt="" coords="740,153,827,178"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="337,33,742,149,741,155,335,38"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="328,111,156,155,155,149,327,106"/>
+<area shape="poly" id="edge9_Node000004_Node000003" title=" " alt="" coords="339,113,297,131,256,155,214,192,184,228,180,224,210,189,253,151,295,126,337,108"/>
+<area shape="rect" id="Node000005" href="$app_8c.html" title=" " alt="" coords="482,153,557,178"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="427,110,499,150,496,154,424,115"/>
+<area shape="rect" id="Node000006" href="$credits__scene_8h.html" title=" " alt="" coords="581,153,717,178"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="450,107,606,149,604,155,448,112"/>
+<area shape="rect" id="Node000008" href="$library__scene_8c.html" title=" " alt="" coords="429,226,560,252"/>
+<area shape="poly" id="edge10_Node000004_Node000008" title=" " alt="" coords="410,116,488,224,483,227,405,119"/>
+<area shape="poly" id="edge11_Node000004_Node000009" title=" " alt="" coords="470,104,729,150,741,152,740,157,728,155,469,109"/>
+<area shape="rect" id="Node000010" href="$settings__scene_8h.html" title=" " alt="" coords="266,153,408,178"/>
+<area shape="poly" id="edge12_Node000004_Node000010" title=" " alt="" coords="374,119,348,154,344,151,370,115"/>
+<area shape="rect" id="Node000007" href="$credits__scene_8c.html" title=" " alt="" coords="584,226,719,252"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="653,194,654,226,648,226,647,194"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="610,188,522,228,520,223,608,183"/>
+<area shape="poly" id="edge13_Node000010_Node000003" title=" " alt="" coords="296,187,202,228,200,223,294,183"/>
+<area shape="poly" id="edge14_Node000010_Node000008" title=" " alt="" coords="379,183,469,223,466,228,376,188"/>
+<area shape="rect" id="Node000011" href="$settings__scene_8c.html" title=" " alt="" coords="262,226,404,252"/>
+<area shape="poly" id="edge15_Node000010_Node000011" title=" " alt="" coords="338,194,336,226,331,226,333,194"/>
+</map>

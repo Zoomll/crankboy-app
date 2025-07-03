@@ -1,0 +1,21 @@
+<map id="gb_s" name="gb_s">
+<area shape="rect" id="Node000001" title=" " alt="" coords="281,295,331,321"/>
+<area shape="rect" id="Node000002" href="$structcpu__registers__s.html" title=" " alt="" coords="5,199,119,224"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,230,130,250,170,269,229,288,281,300,280,305,228,293,168,274,128,255,92,235"/>
+<area shape="rect" id="Node000003" href="$structgb__registers__s.html" title=" " alt="" coords="142,199,248,224"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="218,234,255,269,288,293,285,297,252,273,214,238"/>
+<area shape="rect" id="Node000004" href="$structcount__s.html" title=" " alt="" coords="272,199,340,224"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="309,240,309,295,303,295,303,240"/>
+<area shape="rect" id="Node000005" href="$structgb__breakpoint.html" title=" " alt="" coords="364,199,466,224"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="398,238,364,273,329,297,326,293,360,269,394,235"/>
+<area shape="rect" id="Node000006" href="$structaudio__data.html" title=" " alt="" coords="490,199,575,224"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="514,238,493,257,467,274,432,288,395,298,332,308,331,302,394,293,430,283,465,269,489,253,511,234"/>
+<area shape="rect" id="Node000007" href="$structchan.html" title=" " alt="" coords="508,102,557,128"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="535,143,535,198,530,198,530,143"/>
+<area shape="rect" id="Node000008" href="$structchan__len__ctr.html" title=" " alt="" coords="362,5,458,31"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="439,39,518,99,515,104,436,43"/>
+<area shape="rect" id="Node000009" href="$structchan__vol__env.html" title=" " alt="" coords="482,5,583,31"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="535,46,535,101,530,101,530,46"/>
+<area shape="rect" id="Node000010" href="$structchan__freq__sweep.html" title=" " alt="" coords="607,5,730,31"/>
+<area shape="poly" id="edge9_Node000007_Node000010" title=" " alt="" coords="640,42,552,104,549,99,637,38"/>
+</map>

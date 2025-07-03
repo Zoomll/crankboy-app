@@ -1,0 +1,8 @@
+<map id="Labellist" name="Labellist">
+<area shape="rect" id="Node000001" title=" " alt="" coords="11,199,80,224"/>
+<area shape="rect" id="Node000002" href="$struct_labeldesc.html" title=" " alt="" coords="5,102,86,128"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="48,143,48,198,43,198,43,143"/>
+<area shape="rect" id="Node000003" href="$struct_t_string.html" title=" " alt="" coords="14,5,77,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="48,46,48,101,43,101,43,46"/>
+<area shape="poly" id="edge3_Node000003_Node000003" title=" " alt="" coords="94,8,101,12,104,19,95,28,78,30,77,25,93,23,99,18,97,15,91,13"/>
+</map>

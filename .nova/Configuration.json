@@ -4,5 +4,6 @@
   "prettier.config.ignore" : false,
   "workspace.art_style" : 1,
   "workspace.color" : 2,
-  "workspace.name" : "CrankBoy"
+  "workspace.name" : "CrankBoy",
+  "workspace.preview_root" : "doxygen\/html"
 }

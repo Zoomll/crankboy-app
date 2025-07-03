@@ -1,0 +1,28 @@
+var structchan =
+[
+    [ "duty", "structchan.html#a72eb52832c11822cb6e0cf5569088a39", null ],
+    [ "duty_counter", "structchan.html#a4f2eac30682de7e44cff734e91a111ed", null ],
+    [ "enabled", "structchan.html#a3a6c30328264d5652c18161403cf7efc", null ],
+    [ "env", "structchan.html#a4f60d22c4f1d280c7b33c301078d9cf3", null ],
+    [ "freq", "structchan.html#ab589af6c8b5ac3eafef02698afd299f7", null ],
+    [ "freq_counter", "structchan.html#ace7ac5479fa16959f26fc1c0f37ba659", null ],
+    [ "freq_inc", "structchan.html#a116cfc126edfc0e00e21b376117285d5", null ],
+    [ "len", "structchan.html#ac43142ed89faf6eddeb74cfeeb89d22b", null ],
+    [ "len_enabled", "structchan.html#a991aebf3971dbe4cab6372668fae7ec4", null ],
+    [ "lfsr_div", "structchan.html#a887bca594041eb5efb539e9af67026d8", null ],
+    [ "lfsr_reg", "structchan.html#a9b6445b3f277d80f0a9d2556c4b8cd54", null ],
+    [ "lfsr_wide", "structchan.html#a0880f241c1576a8449bb0923477b80de", null ],
+    [ "muted", "structchan.html#a8246db96233e8b68773cbee5808baccb", null ],
+    [ "noise", "structchan.html#a001f71a256d8ad8d10d420086edbb136", null ],
+    [ "on_left", "structchan.html#a8c6e3811a78b771c7a14c65d3ce6f051", null ],
+    [ "on_right", "structchan.html#a45c812d99386f0bb13d9e7c6553256f9", null ],
+    [ "powered", "structchan.html#af16dd69b46aa5a6d2ebaf83183467b98", null ],
+    [ "sample", "structchan.html#a4f4358e355e67e3802210523ec3bb933", null ],
+    [ "square", "structchan.html#a8a324c5e1370218b77e3fa62353f2792", null ],
+    [ "sweep", "structchan.html#aa99c67e022f64afe495a6da7b5a45135", null ],
+    [ "sweep_up", "structchan.html#a3957c2fa48f02a4ff54d64f0ef084fb4", null ],
+    [ "val", "structchan.html#ae2361bdac407a472aadb1f7adb0cec1b", null ],
+    [ "volume", "structchan.html#aac6954dd0d85bb61dfe50d56271b8792", null ],
+    [ "volume_init", "structchan.html#a48b1c79a61a870d21a296d9168475abf", null ],
+    [ "wave", "structchan.html#a2b1f141852a221d2263cb31d43c9df9f", null ]
+];

@@ -1,0 +1,6 @@
+<map id="SemInfo" name="SemInfo">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,102,76,128"/>
+<area shape="rect" id="Node000002" href="$struct_t_string.html" title=" " alt="" coords="9,5,72,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="43,46,43,101,38,101,38,46"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="89,8,96,12,99,19,90,28,73,30,72,25,88,23,94,18,92,15,86,13"/>
+</map>

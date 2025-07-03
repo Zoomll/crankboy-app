@@ -1,0 +1,21 @@
+<map id="reverse" name="reverse">
+<area shape="rect" id="Node000001" title=" " alt="" coords="423,128,488,154"/>
+<area shape="rect" id="Node000002" href="$lapi_8c.html#af680e24129c0e021b4fbb7700cf185dc" title=" " alt="" coords="297,128,375,154"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="408,144,376,144,376,138,408,138"/>
+<area shape="rect" id="Node000003" href="$liolib_8c.html#a66325940a0248cee288153edb061c0c4" title=" " alt="" coords="154,29,230,55"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="310,119,281,93,248,68,228,58,230,53,250,64,285,89,314,115"/>
+<area shape="rect" id="Node000006" href="$ldblib_8c.html#ae802ce7397e9ebb08a90b69976578ecc" title=" " alt="" coords="148,79,236,104"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="281,125,231,107,232,102,283,120"/>
+<area shape="rect" id="Node000007" href="$loadlib_8c.html#a136874f5faa236dc52fb50109281e157" title=" " alt="" coords="155,128,228,154"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="282,144,229,144,229,138,282,138"/>
+<area shape="rect" id="Node000008" href="$lbaselib_8c.html#a5fbb0094fa1a56f0a4c2547f1ec4c5ab" title=" " alt="" coords="148,177,236,203"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="283,162,232,179,231,174,281,157"/>
+<area shape="rect" id="Node000009" href="$ldblib_8c.html#a6269322ee4ae931654d7442fe2be6a46" title=" " alt="" coords="135,227,249,252"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="314,166,285,193,250,218,230,228,228,224,248,213,281,188,310,162"/>
+<area shape="rect" id="Node000004" href="$liolib_8c.html#a6a36f72d8b3966c1ebafab8a4791cb6c" title=" " alt="" coords="16,5,76,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="138,36,76,26,77,20,139,31"/>
+<area shape="rect" id="Node000005" href="$liolib_8c.html#ab08031b51605d4ef676ec33a3b96a286" title=" " alt="" coords="13,55,79,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="139,54,80,65,79,59,138,49"/>
+<area shape="rect" id="Node000010" href="$ldblib_8c.html#a4eb57e66c2efb2d31c9b9e1b01d27e13" title=" " alt="" coords="5,227,87,252"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="119,242,87,242,87,237,119,237"/>
+</map>

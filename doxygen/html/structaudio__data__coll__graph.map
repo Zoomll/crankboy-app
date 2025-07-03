@@ -1,0 +1,11 @@
+<map id="audio_data" name="audio_data">
+<area shape="rect" id="Node000001" title=" " alt="" coords="134,199,218,224"/>
+<area shape="rect" id="Node000002" href="$structchan.html" title=" " alt="" coords="151,102,200,128"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,143,178,198,173,198,173,143"/>
+<area shape="rect" id="Node000003" href="$structchan__len__ctr.html" title=" " alt="" coords="5,5,101,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="82,39,161,99,158,104,79,43"/>
+<area shape="rect" id="Node000004" href="$structchan__vol__env.html" title=" " alt="" coords="125,5,226,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="178,46,178,101,173,101,173,46"/>
+<area shape="rect" id="Node000005" href="$structchan__freq__sweep.html" title=" " alt="" coords="250,5,373,31"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="283,42,195,104,192,99,280,38"/>
+</map>

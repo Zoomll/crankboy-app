@@ -1,0 +1,17 @@
+<map id="newfile" name="newfile">
+<area shape="rect" id="Node000001" title=" " alt="" coords="373,55,436,80"/>
+<area shape="rect" id="Node000002" href="$liolib_8c.html#ab4a969d43dbe0f89e98307e5b421f8a7" title=" " alt="" coords="250,5,316,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="358,52,316,34,318,29,360,47"/>
+<area shape="rect" id="Node000003" href="$liolib_8c.html#a0347de9dda8be02044075c96482eddb3" title=" " alt="" coords="244,55,322,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="358,70,322,70,322,65,358,65"/>
+<area shape="rect" id="Node000004" href="$liolib_8c.html#a91ec9c6fa0ef33085f29a15532ac80a7" title=" " alt="" coords="241,104,325,130"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="360,88,318,106,316,101,358,83"/>
+<area shape="rect" id="Node000005" href="$liolib_8c.html#aae942558ff528b4e1a483297c64e6886" title=" " alt="" coords="129,79,192,104"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="225,108,192,101,193,95,226,102"/>
+<area shape="rect" id="Node000008" href="$liolib_8c.html#ab08031b51605d4ef676ec33a3b96a286" title=" " alt="" coords="128,128,193,154"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="226,131,194,137,193,132,225,125"/>
+<area shape="rect" id="Node000006" href="$liolib_8c.html#a827044fde6f2c21ab965ba3d729f6a0f" title=" " alt="" coords="9,55,76,80"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="113,85,76,77,77,72,115,80"/>
+<area shape="rect" id="Node000007" href="$liolib_8c.html#a4464f89f0151ad432557b0a51258582c" title=" " alt="" coords="5,104,80,130"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="115,104,81,111,79,106,113,99"/>
+</map>

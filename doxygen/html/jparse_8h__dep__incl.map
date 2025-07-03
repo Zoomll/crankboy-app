@@ -1,0 +1,20 @@
+<map id="src/jparse.h" name="src/jparse.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="314,5,404,31"/>
+<area shape="rect" id="Node000002" href="$app_8c.html" title=" " alt="" coords="5,79,81,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="300,36,82,85,81,79,298,30"/>
+<area shape="rect" id="Node000003" href="$credits__scene_8c.html" title=" " alt="" coords="50,153,185,178"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="299,23,261,29,219,39,179,56,145,81,133,98,126,117,120,153,115,152,120,116,128,95,141,77,177,51,218,34,260,23,299,18"/>
+<area shape="rect" id="Node000004" href="$credits__scene_8h.html" title=" " alt="" coords="155,79,291,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="324,41,247,81,245,76,321,36"/>
+<area shape="rect" id="Node000006" href="$jparse_8c.html" title=" " alt="" coords="314,79,404,105"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="362,46,362,79,356,79,356,46"/>
+<area shape="rect" id="Node000007" href="$preferences_8c.html" title=" " alt="" coords="427,79,550,105"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="396,37,468,76,465,81,393,41"/>
+<area shape="rect" id="Node000008" href="$script_8c.html" title=" " alt="" coords="573,79,660,105"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="418,33,574,76,572,81,417,38"/>
+<area shape="rect" id="Node000009" href="$version_8c.html" title=" " alt="" coords="684,79,780,105"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="419,28,684,79,683,84,418,34"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="194,116,137,154,134,150,191,111"/>
+<area shape="rect" id="Node000005" href="$library__scene_8c.html" title=" " alt="" coords="209,153,341,178"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="243,116,268,151,264,154,238,119"/>
+</map>

@@ -1,0 +1,18 @@
+<map id="lua&#45;5.4.7/lapi.h" name="lua&#45;5.4.7/lapi.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="283,5,389,31"/>
+<area shape="rect" id="Node000002" href="$lapi_8c.html" title=" " alt="" coords="5,79,112,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="275,38,106,81,105,76,274,33"/>
+<area shape="rect" id="Node000004" href="$ldebug_8c.html" title=" " alt="" coords="136,79,261,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="300,41,223,81,221,76,298,36"/>
+<area shape="rect" id="Node000005" href="$ldo_8c.html" title=" " alt="" coords="284,79,388,105"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="338,46,338,79,333,79,333,46"/>
+<area shape="rect" id="Node000006" href="$lstate_8c.html" title=" " alt="" coords="411,79,530,105"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="373,36,449,76,446,81,371,41"/>
+<area shape="rect" id="Node000007" href="$ltests_8c.html" title=" " alt="" coords="554,79,672,105"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="398,33,567,76,565,81,397,38"/>
+<area shape="rect" id="Node000003" href="$onelua_8c.html" title=" " alt="" coords="204,153,329,178"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="109,108,232,150,230,155,107,113"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="222,114,257,150,253,154,218,118"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="316,117,280,154,276,150,312,114"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="423,113,302,155,300,150,421,108"/>
+</map>

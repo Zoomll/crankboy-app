@@ -1,0 +1,25 @@
+var struct_call_info =
+[
+    [ "c", "struct_call_info.html#aa31c42339f98f90eceeadeba7985ea81", null ],
+    [ "callstatus", "struct_call_info.html#acc4a0c29c9872277adb03d946a392d31", null ],
+    [ "ctx", "struct_call_info.html#a7c410e045297e80c91e9737f959e7ef9", null ],
+    [ "ftransfer", "struct_call_info.html#add164028847a347cdfce221f697f0f28", null ],
+    [ "func", "struct_call_info.html#a3307de33f6da067897418f5e98e63167", null ],
+    [ "funcidx", "struct_call_info.html#adebb7e3602965a04deda09fcaf8fefc1", null ],
+    [ "k", "struct_call_info.html#a861d3b2fbd9d287c22b0d9324f578e7b", null ],
+    [ "l", "struct_call_info.html#a9e6e87fcb73cb65ca72948642af50cc8", null ],
+    [ "next", "struct_call_info.html#a71b69e9acba8caa2d8e833d8a79fdf9d", null ],
+    [ "nextraargs", "struct_call_info.html#a14e42d92bc824c3f470152b2ba3ac334", null ],
+    [ "nres", "struct_call_info.html#a1235c5fa93cd02162d842c6385af1c5c", null ],
+    [ "nresults", "struct_call_info.html#a0955b3fe49462610d53f082ac3cdac0e", null ],
+    [ "ntransfer", "struct_call_info.html#aa9f1e7aa053a886e955762d303fcc475", null ],
+    [ "nyield", "struct_call_info.html#a1de818b3a003fcf25f1db6e294fa5b58", null ],
+    [ "old_errfunc", "struct_call_info.html#ae18597139d0d00b65683efed8ccd3c64", null ],
+    [ "previous", "struct_call_info.html#a1b3e7558ecf4218dd0e3b367c077733b", null ],
+    [ "savedpc", "struct_call_info.html#a4f8b835724037f01569452eab143948f", null ],
+    [ "top", "struct_call_info.html#a896b6484f4e0c4f76768913ffb91e88b", null ],
+    [ "transferinfo", "struct_call_info.html#ae96eb55ac6468a3b87e40e54dc4016e9", null ],
+    [ "trap", "struct_call_info.html#a0034f1ca11027b0a66adacb28dd64618", null ],
+    [ "u", "struct_call_info.html#af025939a7f6816f8a05ca9ffb5963e3a", null ],
+    [ "u2", "struct_call_info.html#a994fb9312de3ab26a9ca98f4909c7ed4", null ]
+];
