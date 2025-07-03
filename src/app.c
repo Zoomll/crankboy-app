@@ -192,7 +192,6 @@ void PGB_init(void)
     }
 
     pgb_draw_logo_with_message("Initializing…", 7);
-    playdate->graphics->display();
 
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
     bool modified = false;
@@ -223,7 +222,6 @@ void PGB_init(void)
     else
     {
         pgb_draw_logo_with_message("Loading Library…", 9);
-        playdate->graphics->display();
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
@@ -345,7 +343,6 @@ void PGB_dismiss(PGB_Scene* sceneToDismiss)
 void PGB_goToLibrary(void)
 {
     pgb_draw_logo_with_message("Returning to Library…", 12);
-    playdate->graphics->display();
 
     PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
     PGB_present(libraryScene->scene);

@@ -575,6 +575,8 @@ void pgb_draw_logo_with_message(const char* message, int x_offset)
     }
 
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+
+    playdate->graphics->display();
 }
 
 void* pgb_malloc(size_t size)
