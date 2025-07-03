@@ -251,8 +251,9 @@ __section__(".text.main") void PGB_update(float dt)
 
     PGB_App->crankChange = playdate->system->getCrankChange();
 
-    playdate->system->getButtonState(&PGB_App->buttons_down, &PGB_App->buttons_pressed, NULL);
+    playdate->system->getButtonState(&PGB_App->buttons_down, &PGB_App->buttons_pressed, &PGB_App->buttons_released);
 
+    PGB_App->buttons_released &= ~PGB_App->buttons_suppress;
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
     PGB_App->buttons_down &= ~PGB_App->buttons_suppress;
 
@@ -311,6 +312,7 @@ void PGB_present(PGB_Scene* scene)
     playdate->system->removeAllMenuItems();
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
+    PGB_App->buttons_released = 0;
     PGB_App->buttons_pressed = 0;
 
     PGB_App->pendingScene = scene;
@@ -321,6 +323,7 @@ void PGB_presentModal(PGB_Scene* scene)
     playdate->system->removeAllMenuItems();
     PGB_App->buttons_suppress |= PGB_App->buttons_down;
     PGB_App->buttons_down = 0;
+    PGB_App->buttons_released = 0;
     PGB_App->buttons_pressed = 0;
 
     scene->parentScene = PGB_App->scene;

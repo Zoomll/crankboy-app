@@ -35,6 +35,11 @@ extern const uint16_t PGB_dither_lut_c1[];
 
 static void update_thumbnail(PGB_SettingsScene* settingsScene);
 
+#define HOLD_TIME_SUPPRESS_RELEASE 0.25f
+#define HOLD_TIME_MARGIN 0.15f
+#define HOLD_TIME 1.09f
+#define HOLD_FADE_RATE 2.9f
+
 struct OptionsMenuEntry;
 
 typedef struct OptionsMenuEntry
@@ -52,10 +57,20 @@ typedef struct OptionsMenuEntry
     bool header : 1;
 
     void (*on_press)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
+    void (*on_hold)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
     void* ud;
 } OptionsMenuEntry;
 
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
+
+void display_script_info(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
+{
+    PGB_GameScene* gameScene = settingsScene->gameScene;
+    if (gameScene && gameScene->script_info_available)
+    {
+        show_game_script_info(gameScene->rom_filename);
+    }
+}
 
 PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 {
@@ -698,6 +713,8 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 2,
         .on_press = NULL
     };
+    
+    #define BASE_LUA_STRING "Lua scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA
     // lua scripts
@@ -705,19 +722,31 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .name = "Game scripts",
         .values = off_on_labels,
         .description =
-            "Enable or disable Lua\nscripting support.\n \nEnabling this "
-            "may impact\nperformance.",
+            BASE_LUA_STRING,
         .pref_var = &preferences_lua_support,
         .max_value = 2,
+        .locked = 0,
         .on_press = NULL,
     };
 
     if (gameScene)
     {
-        entries[i].description = "Enable or disable Lua\nscripting support.\n \nEnabling this may impact\nperformance.\n \nYou need to restart the\ngame for the changes to\napply.";
+        if (gameScene->script_available)
+        {
+            entries[i].description = BASE_LUA_STRING "\n \nYou must restart the\nROM for this setting\nto take effect.";
+            if (gameScene->script_info_available)
+            {
+                entries[i].description = BASE_LUA_STRING "\n \nHold the A button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
+                entries[i].on_hold = display_script_info;
+            }
+        }
+        else
+        {
+            entries[i].description = BASE_LUA_STRING "\n \nThere is no script\navailable for this ROM.";
+            entries[i].locked = 1;
+        }
     }
-
-#endif
+    #endif
 
     entries[++i] = (OptionsMenuEntry){
         .name = "Miscellaneous",
@@ -894,6 +923,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // Button Input (discrete and continuous)
     PDButtons pushed = PGB_App->buttons_pressed;
     PDButtons pressed = PGB_App->buttons_down;
+    PDButtons released = PGB_App->buttons_released;
 
     if (pushed & kButtonDown)
     {
@@ -966,6 +996,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // Apply cursor movement if there are steps to take
     if (steps != 0)
     {
+        settingsScene->option_hold_time = 0;
         int direction = (steps > 0) ? 1 : -1;
         int num_steps = abs(steps);
 
@@ -1010,14 +1041,40 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2),
                 settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
     }
+    
+    OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
 
     bool a_pressed = (pushed & kButtonA);
+    if (cursor_entry->on_hold && !cursor_entry->locked)
+    {
+        a_pressed = released & kButtonA;
+        if (settingsScene->option_hold_time >= HOLD_TIME_SUPPRESS_RELEASE) a_pressed = 0;
+    }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
-
-    OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
 
     preference_t old_preferences_per_game = preferences_per_game;
 
+    if (cursor_entry->on_hold && !cursor_entry->locked)
+    {
+        if (pressed & kButtonA)
+        {
+            settingsScene->option_hold_time += dt;
+        }
+        else
+        {
+            settingsScene->option_hold_time -= HOLD_FADE_RATE * dt;
+        }
+        
+        if (settingsScene->option_hold_time >= HOLD_TIME)
+        {
+            settingsScene->option_hold_time = 0;
+            cursor_entry->on_hold(cursor_entry, settingsScene);
+            return;
+        }
+        
+        if (settingsScene->option_hold_time < 0)
+            settingsScene->option_hold_time = 0;
+    }
     if (cursor_entry->on_press && a_pressed)
     {
         cursor_entry->on_press(cursor_entry, settingsScene);
@@ -1203,6 +1260,18 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 playdate->graphics->fillRect(stateX, y, stateWidth, fontHeight, (LCDColor)dither);
             }
         }
+        
+        if (itemIndex == settingsScene->cursorIndex && settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
+        {
+            float p = (settingsScene->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) / (HOLD_TIME - HOLD_TIME_MARGIN - HOLD_TIME_SUPPRESS_RELEASE);
+            if (p > 1.0f) p = 1.0f;
+            
+            int m = 4;
+            
+            playdate->graphics->fillRect(
+                0, y - (rowSpacing / 2) + m, kDividerX * p, rowHeight - 2*m, kColorXOR
+            );
+        }
     }
 
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
@@ -1224,8 +1293,12 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         int indicatorX = kDividerX - 4;
         int indicatorWidth = 2;
 
+        // scroll bar
         playdate->graphics->fillRect(
-            indicatorX - 1, (int)handleY - 1, indicatorWidth + 2, (int)handleHeight + 2, kColorWhite
+            indicatorX - 1, (int)handleY, indicatorWidth + 2, (int)handleHeight, kColorWhite
+        );
+        playdate->graphics->fillRect(
+            indicatorX, (int)handleY - 1, indicatorWidth, (int)handleHeight + 2, kColorWhite
         );
 
         playdate->graphics->fillRect(

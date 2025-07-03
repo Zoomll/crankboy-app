@@ -63,6 +63,7 @@ typedef struct PGB_Application
     struct PDSynth* clickSynth;
     PDButtons buttons_down;
     PDButtons buttons_pressed;
+    PDButtons buttons_released;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
 } PGB_Application;

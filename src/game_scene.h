@@ -145,6 +145,8 @@ typedef struct PGB_GameScene
     int interlace_lock_frames_remaining;
     int previous_scale_line_index;
     preferences_bitfield_t prefs_locked_by_script;
+    unsigned script_available : 1;
+    unsigned script_info_available : 1;
 } PGB_GameScene;
 
 PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
@@ -155,6 +157,6 @@ unsigned get_save_state_timestamp(PGB_GameScene *gameScene, unsigned slot);
 bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out);
 
 struct PGB_Game;
-void show_game_script_info(struct PGB_Game* game);
+void show_game_script_info(const char* rompath);
 
 #endif /* game_scene_h */

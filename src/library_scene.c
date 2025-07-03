@@ -109,7 +109,7 @@ static void launch_game(void* ud, int option)
     case 2:
         // display information
         {
-            show_game_script_info(game);
+            show_game_script_info(game->fullpath);
         }
         break;
     
@@ -359,8 +359,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     
                     script_info_free(info);
                     
-                    modal->width = 298;
-                    modal->height = 148;
+                    modal->width = 290;
+                    modal->height = 152;
                     
                     PGB_presentModal(modal->scene);
                     launch = false;

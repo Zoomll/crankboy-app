@@ -39,7 +39,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     
     playdate->graphics->drawTextInRect(
         infoScene->text, strlen(infoScene->text), kUTF8Encoding, margin,
-        -infoScene->scroll, width, textHeight * 2, kWrapWord, kAlignTextLeft
+        -infoScene->scroll + margin, width, textHeight * 2, kWrapWord, kAlignTextLeft
     );    
     
     playdate->graphics->display();

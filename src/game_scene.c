@@ -494,8 +494,18 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
         gameScene->error = romError;
     }
 
+    gameScene->script_available = false;
+    gameScene->script_info_available = false;
 #ifndef NOLUA
-    if (preferences_lua_support)
+    ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
+    if (scriptInfo)
+    {
+        gameScene->script_available = true;
+        gameScene->script_info_available = !!scriptInfo->info;
+    }
+    script_info_free(scriptInfo);
+
+    if (preferences_lua_support && gameScene->script_available)
     {
         char name[17];
         gb_get_rom_name(context->gb->gb_rom, name);
@@ -2868,9 +2878,9 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
 #endif
 }
 
-void show_game_script_info(struct PGB_Game* game)
+void show_game_script_info(const char* rompath)
 {
-    ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+    ScriptInfo* info = script_get_info_by_rom_path(rompath);
     if (!info) return;
     
     if (!info->info)
