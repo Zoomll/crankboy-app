@@ -340,19 +340,6 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        playdate->graphics->clear(kColorWhite);
-        const char* msg = "Scanning for images...";
-        int screenWidth = LCD_COLUMNS;
-        int screenHeight = LCD_ROWS;
-        LCDFont* font = PGB_App->bodyFont;
-        int textWidth = playdate->graphics->getTextWidth(font, msg, strlen(msg), kUTF8Encoding, 0);
-
-        playdate->graphics->drawText(
-            msg, strlen(msg), kUTF8Encoding, screenWidth / 2 - textWidth / 2, screenHeight / 2
-        );
-
-        playdate->graphics->display();
-
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
 
         if (convScene->files_count == 0)

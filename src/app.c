@@ -191,15 +191,35 @@ void PGB_init(void)
         manifest.data.tableval = obj;
     }
 
+    const char* logoPath = "images/logo.pdi";
+    LCDBitmap* logoBitmap = playdate->graphics->loadBitmap(logoPath, NULL);
+
     playdate->graphics->clear(kColorWhite);
-    const char* setup_msg = "Performing first-time setup...";
-    playdate->graphics->drawText(
-        setup_msg, strlen(setup_msg), kUTF8Encoding,
-        LCD_COLUMNS / 2 - playdate->graphics->getTextWidth(
-                              PGB_App->bodyFont, setup_msg, strlen(setup_msg), kUTF8Encoding, 0
-                          ) / 2,
-        LCD_ROWS / 2
-    );
+
+    if (logoBitmap)
+    {
+        int logoWidth, logoHeight;
+        playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
+
+        int x = (LCD_COLUMNS - logoWidth) / 2;
+        int y = (LCD_ROWS - logoHeight) / 2;
+
+        playdate->graphics->drawBitmap(logoBitmap, x, y, kBitmapUnflipped);
+
+        playdate->graphics->freeBitmap(logoBitmap);
+    }
+    else
+    {
+        const char* setup_msg = "Performing first-time setup...";
+        int textWidth = playdate->graphics->getTextWidth(
+            PGB_App->bodyFont, setup_msg, strlen(setup_msg), kUTF8Encoding, 0
+        );
+        playdate->graphics->drawText(
+            setup_msg, strlen(setup_msg), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2,
+            LCD_ROWS / 2
+        );
+    }
+
     playdate->graphics->display();
 
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
@@ -211,7 +231,7 @@ void PGB_init(void)
         ud.manifest = &manifest;
         ud.directory = sources[i];
         ud.modified = &modified;
-        pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
+        playdate->file->listfiles(sources[i], copy_file_callback, &ud, true);
     }
 
     // TODO: save manifest
@@ -221,7 +241,7 @@ void PGB_init(void)
 
     // check if any PNGs are in the covers/ folder
     bool png_found = false;
-    pgb_listfiles(PGB_coversPath, checkForPngCallback, &png_found, true, kFileReadData);
+    playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, true);
 
     if (png_found)
     {

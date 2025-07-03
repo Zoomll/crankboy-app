@@ -72,11 +72,6 @@ char* pgb_extract_fs_error_code(const char* filename);
 
 float pgb_easeInOutQuad(float x);
 
-int pgb_listfiles(
-    const char* path, void (*callback)(const char* filename, void* userdata), void* userdata,
-    int showhidden, FileOptions fopts
-);
-
 int pgb_compare_games_by_display_name(const void* a, const void* b);
 
 void pgb_sanitize_string_for_filename(char* str);
