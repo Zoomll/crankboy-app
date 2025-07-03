@@ -191,55 +191,7 @@ void PGB_init(void)
         manifest.data.tableval = obj;
     }
 
-    const char* logoPath = "images/logo.pdi";
-    LCDBitmap* logoBitmap = playdate->graphics->loadBitmap(logoPath, NULL);
-
-    playdate->graphics->clear(kColorWhite);
-
-    if (logoBitmap)
-    {
-        const char* init_msg = "Initializing...";
-
-        int screenWidth = LCD_COLUMNS;
-        int screenHeight = LCD_ROWS;
-        LCDFont* font = PGB_App->bodyFont;
-
-        int logoWidth, logoHeight;
-        playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
-
-        int textWidth =
-            playdate->graphics->getTextWidth(font, init_msg, strlen(init_msg), kUTF8Encoding, 0);
-        int textHeight = playdate->graphics->getFontHeight(font);
-
-        int lineSpacing = textHeight;
-
-        int totalBlockHeight = logoHeight + lineSpacing + textHeight;
-
-        int blockY_start = (screenHeight - totalBlockHeight) / 2;
-
-        int logoX = (screenWidth - logoWidth) / 2;
-        int logoY = blockY_start;
-
-        int textX = (screenWidth - textWidth) / 2;
-        int textY = logoY + logoHeight + lineSpacing;
-
-        playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
-        playdate->graphics->drawText(init_msg, strlen(init_msg), kUTF8Encoding, textX, textY);
-
-        playdate->graphics->freeBitmap(logoBitmap);
-    }
-    else
-    {
-        const char* setup_msg = "Performing first-time setup...";
-        int textWidth = playdate->graphics->getTextWidth(
-            PGB_App->bodyFont, setup_msg, strlen(setup_msg), kUTF8Encoding, 0
-        );
-        playdate->graphics->drawText(
-            setup_msg, strlen(setup_msg), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2,
-            LCD_ROWS / 2
-        );
-    }
-
+    pgb_draw_logo_with_message("Initializing…", 7);
     playdate->graphics->display();
 
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};

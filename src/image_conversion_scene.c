@@ -340,46 +340,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        LCDBitmap* logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
-        const char* scanning_msg = "Scanning for new images...";
-
-        if (logoBitmap)
-        {
-            playdate->graphics->clear(kColorWhite);
-
-            int screenWidth = LCD_COLUMNS;
-            int screenHeight = LCD_ROWS;
-            LCDFont* font = PGB_App->bodyFont;
-
-            int logoWidth, logoHeight, textWidth, textHeight;
-            playdate->graphics->getBitmapData(
-                logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL
-            );
-            textHeight = playdate->graphics->getFontHeight(font);
-            textWidth = playdate->graphics->getTextWidth(
-                font, scanning_msg, strlen(scanning_msg), kUTF8Encoding, 0
-            );
-
-            int lineSpacing = textHeight;
-            int totalBlockHeight = logoHeight + lineSpacing + textHeight;
-            int blockY_start = (screenHeight - totalBlockHeight) / 2;
-
-            int logoX = (screenWidth - logoWidth) / 2;
-            int logoY = blockY_start;
-
-            int textX = (screenWidth - textWidth) / 2;
-            int textY = logoY + logoHeight + lineSpacing;
-
-            playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
-            playdate->graphics->drawText(
-                scanning_msg, strlen(scanning_msg), kUTF8Encoding, textX, textY
-            );
-
-            playdate->graphics->freeBitmap(logoBitmap);
-
-            playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
-        }
-
+        pgb_draw_logo_with_message("Scanning for new images…", 15);
         playdate->graphics->display();
 
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
@@ -409,56 +370,14 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
 
-            LCDBitmap* logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
-
             char* progress_msg = aprintf(
-                "Converting image (%d of %d) to .pdi...", (int)convScene->idx,
+                "Converting image (%d of %d) to .pdi…", (int)convScene->idx,
                 (int)convScene->files_count
             );
 
-            if (logoBitmap && progress_msg)
-            {
-                playdate->graphics->clear(kColorWhite);
-
-                int screenWidth = LCD_COLUMNS;
-                int screenHeight = LCD_ROWS;
-                LCDFont* font = PGB_App->bodyFont;
-
-                int logoWidth, logoHeight, textWidth, textHeight;
-                playdate->graphics->getBitmapData(
-                    logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL
-                );
-                textHeight = playdate->graphics->getFontHeight(font);
-                textWidth = playdate->graphics->getTextWidth(
-                    font, progress_msg, strlen(progress_msg), kUTF8Encoding, 0
-                );
-
-                int lineSpacing = textHeight;
-
-                int totalBlockHeight = logoHeight + lineSpacing + textHeight;
-
-                int blockY_start = (screenHeight - totalBlockHeight) / 2;
-
-                int logoX = (screenWidth - logoWidth) / 2;
-                int logoY = blockY_start;
-
-                int textX = (screenWidth - textWidth) / 2;
-                int textY = logoY + logoHeight + lineSpacing;
-
-                playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
-                playdate->graphics->drawText(
-                    progress_msg, strlen(progress_msg), kUTF8Encoding, textX, textY
-                );
-
-                playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
-            }
-
-            if (logoBitmap)
-            {
-                playdate->graphics->freeBitmap(logoBitmap);
-            }
             if (progress_msg)
             {
+                pgb_draw_logo_with_message(progress_msg, 20);
                 free(progress_msg);
             }
 

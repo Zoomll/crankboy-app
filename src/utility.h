@@ -76,6 +76,7 @@ int pgb_compare_games_by_display_name(const void* a, const void* b);
 
 void pgb_sanitize_string_for_filename(char* str);
 void pgb_sort_games_array(PGB_Array* games_array);
+void pgb_draw_logo_with_message(const char* message, int x_offset);
 void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color);
 void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 

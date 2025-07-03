@@ -529,6 +529,54 @@ void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
     );
 }
 
+void pgb_draw_logo_with_message(const char* message, int x_offset)
+{
+    const char* logoPath = "images/logo.pdi";
+    LCDBitmap* logoBitmap = playdate->graphics->loadBitmap(logoPath, NULL);
+
+    playdate->graphics->clear(kColorWhite);
+
+    if (logoBitmap)
+    {
+        int screenWidth = LCD_COLUMNS;
+        int screenHeight = LCD_ROWS;
+        LCDFont* font = PGB_App->bodyFont;
+
+        int logoWidth, logoHeight;
+        playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
+
+        int textWidth =
+            playdate->graphics->getTextWidth(font, message, strlen(message), kUTF8Encoding, 0);
+        int textHeight = playdate->graphics->getFontHeight(font);
+
+        int lineSpacing = textHeight;
+        int totalBlockHeight = logoHeight + lineSpacing + textHeight;
+        int blockY_start = (screenHeight - totalBlockHeight) / 2;
+
+        int logoX = (screenWidth - logoWidth) / 2;
+        int logoY = blockY_start;
+
+        int textX = (screenWidth - textWidth) / 2 + x_offset;
+        int textY = logoY + logoHeight + lineSpacing;
+
+        playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
+        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
+
+        playdate->graphics->freeBitmap(logoBitmap);
+    }
+    else
+    {
+        int textWidth = playdate->graphics->getTextWidth(
+            PGB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+        );
+        playdate->graphics->drawText(
+            message, strlen(message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2, LCD_ROWS / 2
+        );
+    }
+
+    playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+}
+
 void* pgb_malloc(size_t size)
 {
     return playdate->system->realloc(NULL, size);
