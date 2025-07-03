@@ -17,7 +17,7 @@
     {
         "name": "KIRBY DREAM LAND",
         "script": "scripts/kirby_dreamland.l",
-        "enabled": true,
+        "experimental": true,
         "info": "(Experimental)\n\n- Use the crank to flap!\n- Start and Select buttons are no longer required anywhere."
     }
 ]

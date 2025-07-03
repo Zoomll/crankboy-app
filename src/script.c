@@ -525,6 +525,8 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         json_value jenabled = json_get_table_value(item, "enabled");
         if (jenabled.type == kJSONFalse)
             continue;
+            
+        json_value jexperimental = json_get_table_value(item, "experimental");
 
         json_value jname = json_get_table_value(item, "name");
         json_value jscript = json_get_table_value(item, "script");
@@ -549,6 +551,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             memset(info, 0, sizeof(ScriptInfo));
             info->script_path = strdup(script_path);
             info->info = script_info ? strdup(strltrim(script_info)) : NULL;
+            info->experimental = jexperimental.type == kJSONTrue;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0; // paranoia
             free_json_data(v);

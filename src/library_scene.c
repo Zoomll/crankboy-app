@@ -346,7 +346,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             if (!has_prompted)
             {
                 ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
-                if (info)
+                if (info && !info->experimental)
                 {
                     const char* options[] = {
                         "Yes", "No", "About", NULL

@@ -7,6 +7,7 @@ typedef struct ScriptInfo
     char* script_path;
     char* info;
     char rom_name[17];
+    bool experimental;
 } ScriptInfo;
 
 lua_State* script_begin(const char* game_name, struct PGB_GameScene* game_scene);
