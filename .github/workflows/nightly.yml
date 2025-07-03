@@ -20,14 +20,14 @@ jobs:
               with:
                   submodules: "recursive"
 
-            # Step 2: Install Specific ARM GCC Toolchain (10.3-2021.10)
+            # Step 2: Install Specific ARM GCC Toolchain (9-2019q4)
             - name: Install ARM GCC Toolchain
               run: |
                   echo "Downloading ARM GCC Toolchain..."
-                  curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+                  curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
                   echo "Extracting toolchain..."
-                  tar -xjf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
-                  TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-10.3-2021.10/bin"
+                  tar -xjf gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
                   echo "Adding $TOOLCHAIN_PATH to the system PATH for subsequent steps..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
