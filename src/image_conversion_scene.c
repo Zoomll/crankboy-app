@@ -337,32 +337,58 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     if (convScene->idx < convScene->files_count)
     {
         char* fname = convScene->files[convScene->idx++];
-        char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
-        char* msg = aprintf(
-            "Converting \"%s\" (%d of %d) to .pdi format...", fname, (int)convScene->idx,
-            (int)convScene->files_count
-        );
-        printf("%s\n", msg);
 
-        if (msg)
+        size_t len = strlen(fname);
+        if (len > 0 && (fname[len - 1] == '\n' || fname[len - 1] == '\r'))
+        {
+            fname[len - 1] = '\0';
+        }
+
+        char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
+
+        const char* msg1 = "Converting";
+        char* msg2 = aprintf("\"%s\"", fname);
+        char* msg3 = aprintf(
+            "(%d of %d) to .pdi format...", (int)convScene->idx, (int)convScene->files_count
+        );
+
+        if (msg2 && msg3)
         {
             playdate->graphics->clear(kColorWhite);
 
-            // Draw the message in the center of the screen
-            int textWidth = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
-            );
             int screenWidth = LCD_COLUMNS;
             int screenHeight = LCD_ROWS;
 
-            playdate->graphics->drawText(
-                msg, strlen(msg), kUTF8Encoding, screenWidth / 2 - textWidth / 2, screenHeight / 2
+            LCDFont* font = PGB_App->bodyFont;
+
+            int lineHeight = playdate->graphics->getFontHeight(font);
+
+            int y2 = screenHeight / 2 - lineHeight / 2;
+            int y1 = y2 - lineHeight;
+            int y3 = y2 + lineHeight;
+
+            playdate->graphics->drawTextInRect(
+                msg1, strlen(msg1), kUTF8Encoding, 0, y1, screenWidth, lineHeight, kWrapClip,
+                kAlignTextCenter
+            );
+
+            playdate->graphics->drawTextInRect(
+                msg2, strlen(msg2), kUTF8Encoding, 0, y2, screenWidth, lineHeight, kWrapClip,
+                kAlignTextCenter
+            );
+
+            playdate->graphics->drawTextInRect(
+                msg3, strlen(msg3), kUTF8Encoding, 0, y3, screenWidth, lineHeight, kWrapClip,
+                kAlignTextCenter
             );
 
             playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
-
-            free(msg);
         }
+
+        if (msg2)
+            free(msg2);
+        if (msg3)
+            free(msg3);
 
         playdate->graphics->display();
 
