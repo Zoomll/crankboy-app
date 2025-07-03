@@ -7,11 +7,10 @@
 //
 
 #include "./src/app.h"
-#include "app.h"
-#include "dtcm.h"
+#include "./src/dtcm.h"
+#include "./src/revcheck.h"
+#include "./src/userstack.h"
 #include "pd_api.h"
-#include "revcheck.h"
-#include "userstack.h"
 
 #include <stdio.h>
 #include <time.h>

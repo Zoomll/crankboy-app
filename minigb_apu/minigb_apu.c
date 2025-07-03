@@ -8,10 +8,10 @@
 #include "minigb_apu.h"
 
 #include "../peanut_gb/peanut_gb.h"
+#include "../src/app.h"
+#include "../src/dtcm.h"
 #include "../src/game_scene.h"
-#include "app.h"
-#include "dtcm.h"
-#include "preferences.h"
+#include "../src/preferences.h"
 
 #include <stdbool.h>
 #include <stddef.h>

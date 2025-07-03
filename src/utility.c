@@ -683,51 +683,64 @@ fail:
     return false;
 }
 
-bool startswith(const char *str, const char *prefix) {
-    if (!str || !prefix) return false;
+bool startswith(const char* str, const char* prefix)
+{
+    if (!str || !prefix)
+        return false;
 
     size_t str_len = strlen(str);
     size_t prefix_len = strlen(prefix);
 
-    if (prefix_len > str_len) return false;
+    if (prefix_len > str_len)
+        return false;
 
     return strncmp(str, prefix, prefix_len) == 0;
 }
 
-bool endswith(const char *str, const char *suffix) {
-    if (!str || !suffix) return false;
+bool endswith(const char* str, const char* suffix)
+{
+    if (!str || !suffix)
+        return false;
 
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
 
-    if (suffix_len > str_len) return false;
+    if (suffix_len > str_len)
+        return false;
 
     return strncmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
 }
 
-bool startswithi(const char *str, const char *prefix) {
-    if (!str || !prefix) return false;
+bool startswithi(const char* str, const char* prefix)
+{
+    if (!str || !prefix)
+        return false;
 
     size_t str_len = strlen(str);
     size_t prefix_len = strlen(prefix);
 
-    if (prefix_len > str_len) return false;
+    if (prefix_len > str_len)
+        return false;
 
     return strncasecmp(str, prefix, prefix_len) == 0;
 }
 
-bool endswithi(const char *str, const char *suffix) {
-    if (!str || !suffix) return false;
+bool endswithi(const char* str, const char* suffix)
+{
+    if (!str || !suffix)
+        return false;
 
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
 
-    if (suffix_len > str_len) return false;
+    if (suffix_len > str_len)
+        return false;
 
     return strncasecmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
 }
 
-struct listfiles_ud {
+struct listfiles_ud
+{
     void* ud;
     void (*callback)(const char* filename, void* userdata);
     const char* path;
@@ -737,27 +750,29 @@ struct listfiles_ud {
 static void process_file(const char* path, void* ud)
 {
     struct listfiles_ud* lud = ud;
-    
+
     // TODO: strip `/` from lud->path
     char* fullpath = aprintf("%s/%s", lud->path, path);
-    
+
     SDFile* file = playdate->file->open(fullpath, lud->opts);
     free(fullpath);
-    if (!file) return;
+    if (!file)
+        return;
     playdate->file->close(file);
-    
+
     lud->callback(path, lud->ud);
 }
 
-int pgb_listfiles(const char* path, void (*callback)(const char* filename, void* userdata), void* ud, int showhidden, FileOptions fopts)
+int pgb_listfiles(
+    const char* path, void (*callback)(const char* filename, void* userdata), void* ud,
+    int showhidden, FileOptions fopts
+)
 {
     struct listfiles_ud lud;
     lud.ud = ud;
     lud.callback = callback;
     lud.path = path;
     lud.opts = fopts;
-    
-    return playdate->file->listfiles(
-        path, process_file, &lud, showhidden
-    );
+
+    return playdate->file->listfiles(path, process_file, &lud, showhidden);
 }

@@ -8,11 +8,11 @@
 
 #include "library_scene.h"
 
+#include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "credits_scene.h"
 #include "dtcm.h"
 #include "game_scene.h"
-#include "minigb_apu.h"
 #include "modal.h"
 #include "preferences.h"
 #include "settings_scene.h"
@@ -303,8 +303,9 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                 if (selectedGame->coverPath != NULL)
                 {
-                    PGB_App->coverArtCache.art =
-                        pgb_load_and_scale_cover_art_from_path(selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+                    PGB_App->coverArtCache.art = pgb_load_and_scale_cover_art_from_path(
+                        selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
+                    );
                     PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
                 }
             }

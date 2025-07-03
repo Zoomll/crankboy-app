@@ -1,31 +1,34 @@
 #include "image_conversion_scene.h"
-#include "library_scene.h"
 
 #include "app.h"
+#include "library_scene.h"
 #include "pdi.h"
 
 #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wdouble-promotion"
-    #pragma GCC diagnostic ignored "-Wconversion"
-    #define STB_IMAGE_IMPLEMENTATION
-    #define STBI_ONLY_PNG
-    #define STBI_ONLY_BMP
-    #define STBI_ONLY_JPG
-    #define STBI_ONLY_JPEG
-    #define STBI_NO_THREAD_LOCALS
-    #include "stb_image.h"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wconversion"
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#define STBI_ONLY_BMP
+#define STBI_ONLY_JPG
+#define STBI_ONLY_JPEG
+#define STBI_NO_THREAD_LOCALS
+#include "stb_image.h"
 #pragma GCC diagnostic pop
 
 // apparently these are standard weights.
 #define WEIGHT_R 312
 #define WEIGHT_G 591
 #define WEIGHT_B 126
-#define WEIGHT_DIVISOR (256*1024)
+#define WEIGHT_DIVISOR (256 * 1024)
 
+// clang-format off
 static const int matrix_floyd_steinberg[] = {
     0, 0, 7,
     3, 5, 1
 };
+// clang-format on
+
 static const int matrix_floyd_steinberg_divisor = 16;
 static const int matrix_floyd_steinberg_width = 3;
 static const int matrix_floyd_steinberg_height = 2;
@@ -33,47 +36,45 @@ static const int matrix_floyd_steinberg_x = 1;
 
 // returns false on error
 bool errdiff_dither(
-    unsigned char* rgba,
-    unsigned in_width,
-    unsigned in_height,
-    uint8_t* out, // 32-bit packed 1-bit
-    unsigned out_width,
-    unsigned out_height,
-    size_t out_stride,
-    float scale
-) {
-    // fixed-width precision
-    #define FW_BITS 10
-    #define FW_ONE (1 << FW_BITS)
-    #define FW_HALF (FW_ONE/2)
+    unsigned char* rgba, unsigned in_width, unsigned in_height,
+    uint8_t* out,  // 32-bit packed 1-bit
+    unsigned out_width, unsigned out_height, size_t out_stride, float scale
+)
+{
+// fixed-width precision
+#define FW_BITS 10
+#define FW_ONE (1 << FW_BITS)
+#define FW_HALF (FW_ONE / 2)
     typedef int16_t fw_t;
-    
+
     const int* const matrix = matrix_floyd_steinberg;
     const int mdiv = matrix_floyd_steinberg_divisor;
     const int mw = matrix_floyd_steinberg_width;
     const int mh = matrix_floyd_steinberg_height;
     const int mx = matrix_floyd_steinberg_x;
-    
+
     assert(WEIGHT_DIVISOR >= FW_ONE);
     const int GRAYDIV = WEIGHT_DIVISOR / FW_ONE;
-    
+
     const unsigned err_stride = sizeof(fw_t) * out_width;
-    
+
     int error_row = 0;
-    
+
     fw_t* error = malloc(sizeof(fw_t) * err_stride);
-    if (!error) return false;
+    if (!error)
+        return false;
     memset(error, 0, sizeof(fw_t) * err_stride);
-    
+
     for (unsigned y = 0; y < out_height; ++y)
     {
         int err_row_idx[mh];
-        for (int i = 0; i < mh; ++i) err_row_idx[i] = (error_row = i) % mh;
+        for (int i = 0; i < mh; ++i)
+            err_row_idx[i] = (error_row = i) % mh;
         error_row = (error_row + 1) % mh;
-        
+
         for (unsigned x = 0; x < out_width; ++x)
         {
-            unsigned xb = x/8;
+            unsigned xb = x / 8;
             unsigned x8 = x % 8;
 
             // get graytone value for pixel
@@ -81,28 +82,28 @@ bool errdiff_dither(
             {
                 int ix = MIN(x * scale, in_width - 1);
                 int iy = MIN(y * scale, in_height - 1);
-                
+
                 int src_idx = (iy * in_width + ix) * 4;
                 unsigned r = rgba[src_idx];
                 unsigned g = rgba[src_idx + 1];
                 unsigned b = rgba[src_idx + 2];
-                gray = MIN(r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B, WEIGHT_DIVISOR-1);
+                gray = MIN(r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B, WEIGHT_DIVISOR - 1);
             }
-            
+
             fw_t g = gray / GRAYDIV;
             fw_t e = error[err_row_idx[0] * out_width + x] / mdiv;
             fw_t ediff;
             if (g + e > FW_HALF)
             {
                 ediff = (g + e) - FW_ONE;
-                
-                out[out_stride*y + xb] |= (1 << (7 - x8));
+
+                out[out_stride * y + xb] |= (1 << (7 - x8));
             }
             else
             {
                 ediff = (g + e);
             }
-            
+
             // diffuse error
             for (int i = 0; i < mh; ++i)
             {
@@ -111,31 +112,33 @@ bool errdiff_dither(
                     if (j + x - mx >= 0 && j + x - mx < out_width)
                     {
                         int c = matrix[i * mh + j];
-                        error[err_row_idx[i]*out_width + j + x - mx] += c*ediff;
+                        error[err_row_idx[i] * out_width + j + x - mx] += c * ediff;
                     }
                 }
             }
         }
-        
+
         // reset this error row (for next row's use)
         memset(error, 0, err_stride);
     }
-    
+
     free(error);
     return true;
 }
 
-void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_width, int max_height)
+void* png_to_pdi(
+    const void* png_data, int png_size, size_t* out_size, int max_width, int max_height
+)
 {
     int width, height, channels;
-    unsigned char* img_data = stbi_load_from_memory(
-        (const stbi_uc*)png_data, png_size, &width, &height, &channels, 4
-    );
-    
-    if (!img_data) {
+    unsigned char* img_data =
+        stbi_load_from_memory((const stbi_uc*)png_data, png_size, &width, &height, &channels, 4);
+
+    if (!img_data)
+    {
         return NULL;
     }
-    
+
     float wscale = 1.0f, hscale = 1.0f;
     if (max_width >= 0 && max_width < width)
     {
@@ -155,12 +158,12 @@ void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_w
     {
         max_height = height;
     }
-    
+
     float scale = MAX(wscale, hscale);
 
     // Determine if we have transparency
     int has_transparency = false;
-    #if 0
+#if 0
     if (channels == 4) {
         // Check if any pixel has alpha < 255
         for (int i = 0; i < width * height * 4; i += 4) {
@@ -170,15 +173,15 @@ void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_w
             }
         }
     }
-    #endif
+#endif
 
     size_t stride = ((max_width + 31) / 32) * 4;
-    
+
     printf("stride: %x\n", (int)stride);
 
     struct PDIHeader header;
     memcpy(header.magic, PDI_MAGIC, sizeof(header.magic));
-    header.flags = 0; // TODO: compression
+    header.flags = 0;  // TODO: compression
 
     struct PDICell cell;
     // TODO: clip rect
@@ -196,50 +199,53 @@ void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_w
     size_t total_size = sizeof(header) + sizeof(cell) + white_size + opaque_size;
 
     void* pdi_data = malloc(total_size);
-    if (!pdi_data) {
+    if (!pdi_data)
+    {
         stbi_image_free(img_data);
         return NULL;
     }
-    
+
     memset(pdi_data, 0, total_size);
 
     uint8_t* ptr = (uint8_t*)pdi_data;
-    
+
     // Write header
     memcpy(ptr, &header, sizeof(header));
     ptr += sizeof(header);
-    
+
     // Write cell
     memcpy(ptr, &cell, sizeof(cell));
     ptr += sizeof(cell);
-    
+
     uint32_t lfsr = 0x8389E83A;
-    
+
     // Write white data (convert RGBA to grayscale)
 #ifdef LFSR_DITHER
-    for (int y = 0; y < max_height; y++) {
-        for (int x = 0; x < max_width; x++) {
+    for (int y = 0; y < max_height; y++)
+    {
+        for (int x = 0; x < max_width; x++)
+        {
             lfsr <<= 1;
             lfsr |= 1 & ((lfsr >> 1) ^ (lfsr >> 5) ^ (lfsr >> 8) ^ (lfsr >> 21) ^ (lfsr >> 31) ^ 1);
-            
+
             unsigned xb = x / 8;
             unsigned x8 = x % 8;
-            
+
             int ix = MIN(x * scale, width - 1);
             int iy = MIN(y * scale, height - 1);
-            
+
             int src_idx = (iy * width + ix) * 4;
             unsigned r = img_data[src_idx];
             unsigned g = img_data[src_idx + 1];
             unsigned b = img_data[src_idx + 2];
-            
+
             // apparently these are standard weights.
             // range is (0, 256*1024 + margin]
             unsigned gray = r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B;
-            
+
             // TODO: use bayer filtering or something
             unsigned white = gray > lfsr % (WEIGHT_DIVISOR);
-            
+
             if (white)
             {
                 ptr[y * stride + xb] |= (1 << (7 - x8));
@@ -247,29 +253,29 @@ void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_w
         }
     }
 #else
-    errdiff_dither(
-        img_data, width, height,
-        ptr, max_width, max_height, stride, scale
-    );
+    errdiff_dither(img_data, width, height, ptr, max_width, max_height, stride, scale);
 #endif
     ptr += white_size;
-    
-    if (has_transparency) {
-        for (int y = 0; y < max_height; y++) {
-            for (int x = 0; x < max_width; x++) {
+
+    if (has_transparency)
+    {
+        for (int y = 0; y < max_height; y++)
+        {
+            for (int x = 0; x < max_width; x++)
+            {
                 unsigned xb = x / 8;
                 unsigned x8 = x % 8;
-            
+
                 int ix = MIN(x * scale, width - 1);
                 int iy = MIN(y * scale, height - 1);
-                
+
                 int src_idx = (iy * width + ix) * 4;
-                
+
                 int a = img_data[src_idx + 3];
-                
+
                 if (a > 32)
                 {
-                    ptr[y * stride + xb] |= (1 << (7 - x8)); // Alpha channel
+                    ptr[y * stride + xb] |= (1 << (7 - x8));  // Alpha channel
                 }
             }
         }
@@ -278,7 +284,8 @@ void* png_to_pdi(const void* png_data, int png_size, size_t* out_size, int max_w
     // Clean up
     stbi_image_free(img_data);
 
-    if (out_size) {
+    if (out_size)
+    {
         *out_size = total_size;
     }
     return pdi_data;
@@ -289,7 +296,7 @@ static bool process_png(const char* fname)
 {
     size_t len;
     void* data = pgb_read_entire_file(fname, &len, kFileReadData);
-    
+
     if (data)
     {
         size_t pdi_len;
@@ -299,7 +306,7 @@ static bool process_png(const char* fname)
             char* basename = pgb_basename(fname, true);
             char* pdi_name = aprintf("%s/%s.pdi", PGB_coversPath, basename);
             free(basename);
-            
+
             if (pgb_write_entire_file(pdi_name, pdi, pdi_len) == false)
             {
                 free(pdi_name);
@@ -313,7 +320,7 @@ static bool process_png(const char* fname)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -321,33 +328,40 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 {
     PGB_ImageConversionScene* convScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
-    
+
     if (convScene->idx < convScene->files_count)
     {
         char* fname = convScene->files[convScene->idx++];
         char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
-        char* msg = aprintf("Converting \"%s\" (%d of %d) to .pdi format...", fname, (int)convScene->idx, (int)convScene->files_count);
+        char* msg = aprintf(
+            "Converting \"%s\" (%d of %d) to .pdi format...", fname, (int)convScene->idx,
+            (int)convScene->files_count
+        );
         printf("%s\n", msg);
-        
+
         if (msg)
         {
             // Draw the message in the center of the screen
-            int textWidth = playdate->graphics->getTextWidth(PGB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0);
+            int textWidth = playdate->graphics->getTextWidth(
+                PGB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
+            );
             int screenWidth = LCD_COLUMNS;
             int screenHeight = LCD_ROWS;
-            
-            playdate->graphics->drawText(msg, strlen(msg), kUTF8Encoding, screenWidth / 2 - textWidth / 2, screenHeight / 2);
-            
-            playdate->graphics->markUpdatedRows(0, LCD_ROWS-1);
-            
+
+            playdate->graphics->drawText(
+                msg, strlen(msg), kUTF8Encoding, screenWidth / 2 - textWidth / 2, screenHeight / 2
+            );
+
+            playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+
             free(msg);
         }
-        
+
         playdate->graphics->display();
-        
+
         bool result = process_png(full_fname);
         free(full_fname);
-        
+
         printf("  result: %d\n", (int)result);
     }
     else
@@ -370,21 +384,21 @@ void PGB_ImageConversionScene_free(void* object)
 
 bool filename_has_stbi_extension(const char* fname)
 {
-    return (endswithi(fname, ".png")
-        || endswithi(fname, ".jpg")
-        || endswithi(fname, ".jpeg")
-        || endswithi(fname, ".bmp"));
+    return (
+        endswithi(fname, ".png") || endswithi(fname, ".jpg") || endswithi(fname, ".jpeg") ||
+        endswithi(fname, ".bmp")
+    );
 }
 
 void on_list_file(const char* fname, void* ud)
 {
     PGB_ImageConversionScene* convScene = ud;
-    
+
     if (filename_has_stbi_extension(fname))
     {
         convScene->files_count++;
         convScene->files = realloc(convScene->files, sizeof(char*) * convScene->files_count);
-        convScene->files[convScene->files_count-1] = strdup(fname);
+        convScene->files[convScene->files_count - 1] = strdup(fname);
     }
 }
 
@@ -393,20 +407,16 @@ PGB_ImageConversionScene* PGB_ImageConversionScene_new(void)
     PGB_Scene* scene = PGB_Scene_new();
     PGB_ImageConversionScene* convScene = pgb_malloc(sizeof(PGB_ImageConversionScene));
     convScene->scene = scene;
-    
+
     scene->managedObject = convScene;
     scene->update = PGB_ImageConversionScene_update;
     scene->free = PGB_ImageConversionScene_free;
-    
+
     convScene->idx = 0;
     convScene->files = NULL;
     convScene->files_count = 0;
-    
-    pgb_listfiles(
-        PGB_coversPath,
-        on_list_file,
-        convScene, true, kFileReadData
-    );
-    
+
+    pgb_listfiles(PGB_coversPath, on_list_file, convScene, true, kFileReadData);
+
     return convScene;
 }

@@ -189,26 +189,30 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
                 }
             }
         }
-        
+
         json_value logo = json_get_table_value(entry, "logo");
         if (logo.type == kJSONTrue)
         {
             playdate->graphics->setFont(PGB_App->labelFont);
             const char* version = get_current_version();
-            
+
             if (version)
             {
                 playdate->graphics->drawTextInRect(
-                    version, strlen(version), kUTF8Encoding, margin + creditsScene->scroll * 8, margin,
-                    width, 100, kWrapWord, kAlignTextRight
+                    version, strlen(version), kUTF8Encoding, margin + creditsScene->scroll * 8,
+                    margin, width, 100, kWrapWord, kAlignTextRight
                 );
             }
-            
-            if(creditsScene->logo)
+
+            if (creditsScene->logo)
             {
                 int lwidth, lheight;
-                playdate->graphics->getBitmapData(creditsScene->logo, &lwidth, &lheight, NULL, NULL, NULL);
-                playdate->graphics->drawBitmap(creditsScene->logo, (width - lwidth)/2, y, kBitmapUnflipped);
+                playdate->graphics->getBitmapData(
+                    creditsScene->logo, &lwidth, &lheight, NULL, NULL, NULL
+                );
+                playdate->graphics->drawBitmap(
+                    creditsScene->logo, (width - lwidth) / 2, y, kBitmapUnflipped
+                );
                 ADVANCE(i, lheight + 24);
             }
         }
@@ -218,7 +222,7 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     int credits_height = y + FOOTER_SPACE + creditsScene->scroll;
-    
+
     creditsScene->initial_wait += dt;
 
     if (playdate->system->isCrankDocked())
@@ -263,7 +267,8 @@ static void PGB_CreditsScene_free(void* object)
     PGB_CreditsScene* creditsScene = object;
     PGB_Scene_free(creditsScene->scene);
     free_json_data(creditsScene->jcred);
-    if (creditsScene->logo) playdate->graphics->freeBitmap(creditsScene->logo);
+    if (creditsScene->logo)
+        playdate->graphics->freeBitmap(creditsScene->logo);
     free(creditsScene);
 }
 

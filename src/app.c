@@ -12,10 +12,10 @@
 #include "dtcm.h"
 #include "game_scene.h"
 #include "image_conversion_scene.h"
+#include "jparse.h"
 #include "library_scene.h"
 #include "preferences.h"
 #include "userstack.h"
-#include "jparse.h"
 
 // files that have been copied from PDX to data folder
 #define COPIED_FILES "manifest.json"
@@ -34,7 +34,8 @@ static void checkForPngCallback(const char* filename, void* userdata)
     }
 }
 
-struct copy_file_callback_ud {
+struct copy_file_callback_ud
+{
     json_value* manifest;
     const char* directory;
     bool* modified;
@@ -45,17 +46,21 @@ static void copy_file_callback(const char* filename, void* userdata)
     struct copy_file_callback_ud* ud = userdata;
     json_value* manifest = ud->manifest;
     const char* directory = ud->directory;
-    
+
     const char* extension = strrchr((char*)filename, '.');
-    if (!extension) return;
-    
+    if (!extension)
+        return;
+
     char* full_path = aprintf("%s/%s", directory, filename);
-    if (!full_path) return;
-    
+    if (!full_path)
+        return;
+
     json_value already_copied = json_get_table_value(*manifest, full_path);
-    
+
     char* dst_path = NULL;
-    if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") || !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") || !strcasecmp(extension, ".pdi"))
+    if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
+        !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
+        !strcasecmp(extension, ".pdi"))
     {
         dst_path = aprintf("%s/%s", PGB_coversPath, filename);
     }
@@ -71,25 +76,25 @@ static void copy_file_callback(const char* filename, void* userdata)
     {
         dst_path = aprintf("%s/%s", PGB_statesPath, filename);
     }
-    
+
     if (!dst_path)
     {
         free(full_path);
         return;
     }
-    
+
     if (already_copied.type != kJSONTrue)
     {
         printf("Extracting \"%s\" from PDX...\n", full_path);
-        
+
         size_t size;
         void* dat = pgb_read_entire_file(full_path, &size, kFileRead);
-        
+
         if (dat && size > 0)
         {
             bool success = pgb_write_entire_file(dst_path, dat, size);
             free(dat);
-            
+
             // mark file as transferred
             if (success)
             {
@@ -100,7 +105,7 @@ static void copy_file_callback(const char* filename, void* userdata)
             }
         }
     }
-    
+
     free(full_path);
 }
 
@@ -173,11 +178,11 @@ void PGB_init(void)
 
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
-    
+
     // copy in files if not already copied in
     json_value manifest;
     parse_json(COPIED_FILES, &manifest, kFileReadData | kFileRead);
-    
+
     if (manifest.type != kJSONTable)
     {
         manifest.type = kJSONTable;
@@ -185,10 +190,10 @@ void PGB_init(void)
         obj->n = 0;
         manifest.data.tableval = obj;
     }
-    
+
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
     bool modified = false;
-    
+
     for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)
     {
         struct copy_file_callback_ud ud;
@@ -197,10 +202,10 @@ void PGB_init(void)
         ud.modified = &modified;
         pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
     }
-    
+
     // TODO: save manifest
     write_json_to_disk(COPIED_FILES, manifest);
-    
+
     free_json_data(manifest);
 
     // check if any PNGs are in the covers/ folder

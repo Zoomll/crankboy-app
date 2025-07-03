@@ -9,7 +9,7 @@
 #ifndef game_scene_h
 #define game_scene_h
 
-#include "peanut_gb.h"
+#include "../peanut_gb/peanut_gb.h"
 #include "preferences.h"
 #include "scene.h"
 

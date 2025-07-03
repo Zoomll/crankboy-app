@@ -1,6 +1,6 @@
 #define lua_State pd_lua_State
 #define lua_CFunction pd_lua_CFunction
-#include "minigb_apu.h"
+#include "../minigb_apu/minigb_apu.h"
 #include "pd_api.h"
 #undef lua_State
 #undef lua_CFunction

@@ -110,10 +110,11 @@ __section__(".rare") static void decodeError(
 
 bool json_set_table_value(json_value* table, const char* key, json_value value)
 {
-    if (table->type != kJSONTable) return false;
-    
+    if (table->type != kJSONTable)
+        return false;
+
     JsonObject* obj = table->data.tableval;
-    
+
     // check for existing matching key
     for (size_t i = 0; i < obj->n; ++i)
     {
@@ -124,17 +125,19 @@ bool json_set_table_value(json_value* table, const char* key, json_value value)
             goto done;
         }
     }
-    
+
     char* key2 = strdup(key);
-    if (!key2) return false;
-    
+    if (!key2)
+        return false;
+
     // add new key
-    obj = realloc(obj, sizeof(*obj) + sizeof(obj->data[0])*(obj->n + 1));
-    if (!obj) return false;
-    
+    obj = realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
+    if (!obj)
+        return false;
+
     obj->data[obj->n].value = value;
     obj->data[obj->n++].key = key2;
-    
+
 done:
     table->data.tableval = obj;
     return true;

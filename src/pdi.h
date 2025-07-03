@@ -14,9 +14,9 @@ PDIHeader
 // if uncompressed:
 {
     PDICell
-    
+
     char white[stride * clip_height]
-    
+
     // if transparency:
     char opaque[stride * clip_height]
 }
@@ -24,34 +24,37 @@ PDIHeader
 // if compressed:
 {
     PDIMetadata
-    
+
     // everything that follows is z-lib compressed
     PDICell
-    
+
     char white[stride * clip_height]
-    
+
     // if transparency:
     char opaque[stride * clip_height]
 }
 */
 
 #pragma pack(push, 1)
-struct PDIHeader {
+struct PDIHeader
+{
     char magic[12];
     uint32_t flags;
 };
 
-struct PDIMetadata {
+struct PDIMetadata
+{
     uint32_t size;
     uint32_t width;
     uint32_t height;
     uint32_t reserved;
 };
 
-struct PDICell {
+struct PDICell
+{
     uint16_t clip_width;
     uint16_t clip_height;
-    uint16_t stride; // must be a multiple of 4 (i.e. 32 bits)
+    uint16_t stride;  // must be a multiple of 4 (i.e. 32 bits)
     uint16_t clip_left;
     uint16_t clip_right;
     uint16_t clip_top;

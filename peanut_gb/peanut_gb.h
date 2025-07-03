@@ -33,9 +33,9 @@
 #define PEANUT_GB_H
 
 #include "../minigb_apu/minigb_apu.h"
-#include "app.h"
-#include "utility.h"
-#include "preferences.h"
+#include "../src/app.h"
+#include "../src/preferences.h"
+#include "../src/utility.h"
 #include "version.all" /* Version information */
 
 #include <stddef.h> /* Required for offsetof */
@@ -649,30 +649,35 @@ struct gb_s
 __section__(".rare") bool gb_detect_interrupt(struct gb_s* gb, unsigned addr)
 {
     const uint8_t* rom = gb->gb_rom;
-    
+
     // RETI
-    if (rom[addr] == 0xD9) return false;
-    
+    if (rom[addr] == 0xD9)
+        return false;
+
     // RET
-    if (rom[addr] == 0xC9) return false;
-    
+    if (rom[addr] == 0xC9)
+        return false;
+
     // EI; RET
-    if (rom[addr] == 0xFB && rom[addr+1] == 0xC9) return false;
-    
+    if (rom[addr] == 0xFB && rom[addr + 1] == 0xC9)
+        return false;
+
     // nops (technically not safe)
-    // if (rom[addr] == 0 && rom[addr+1] == 0 && rom[addr + 2] == 0 && rom[addr+3] == 0 && rom[addr+4] == 0) return false;
-    
+    // if (rom[addr] == 0 && rom[addr+1] == 0 && rom[addr + 2] == 0 && rom[addr+3] == 0 &&
+    // rom[addr+4] == 0) return false;
+
     // RST 38 to RST 38
-    if (rom[addr] == 0xFF && rom[0x38] == 0xFF) return false;
-    
+    if (rom[addr] == 0xFF && rom[0x38] == 0xFF)
+        return false;
+
     return true;
 }
 
 __section__(".rare") void gb_detect_interrupts(struct gb_s* gb)
 {
     gb->joypad_interrupt = gb_detect_interrupt(gb, 0x60);
-    //gb->timer_interrupt = gb_detect_interrupt(gb, 0x50);
-    //gb->serial_interrupt = gb_detect_interrupt(gb, 0x58);
+    // gb->timer_interrupt = gb_detect_interrupt(gb, 0x50);
+    // gb->serial_interrupt = gb_detect_interrupt(gb, 0x58);
 }
 
 __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
@@ -1759,10 +1764,10 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             if (gb->direct.joypad_interrupts)
             {
                 /*
-                * An interrupt is triggered if any input line transitions from high (1) to low (0).
-                * We find these lines by seeing which bits were 1 in the old state
-                * AND are now 0 in the new state (which is represented by ~new_input_state).
-                */
+                 * An interrupt is triggered if any input line transitions from high (1) to low (0).
+                 * We find these lines by seeing which bits were 1 in the old state
+                 * AND are now 0 in the new state (which is represented by ~new_input_state).
+                 */
                 if (old_input_state & (~new_input_state))
                 {
                     gb->gb_reg.IF |= CONTROL_INTR; /* Request a Joypad interrupt */
@@ -6029,7 +6034,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     {
         memcpy(gb->gb_rom, gb_original_rom, 0x100);
     }
-    
+
     gb_detect_interrupts(gb);
 
     return NULL;
@@ -6296,7 +6301,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
-    
+
     gb_detect_interrupts(gb);
 
     return GB_INIT_NO_ERROR;

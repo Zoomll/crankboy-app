@@ -72,7 +72,10 @@ char* pgb_extract_fs_error_code(const char* filename);
 
 float pgb_easeInOutQuad(float x);
 
-int pgb_listfiles(const char* path, void (*callback)(const char* filename, void* userdata), void* userdata, int showhidden, FileOptions fopts);
+int pgb_listfiles(
+    const char* path, void (*callback)(const char* filename, void* userdata), void* userdata,
+    int showhidden, FileOptions fopts
+);
 
 int pgb_compare_games_by_display_name(const void* a, const void* b);
 
@@ -154,7 +157,14 @@ static inline unsigned next_pow2(unsigned v)
     return ++v;
 }
 
-#define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) ({_RESULT_TYPE_ _fn_ _ARGS_ {_BODY_;}; _fn_; })
+#define LAMBDA(_RESULT_TYPE_, _ARGS_, _BODY_) \
+    ({                                        \
+        _RESULT_TYPE_ _fn_ _ARGS_             \
+        {                                     \
+            _BODY_;                           \
+        };                                    \
+        _fn_;                                 \
+    })
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -181,9 +191,9 @@ static inline unsigned next_pow2(unsigned v)
 #define STRINGIFY_(x) #x
 #define STRINGIFY(x) STRINGIFY_(x)
 
-bool startswith(const char *str, const char *prefix);
-bool startswithi(const char *str, const char *prefix);
-bool endswith(const char *str, const char *suffix);
-bool endswithi(const char *str, const char *suffix);
+bool startswith(const char* str, const char* prefix);
+bool startswithi(const char* str, const char* prefix);
+bool endswith(const char* str, const char* suffix);
+bool endswithi(const char* str, const char* suffix);
 
 #endif /* utility_h */
