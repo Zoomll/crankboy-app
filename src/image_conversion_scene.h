@@ -12,12 +12,20 @@ void* png_to_pdi(
 
 /* Converts PNG cover art into PDI, then launches LibraryScene */
 
+typedef enum
+{
+    kStateListingFiles,
+    kStateConverting,
+    kStateDone
+} ConversionState;
+
 typedef struct PGB_ImageConversionScene
 {
     PGB_Scene* scene;
     unsigned idx;
     char** files;
     size_t files_count;
+    ConversionState state;
 } PGB_ImageConversionScene;
 
 PGB_ImageConversionScene* PGB_ImageConversionScene_new(void);

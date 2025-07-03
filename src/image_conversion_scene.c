@@ -29,6 +29,8 @@ static const int matrix_floyd_steinberg[] = {
 };
 // clang-format on
 
+static void on_list_file(const char* fname, void* ud);
+
 static const int matrix_floyd_steinberg_divisor = 16;
 static const int matrix_floyd_steinberg_width = 3;
 static const int matrix_floyd_steinberg_height = 2;
@@ -334,73 +336,112 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     PGB_ImageConversionScene* convScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
-    if (convScene->idx < convScene->files_count)
+    switch (convScene->state)
     {
-        char* fname = convScene->files[convScene->idx++];
+    case kStateListingFiles:
+    {
+        playdate->graphics->clear(kColorWhite);
+        const char* msg = "Scanning for images...";
+        int screenWidth = LCD_COLUMNS;
+        int screenHeight = LCD_ROWS;
+        LCDFont* font = PGB_App->bodyFont;
+        int textWidth = playdate->graphics->getTextWidth(font, msg, strlen(msg), kUTF8Encoding, 0);
 
-        size_t len = strlen(fname);
-        if (len > 0 && (fname[len - 1] == '\n' || fname[len - 1] == '\r'))
-        {
-            fname[len - 1] = '\0';
-        }
-
-        char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
-
-        const char* msg1 = "Converting";
-        char* msg2 = aprintf("\"%s\"", fname);
-        char* msg3 = aprintf(
-            "(%d of %d) to .pdi format...", (int)convScene->idx, (int)convScene->files_count
+        playdate->graphics->drawText(
+            msg, strlen(msg), kUTF8Encoding, screenWidth / 2 - textWidth / 2, screenHeight / 2
         );
-
-        if (msg2 && msg3)
-        {
-            playdate->graphics->clear(kColorWhite);
-
-            int screenWidth = LCD_COLUMNS;
-            int screenHeight = LCD_ROWS;
-
-            LCDFont* font = PGB_App->bodyFont;
-
-            int lineHeight = playdate->graphics->getFontHeight(font);
-
-            int y2 = screenHeight / 2 - lineHeight / 2;
-            int y1 = y2 - lineHeight;
-            int y3 = y2 + lineHeight;
-
-            playdate->graphics->drawTextInRect(
-                msg1, strlen(msg1), kUTF8Encoding, 0, y1, screenWidth, lineHeight, kWrapClip,
-                kAlignTextCenter
-            );
-
-            playdate->graphics->drawTextInRect(
-                msg2, strlen(msg2), kUTF8Encoding, 0, y2, screenWidth, lineHeight, kWrapClip,
-                kAlignTextCenter
-            );
-
-            playdate->graphics->drawTextInRect(
-                msg3, strlen(msg3), kUTF8Encoding, 0, y3, screenWidth, lineHeight, kWrapClip,
-                kAlignTextCenter
-            );
-
-            playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
-        }
-
-        if (msg2)
-            free(msg2);
-        if (msg3)
-            free(msg3);
 
         playdate->graphics->display();
 
-        bool result = process_png(full_fname);
-        free(full_fname);
+        playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
 
-        printf("  result: %d\n", (int)result);
+        if (convScene->files_count == 0)
+        {
+            convScene->state = kStateDone;
+        }
+        else
+        {
+            convScene->state = kStateConverting;
+        }
+        break;
     }
-    else
+
+    case kStateConverting:
+    {
+        if (convScene->idx < convScene->files_count)
+        {
+            char* fname = convScene->files[convScene->idx++];
+
+            size_t len = strlen(fname);
+            if (len > 0 && (fname[len - 1] == '\n' || fname[len - 1] == '\r'))
+            {
+                fname[len - 1] = '\0';
+            }
+
+            char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
+
+            const char* msg1 = "Converting";
+            char* msg2 = aprintf("\"%s\"", fname);
+            char* msg3 = aprintf(
+                "(%d of %d) to .pdi format...", (int)convScene->idx, (int)convScene->files_count
+            );
+
+            if (msg2 && msg3)
+            {
+                playdate->graphics->clear(kColorWhite);
+
+                int screenWidth = LCD_COLUMNS;
+                int screenHeight = LCD_ROWS;
+                LCDFont* font = PGB_App->bodyFont;
+                int lineHeight = playdate->graphics->getFontHeight(font);
+
+                int y2 = screenHeight / 2 - lineHeight / 2;
+                int y1 = y2 - lineHeight;
+                int y3 = y2 + lineHeight;
+
+                playdate->graphics->drawTextInRect(
+                    msg1, strlen(msg1), kUTF8Encoding, 0, y1, screenWidth, lineHeight, kWrapClip,
+                    kAlignTextCenter
+                );
+
+                playdate->graphics->drawTextInRect(
+                    msg2, strlen(msg2), kUTF8Encoding, 0, y2, screenWidth, lineHeight, kWrapClip,
+                    kAlignTextCenter
+                );
+
+                playdate->graphics->drawTextInRect(
+                    msg3, strlen(msg3), kUTF8Encoding, 0, y3, screenWidth, lineHeight, kWrapClip,
+                    kAlignTextCenter
+                );
+
+                playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+            }
+
+            if (msg2)
+                free(msg2);
+            if (msg3)
+                free(msg3);
+
+            playdate->graphics->display();
+
+            bool result = process_png(full_fname);
+            free(full_fname);
+
+            printf("  result: %d\n", (int)result);
+        }
+        else
+        {
+            convScene->state = kStateDone;
+        }
+        break;
+    }
+
+    case kStateDone:
     {
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
+        break;
+    }
     }
 }
 
@@ -423,27 +464,35 @@ bool filename_has_stbi_extension(const char* fname)
     );
 }
 
-void on_list_file(const char* fname, void* ud)
+static void on_list_file(const char* fname, void* ud)
 {
     PGB_ImageConversionScene* convScene = ud;
 
-    // Ignore all dot-prefixed files.
-    if (fname[0] == '.')
-    {
-        return;
-    }
-
-    // Explicitly ignore other known system files.
-    if (strcasecmp(fname, "Thumbs.db") == 0)
+    if (fname[0] == '.' || strcasecmp(fname, "Thumbs.db") == 0)
     {
         return;
     }
 
     if (filename_has_stbi_extension(fname))
     {
+        char** new_files = realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
+
+        if (new_files == NULL)
+        {
+            playdate->system->error("Out of memory listing files!");
+            return;
+        }
+
+        convScene->files = new_files;
+        convScene->files[convScene->files_count] = strdup(fname);
+
+        if (convScene->files[convScene->files_count] == NULL)
+        {
+            playdate->system->error("Out of memory copying filename!");
+            return;
+        }
+
         convScene->files_count++;
-        convScene->files = realloc(convScene->files, sizeof(char*) * convScene->files_count);
-        convScene->files[convScene->files_count - 1] = strdup(fname);
     }
 }
 
@@ -462,7 +511,7 @@ PGB_ImageConversionScene* PGB_ImageConversionScene_new(void)
     convScene->files = NULL;
     convScene->files_count = 0;
 
-    pgb_listfiles(PGB_coversPath, on_list_file, convScene, true, kFileReadData);
+    convScene->state = kStateListingFiles;
 
     return convScene;
 }

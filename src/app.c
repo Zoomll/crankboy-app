@@ -191,6 +191,17 @@ void PGB_init(void)
         manifest.data.tableval = obj;
     }
 
+    playdate->graphics->clear(kColorWhite);
+    const char* setup_msg = "Performing first-time setup...";
+    playdate->graphics->drawText(
+        setup_msg, strlen(setup_msg), kUTF8Encoding,
+        LCD_COLUMNS / 2 - playdate->graphics->getTextWidth(
+                              PGB_App->bodyFont, setup_msg, strlen(setup_msg), kUTF8Encoding, 0
+                          ) / 2,
+        LCD_ROWS / 2
+    );
+    playdate->graphics->display();
+
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
     bool modified = false;
 
