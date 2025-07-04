@@ -251,7 +251,7 @@ char* pgb_basename(const char* filename, bool stripExtension)
 
     if (*start == '\0')
     {
-        return strdup(filename);
+        return string_copy(filename);
     }
 
     const char* end = start + strlen(start);
@@ -267,7 +267,7 @@ char* pgb_basename(const char* filename, bool stripExtension)
 
     size_t len = end - start;
 
-    char* result = malloc(len + 1);
+    char* result = pgb_malloc(len + 1);
     if (result == NULL)
     {
         return NULL;
