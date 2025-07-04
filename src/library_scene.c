@@ -801,7 +801,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         else
                         {
                             static const char* title = "Missing Cover";
-                            static const char* message1 = "Press (B) to download.";
+                            static const char* message1 = "Press Ⓑ to download.";
                             static const char* message2 = "Or connect to a computer";
                             static const char* message3 = "and copy covers to:";
                             static const char* message4 = "Data/*crankboy/covers";

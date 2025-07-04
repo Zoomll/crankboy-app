@@ -742,7 +742,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             entries[i].description = BASE_LUA_STRING "\n \nYou must restart the\nROM for this setting\nto take effect.";
             if (gameScene->script_info_available)
             {
-                entries[i].description = BASE_LUA_STRING "\n \nHold the A button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
+                entries[i].description = BASE_LUA_STRING "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
                 entries[i].on_hold = display_script_info;
             }
         }
