@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pd_api.h"
+
 #include <stdio.h>
 
 #define USE_SSL true
@@ -11,6 +13,7 @@
 #define HTTP_MEM_ERROR 16
 #define HTTP_TIMEOUT 32
 #define HTTP_NON_SUCCESS_STATUS 64
+#define HTTP_UNEXPECTED_CONTENT_TYPE 128
 
 typedef void (*enable_cb_t)(unsigned flags, void* ud);
 
@@ -21,7 +24,8 @@ typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void
 
 // performs an HTTP request, then invokes the callback.
 // automatically does enable_http as part of this.
-void http_get(
+// returns the connection handle, or NULL on immediate failure.
+HTTPConnection* http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
     void* ud
 );

@@ -7,7 +7,7 @@ PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 
 // display
 PREF(frame_skip, true)
-PREF(dither_pattern, rand()%2)
+PREF(dither_pattern, rand() % 2)
 PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)

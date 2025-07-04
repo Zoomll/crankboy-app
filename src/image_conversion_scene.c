@@ -251,19 +251,19 @@ void* png_to_pdi(
     }
 
     float scale = MAX(wscale, hscale);
-    
+
     // crop image horizontally
     if (width / scale < max_width)
     {
         max_width = width / scale;
     }
-    
+
     // crop image vertically
     else if (height / scale < max_height)
     {
         max_height = height / scale;
     }
-    
+
     if (max_width == 0 || max_height == 0)
     {
         stbi_image_free(img_data);

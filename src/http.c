@@ -11,9 +11,11 @@ char* _reason = NULL;
 
 struct HTTPUD
 {
+    HTTPConnection* connection;
     http_result_cb cb;
     char* domain;
     char* path;
+    char* contentType;
     char* data;
     size_t data_len;
     int timeout;
@@ -36,6 +38,8 @@ static void http_cleanup(HTTPConnection* connection)
 
         if (httpud->data)
             free(httpud->data);
+        if (httpud->contentType)
+            free(httpud->contentType);
         free(httpud->domain);
         free(httpud->path);
         free(httpud);
@@ -48,6 +52,11 @@ static void http_cleanup(HTTPConnection* connection)
 static void CB_Header(HTTPConnection* connection, const char* key, const char* value)
 {
     printf("Header received: \"%s\": \"%s\"\n", key, value);
+    if (strcasecmp(key, "Content-Type") == 0)
+    {
+        struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+        httpud->contentType = string_copy(value);
+    }
 }
 
 static void CB_HeadersRead(HTTPConnection* connection)
@@ -66,12 +75,19 @@ static void readAllData(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
 
+    // This callback can fire multiple times. If our main callback (httpud->cb)
+    // has already been cleared by an error, we shouldn't do anything else.
+    if (httpud == NULL || httpud->cb == NULL)
+    {
+        return;
+    }
+
     int response = playdate->network->http->getResponseStatus(connection);
     if (response != 0 && response != 200)
     {
         httpud->cb(HTTP_NON_SUCCESS_STATUS | httpud->flags, NULL, 0, httpud->ud);
-        httpud->cb = NULL;
-        http_cleanup(connection);
+        httpud->cb = NULL;  // Clear callback to prevent it from being called again
+        // Don't cleanup here, let CB_RequestComplete handle it.
         return;
     }
 
@@ -83,7 +99,6 @@ static void readAllData(HTTPConnection* connection)
         {
             httpud->cb(HTTP_MEM_ERROR | httpud->flags, NULL, 0, httpud->ud);
             httpud->cb = NULL;
-            http_cleanup(connection);
             return;
         }
         int read =
@@ -93,7 +108,7 @@ static void readAllData(HTTPConnection* connection)
         {
             httpud->cb(HTTP_ERROR | httpud->flags, NULL, 0, httpud->ud);
             httpud->cb = NULL;
-            http_cleanup(connection);
+            return;
         }
 
         httpud->data_len += read;
@@ -105,11 +120,26 @@ static void readAllData(HTTPConnection* connection)
 
 static void CB_RequestComplete(HTTPConnection* connection)
 {
-    readAllData(connection);
-
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
 
-    if (httpud->cb && httpud->data_len && httpud->data)
+    // If httpud is NULL, it was already cleaned up.
+    if (httpud == NULL)
+    {
+        return;
+    }
+
+    // This is the final check before we decide to succeed or fail.
+    // Check for the HTML error case first.
+    if (httpud->contentType && strstr(httpud->contentType, "text/html"))
+    {
+        if (httpud->cb)
+        {
+            httpud->cb(HTTP_UNEXPECTED_CONTENT_TYPE | httpud->flags, NULL, 0, httpud->ud);
+            httpud->cb = NULL;
+        }
+    }
+    // If the contentType was okay, check for a successful data download.
+    else if (httpud->cb && httpud->data_len > 0 && httpud->data)
     {
         httpud->cb(httpud->flags, httpud->data, httpud->data_len, httpud->ud);
         httpud->cb = NULL;
@@ -127,8 +157,8 @@ static void CB_Permission(unsigned flags, void* ud)
 
     if (allowed)
     {
-        HTTPConnection* connection =
-            playdate->network->http->newConnection(httpud->domain, 0, USE_SSL);
+        httpud->connection = playdate->network->http->newConnection(httpud->domain, 0, USE_SSL);
+        HTTPConnection* connection = httpud->connection;
 
         if (!connection)
             goto fail;
@@ -168,13 +198,15 @@ static void CB_Permission(unsigned flags, void* ud)
         httpud->cb = NULL;
         if (httpud->data)
             free(httpud->data);
+        if (httpud->contentType)
+            free(httpud->contentType);
         free(httpud->domain);
         free(httpud->path);
         free(httpud);
     }
 }
 
-void http_get(
+HTTPConnection* http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout,
     void* ud
 )
@@ -183,10 +215,11 @@ void http_get(
     if (!httpud)
     {
         cb(HTTP_MEM_ERROR, NULL, 0, ud);
-        return;
+        return NULL;
     }
 
     memset(httpud, 0, sizeof(*httpud));
+    httpud->connection = NULL;
     httpud->cb = cb;
     httpud->ud = ud;
     httpud->timeout = timeout;
@@ -194,6 +227,8 @@ void http_get(
     httpud->path = strdup(path);
 
     enable_http(domain, reason, CB_Permission, httpud);
+
+    return httpud->connection;
 }
 
 struct CB_UserData_EnableHTTP

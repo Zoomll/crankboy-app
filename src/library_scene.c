@@ -179,7 +179,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
     userdata->libraryScene = libraryScene;
     userdata->game = game;
 
-    http_get(
+    libraryScene->activeCoverDownloadConnection = http_get(
         "github.com", url_path, "to download missing cover art", on_cover_download_finished, 15000,
         userdata
     );
@@ -394,6 +394,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
     libraryScene->coverDownloadMessage = NULL;
+    libraryScene->activeCoverDownloadConnection = NULL;
 
     pgb_clear_global_cover_cache();
 
@@ -690,6 +691,15 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (selectionChanged)
         {
             // Reset download state when user navigates away
+            if (libraryScene->activeCoverDownloadConnection)
+            {
+                playdate->system->logToConsole(
+                    "Selection changed, closing active cover download connection."
+                );
+                playdate->network->http->close(libraryScene->activeCoverDownloadConnection);
+                libraryScene->activeCoverDownloadConnection = NULL;
+            }
+
             if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE)
             {
                 libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
@@ -1069,6 +1079,12 @@ static void PGB_LibraryScene_free(void* object)
     if (libraryScene->coverDownloadMessage)
     {
         pgb_free(libraryScene->coverDownloadMessage);
+    }
+
+    if (libraryScene->activeCoverDownloadConnection)
+    {
+        playdate->network->http->close(libraryScene->activeCoverDownloadConnection);
+        libraryScene->activeCoverDownloadConnection = NULL;
     }
 
     pgb_free(libraryScene);
