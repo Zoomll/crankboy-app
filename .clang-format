@@ -1,4 +1,4 @@
-# .clang-format for Allman Style
+# .clang-format for Allman Style (with some modifications)
 
 # Language: C (clang-format uses Cpp engine for C as well)
 Language: Cpp
@@ -20,13 +20,13 @@ ContinuationIndentWidth: 4
 TabWidth: 4
 UseTab: Never
 
-# Pointer Alignment: Right align pointer operators
+# Pointer Alignment: Left align pointer operators
 PointerAlignment: Left
 
 # Spaces
 SpaceBeforeParens: ControlStatements
 
-# Other preferences that often go with Allman or are generally good for C:
+# Other preferences that often go with Allman, or are generally good for C:
 AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: Never
