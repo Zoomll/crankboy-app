@@ -10,6 +10,7 @@ static struct PDSynth* bassSynth;
 static int root = 0;
 static int nextroot = 0;
 static int measure = 0;
+static int fill = 0;
 
 static float pitch_table[] = {
     440.1f,
@@ -54,6 +55,7 @@ void pgmusic_begin(void)
     root = 10;
     nextroot = 10;
     measure = -4;
+    fill = 0;
     beat = 0;
     t = 0;
 }
@@ -124,7 +126,7 @@ static void bass(void)
     }
     
     note -= 24;
-    if (root > 6)
+    if (root > 5)
     {
         note -= 12;
     }
@@ -141,16 +143,18 @@ static void drums(void)
     if (beat % 2 == 1 && rng() > 0.125f) return;
     if (beat % 2 == 0 && rng() > 0.97f) return;
     
-    if (beat == 0 || rng() > 0.95f)
+    if (beat == 0 || rng() > 0.95f || (beat == 4 && fill))
     {
         playdate->sound->synth->setDecayTime(drumSynth, (2 + rng()) * 0.05f);
-        hz = 300 + rng() * 20;
+        hz = 300 + rng() * 20 - 50*fill;
     }
     else
     {
-        playdate->sound->synth->setDecayTime(drumSynth, (1 + rng()*rng() + (beat == 4)*(1 + rng()*rng()*1.3f)) * 0.051f);
+        bool high = (beat == 4) || fill;
         
-        hz = 450 + rng() * 100 + 200 * (beat == 4);
+        playdate->sound->synth->setDecayTime(drumSynth, (1 + rng()*rng() + high*(1 + rng()*rng()*1.3f)) * 0.051f);
+        
+        hz = 450 + rng() * 100 + 200 * (high);
     }
     
     if (hz > 0)
@@ -170,9 +174,15 @@ void pgmusic_update(float dt)
         {
             measure = (measure + 1);
             root = nextroot;
-            if (measure >= 4) measure = 4;
-            if (rng() < 0.02f || measure == 0)
+            if (measure == 2 && rng() > 0.7f)  fill = 1;
+            if (measure >= 4)
             {
+                measure = 0;
+            }
+            if (rng() < 0.02f || (measure == 0 && rng() < 0.4f))
+            {
+                fill = 0;
+                
                 // key change
                 if (rng() < 0.5f)
                 {
