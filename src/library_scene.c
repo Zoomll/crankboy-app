@@ -11,15 +11,15 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "credits_scene.h"
-#include "info_scene.h"
 #include "dtcm.h"
 #include "game_scene.h"
+#include "info_scene.h"
 #include "modal.h"
 #include "preferences.h"
-#include "settings_scene.h"
-#include "version.h"
 #include "script.h"
+#include "settings_scene.h"
 #include "userstack.h"
+#include "version.h"
 
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void PGB_LibraryScene_free(void* object);
@@ -37,7 +37,7 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     {
         call_with_main_stack_1(preferences_read_from_disk, settings_path);
         free(settings_path);
-        
+
         if (!preferences_per_game && onlyIfPerGameEnabled)
         {
             useGame = false;
@@ -47,7 +47,7 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
             useGame = true;
         }
     }
-    
+
     if (!useGame)
     {
         preferences_restore_subset(stored);
@@ -60,72 +60,80 @@ static void launch_game(void* ud, int option)
     PGB_Game* game = ud;
     switch (option)
     {
-    case 0: // launch w/ scripts enabled
+    case 0:  // launch w/ scripts enabled
+    {
+        char* settings_path = pgb_game_config_path(game->fullpath);
+        if (settings_path)
         {
-            char* settings_path = pgb_game_config_path(game->fullpath);
-            if (settings_path)
-            {
-                void* prefs = preferences_store_subset(-1);
-                
-                load_game_prefs(game->fullpath, false);
-                
-                // enable lua script and per-game support
-                preferences_lua_support = 1;
-                preferences_per_game = 1;
-                preferences_lua_has_prompted = 1;
-                
-                call_with_user_stack_2(preferences_save_to_disk, settings_path, ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game));
-                
-                preferences_restore_subset(prefs);
-                if (prefs) free(prefs);
-                free(settings_path);
-            }
+            void* prefs = preferences_store_subset(-1);
+
+            load_game_prefs(game->fullpath, false);
+
+            // enable lua script and per-game support
+            preferences_lua_support = 1;
+            preferences_per_game = 1;
+            preferences_lua_has_prompted = 1;
+
+            call_with_user_stack_2(
+                preferences_save_to_disk, settings_path,
+                ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game)
+            );
+
+            preferences_restore_subset(prefs);
+            if (prefs)
+                free(prefs);
+            free(settings_path);
         }
+    }
         goto launch_normal;
-    
-    case 1: // launch w/ scripts disabled
+
+    case 1:  // launch w/ scripts disabled
+    {
+        char* settings_path = pgb_game_config_path(game->fullpath);
+        if (settings_path)
         {
-            char* settings_path = pgb_game_config_path(game->fullpath);
-            if (settings_path)
-            {
-                void* prefs = preferences_store_subset(-1);
-                
-                load_game_prefs(game->fullpath, false);
-                
-                // disable lua script and enable per-game support
-                preferences_lua_support = 0;
-                preferences_per_game = 1;
-                preferences_lua_has_prompted = 1;
-                
-                call_with_user_stack_2(preferences_save_to_disk, settings_path, ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game));
-                
-                preferences_restore_subset(prefs);
-                if (prefs) free(prefs);
-                free(settings_path);
-            }
+            void* prefs = preferences_store_subset(-1);
+
+            load_game_prefs(game->fullpath, false);
+
+            // disable lua script and enable per-game support
+            preferences_lua_support = 0;
+            preferences_per_game = 1;
+            preferences_lua_has_prompted = 1;
+
+            call_with_user_stack_2(
+                preferences_save_to_disk, settings_path,
+                ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game)
+            );
+
+            preferences_restore_subset(prefs);
+            if (prefs)
+                free(prefs);
+            free(settings_path);
         }
+    }
         goto launch_normal;
-        
+
     case 2:
         // display information
         {
             show_game_script_info(game->fullpath);
         }
         break;
-    
-    case 3: // launch game
-    launch_normal:
-        {
-            PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath);
-            if (gameScene)
-            {
-                PGB_present(gameScene->scene);
-            }
 
-            playdate->system->logToConsole("Present gameScene");
+    case 3:  // launch game
+    launch_normal:
+    {
+        PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath);
+        if (gameScene)
+        {
+            PGB_present(gameScene->scene);
         }
-        break;
-        
+
+        playdate->system->logToConsole("Present gameScene");
+    }
+    break;
+
     default:
         // do nothing
         break;
@@ -328,13 +336,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             pgb_play_ui_sound(PGB_UISound_Confirm);
             last_selected_game_index = selectedItem;
-            
+
             PGB_Game* game = libraryScene->games->items[selectedItem];
             bool launch = true;
-            
-            #ifndef NOLUA
+
+#ifndef NOLUA
             // Prompt for use game script
-            
+
             // check if user has already accepted/rejected script prompt for this game before
             void* prefs = preferences_store_subset(-1);
             preferences_lua_has_prompted = 0;
@@ -348,25 +356,25 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
                 if (info && !info->experimental)
                 {
-                    const char* options[] = {
-                        "Yes", "No", "About", NULL
-                    };
-                    if (!info->info) options[2] = NULL;
+                    const char* options[] = {"Yes", "No", "About", NULL};
+                    if (!info->info)
+                        options[2] = NULL;
                     PGB_Modal* modal = PGB_Modal_new(
-                        "There is native Playdate support for this game.\nWould you like to enable it?",
+                        "There is native Playdate support for this game.\nWould you like to enable "
+                        "it?",
                         options, launch_game, game
                     );
-                    
+
                     script_info_free(info);
-                    
+
                     modal->width = 290;
                     modal->height = 152;
-                    
+
                     PGB_presentModal(modal->scene);
                     launch = false;
                 }
             }
-            #endif
+#endif
 
             if (launch)
             {
@@ -823,7 +831,7 @@ PGB_Game* PGB_Game_new(const char* filename)
 
     game->coverPath = pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
 
-    #if 0
+#if 0
     if (game->coverPath)
     {
         playdate->system->logToConsole("Cover for '%s': '%s'", game->displayName, game->coverPath);
@@ -835,7 +843,7 @@ PGB_Game* PGB_Game_new(const char* filename)
             basename_no_ext, cleanName_no_ext
         );
     }
-    #endif
+#endif
 
     pgb_free(basename_no_ext);
     pgb_free(cleanName_no_ext);

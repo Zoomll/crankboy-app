@@ -12,6 +12,8 @@
 #include "../peanut_gb/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"
+#include "info_scene.h"
+#include "library_scene.h"
 #include "modal.h"
 #include "preferences.h"
 #include "revcheck.h"
@@ -19,8 +21,6 @@
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
-#include "info_scene.h"
-#include "library_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -2881,21 +2881,23 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
 void show_game_script_info(const char* rompath)
 {
     ScriptInfo* info = script_get_info_by_rom_path(rompath);
-    if (!info) return;
-    
+    if (!info)
+        return;
+
     if (!info->info)
     {
         script_info_free(info);
         return;
     }
-    
+
     char* text = aprintf("\"%s\"\nScript information:\n\n%s", info->rom_name, info->info);
     script_info_free(info);
-    if (!text) return;
-    
+    if (!text)
+        return;
+
     PGB_InfoScene* infoScene = PGB_InfoScene_new(text);
-    
+
     free(text);
-    
+
     PGB_presentModal(infoScene->scene);
 }

@@ -2,8 +2,8 @@
 
 #include "app.h"
 #include "jparse.h"
-#include "version.h"
 #include "pgmusic.h"
+#include "version.h"
 
 #include <stdlib.h>
 #include <time.h>

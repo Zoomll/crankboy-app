@@ -39,7 +39,7 @@ typedef struct PGB_SettingsScene
     preference_t* immutable_settings;
 
     struct OptionsMenuEntry* entries;
-    
+
     // for options which have special on-hold behaviour
     float option_hold_time;
 

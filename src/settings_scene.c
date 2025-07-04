@@ -1041,14 +1041,15 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2),
                 settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
     }
-    
+
     OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
 
     bool a_pressed = (pushed & kButtonA);
     if (cursor_entry->on_hold && !cursor_entry->locked)
     {
         a_pressed = released & kButtonA;
-        if (settingsScene->option_hold_time >= HOLD_TIME_SUPPRESS_RELEASE) a_pressed = 0;
+        if (settingsScene->option_hold_time >= HOLD_TIME_SUPPRESS_RELEASE)
+            a_pressed = 0;
     }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
@@ -1064,14 +1065,14 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         {
             settingsScene->option_hold_time -= HOLD_FADE_RATE * dt;
         }
-        
+
         if (settingsScene->option_hold_time >= HOLD_TIME)
         {
             settingsScene->option_hold_time = 0;
             cursor_entry->on_hold(cursor_entry, settingsScene);
             return;
         }
-        
+
         if (settingsScene->option_hold_time < 0)
             settingsScene->option_hold_time = 0;
     }
@@ -1260,16 +1261,19 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 playdate->graphics->fillRect(stateX, y, stateWidth, fontHeight, (LCDColor)dither);
             }
         }
-        
-        if (itemIndex == settingsScene->cursorIndex && settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
+
+        if (itemIndex == settingsScene->cursorIndex &&
+            settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
         {
-            float p = (settingsScene->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) / (HOLD_TIME - HOLD_TIME_MARGIN - HOLD_TIME_SUPPRESS_RELEASE);
-            if (p > 1.0f) p = 1.0f;
-            
+            float p = (settingsScene->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) /
+                      (HOLD_TIME - HOLD_TIME_MARGIN - HOLD_TIME_SUPPRESS_RELEASE);
+            if (p > 1.0f)
+                p = 1.0f;
+
             int m = 4;
-            
+
             playdate->graphics->fillRect(
-                0, y - (rowSpacing / 2) + m, kDividerX * p, rowHeight - 2*m, kColorXOR
+                0, y - (rowSpacing / 2) + m, kDividerX * p, rowHeight - 2 * m, kColorXOR
             );
         }
     }

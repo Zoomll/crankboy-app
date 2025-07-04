@@ -1,5 +1,5 @@
 PREF(per_game, 0)
-PREF(save_state_slot, 0) // invisible
+PREF(save_state_slot, 0)  // invisible
 
 // audio
 PREF(sound_mode, 2)
@@ -20,7 +20,7 @@ PREF(joypad_interrupts, 0)
 PREF(overclock, 0)
 PREF(bios, true)
 PREF(lua_support, false)
-PREF(lua_has_prompted, false) // invisible
+PREF(lua_has_prompted, false)  // invisible
 
 // misc
 PREF(itcm, (pd_rev == PD_REV_A))

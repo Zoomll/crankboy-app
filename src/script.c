@@ -525,7 +525,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         json_value jenabled = json_get_table_value(item, "enabled");
         if (jenabled.type == kJSONFalse)
             continue;
-            
+
         json_value jexperimental = json_get_table_value(item, "experimental");
 
         json_value jname = json_get_table_value(item, "name");
@@ -553,7 +553,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             info->info = script_info ? strdup(strltrim(script_info)) : NULL;
             info->experimental = jexperimental.type == kJSONTrue;
             strncpy(info->rom_name, game_name, 16);
-            info->rom_name[16] = 0; // paranoia
+            info->rom_name[16] = 0;  // paranoia
             free_json_data(v);
             return info;
         }
@@ -687,22 +687,23 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
     // first, open the ROM to read the game name
     size_t len;
     SDFile* file = playdate->file->open(game_path, kFileReadData);
-    if (!file) return NULL;
-    
+    if (!file)
+        return NULL;
+
     uint8_t buff[0x200];
-    
+
     int read = playdate->file->read(file, buff, sizeof(buff));
     playdate->file->close(file);
     if (read != sizeof(buff))
     {
         return NULL;
     }
-    
+
     char title[17];
     gb_get_rom_name(buff, title);
-    
+
     ScriptInfo* info = get_script_info(title);
-    
+
     return info;
 }
 
@@ -715,8 +716,9 @@ bool script_exists(const char* game_path)
 {
     ScriptInfo* info = script_get_info_by_rom_path(game_path);
 
-    if (!info) return false;
-    
+    if (!info)
+        return false;
+
     script_info_free(info);
     return true;
 }

@@ -9,11 +9,9 @@
 typedef struct PGB_InfoScene
 {
     PGB_Scene* scene;
-    
+
     char* text;
     float scroll;
 } PGB_InfoScene;
 
-PGB_InfoScene* PGB_InfoScene_new(
-    char* text
-);
+PGB_InfoScene* PGB_InfoScene_new(char* text);
