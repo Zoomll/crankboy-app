@@ -864,7 +864,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 static const char* message1 = "Press Ⓑ to download.";
                                 static const char* message2 = "- or -";
                                 static const char* message3 = "Connect to a computer";
-                                static const char* message4 = "and copy covers to:";
+                                static const char* message4 = "and copy cover to:";
                                 static const char* message5 = "Data/*crankboy/covers";
 
                                 LCDFont* titleFont = PGB_App->bodyFont;
@@ -955,7 +955,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 static const char* title = "Missing Cover";
                                 static const char* message1 = "No database match";
                                 static const char* message2 = "Connect to a computer";
-                                static const char* message3 = "and copy covers to:";
+                                static const char* message3 = "and copy cover to:";
                                 static const char* message4 = "Data/*crankboy/covers";
 
                                 LCDFont* titleFont = PGB_App->bodyFont;
