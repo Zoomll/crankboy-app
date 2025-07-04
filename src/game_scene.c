@@ -185,7 +185,7 @@ static LCDBitmap* numbers_bmp = NULL;
 static uint32_t last_fps_digits;
 static uint8_t fps_draw_timer;
 
-PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
+PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 {
     playdate->system->logToConsole("ROM: %s", rom_filename);
     playdate->system->setCrankSoundsDisabled(true);
@@ -214,6 +214,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename)
     scene->preferredRefreshRate = 30;
 
     gameScene->rom_filename = string_copy(rom_filename);
+    gameScene->name_short = string_copy(name_short);
     gameScene->save_filename = NULL;
 
     gameScene->state = PGB_GameSceneStateError;
@@ -2834,6 +2835,7 @@ static void PGB_GameScene_free(void* object)
     pgb_free(gameScene->save_filename);
     pgb_free(gameScene->base_filename);
     pgb_free(gameScene->settings_filename);
+    pgb_free(gameScene->name_short);
 
     if (context->rom)
     {

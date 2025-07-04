@@ -86,6 +86,7 @@ typedef struct PGB_GameScene
     char* rom_filename;
     char* base_filename;  // rom filename with extension stripped
     char* settings_filename;
+    char* name_short; // human-readable filename
 
     bool audioEnabled;
     bool audioLocked;
@@ -149,7 +150,7 @@ typedef struct PGB_GameScene
     unsigned script_info_available : 1;
 } PGB_GameScene;
 
-PGB_GameScene *PGB_GameScene_new(const char *rom_filename);
+PGB_GameScene *PGB_GameScene_new(const char *rom_filename, char* name_short);
 void PGB_GameScene_apply_settings(PGB_GameScene *gameScene, bool audio_settings_changed);
 void PGB_GameScene_didSelectLibrary(void* userdata);
 

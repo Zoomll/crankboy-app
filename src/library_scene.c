@@ -125,7 +125,7 @@ static void launch_game(void* ud, int option)
     case 3:  // launch game
     launch_normal:
     {
-        PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath);
+        PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath, game->name_short);
         if (gameScene)
         {
             PGB_present(gameScene->scene);

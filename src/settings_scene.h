@@ -42,6 +42,9 @@ typedef struct PGB_SettingsScene
 
     // for options which have special on-hold behaviour
     float option_hold_time;
+    
+    // animation for settings header, ranges 0-1
+    float header_animation_p;
 
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
 } PGB_SettingsScene;

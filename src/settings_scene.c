@@ -39,6 +39,8 @@ static void update_thumbnail(PGB_SettingsScene* settingsScene);
 #define HOLD_TIME_MARGIN 0.15f
 #define HOLD_TIME 1.09f
 #define HOLD_FADE_RATE 2.9f
+#define HEADER_ANIMATION_RATE 2.8f
+#define HEADER_HEIGHT 18
 
 struct OptionsMenuEntry;
 
@@ -169,6 +171,8 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
         // (dummy)
         settingsScene->immutable_settings = preferences_store_subset(0);
     }
+    
+    settingsScene->header_animation_p = preferences_per_game;
 
     preferences_ui_sounds = global_ui_sounds;
 
@@ -906,6 +910,10 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     PGB_GameScene* gameScene = settingsScene->gameScene;
+    
+    TOWARD(settingsScene->header_animation_p, preferences_per_game, dt * HEADER_ANIMATION_RATE);
+    
+    int header_y = settingsScene->header_animation_p * HEADER_HEIGHT + 0.5f;
 
     const int kScreenHeight = 240;
     const int kDividerX = 240;
@@ -1173,12 +1181,31 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     playdate->graphics->clear(kColorWhite);
 
-    playdate->graphics->setFont(PGB_App->bodyFont);
     int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
     int rowSpacing = 10;
     int rowHeight = fontHeight + rowSpacing;
     int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
-    int initialY = (kScreenHeight - totalMenuHeight) / 2;
+    int initialY = (kScreenHeight - totalMenuHeight) / 2 + header_y / 2;
+    
+    // header y
+    if (header_y > 0 && gameScene && gameScene->name_short)
+    {
+        LCDFont* font = PGB_App->labelFont;
+        playdate->graphics->setFont(font);
+        int nameWidth = playdate->graphics->getTextWidth(
+            font, gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, 0
+        );
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        
+        playdate->graphics->fillRect(
+            0, 0, LCD_COLUMNS, header_y, kColorBlack
+        );
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+
+        playdate->graphics->drawText(gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, 2);
+    }
+    
+    playdate->graphics->setFont(PGB_App->bodyFont);
 
     // --- Left Pane (Options - 60%) ---
 

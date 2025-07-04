@@ -129,6 +129,22 @@ void pgb_play_ui_sound(PGB_UISound sound);
 
 char* strltrim(const char* str);
 
+static inline float toward(float x, float dst, float step) {
+    if (dst > x)
+    {
+        x += step;
+        if (x > dst) x = dst;
+    }
+    else
+    {
+        x -= step;
+        if (x < dst) x = dst;
+    }
+    return x;
+};
+
+#define TOWARD(x, dst, step) do {float* a = &(x); *a = toward(*a, dst, step); } while(0)
+
 #ifdef TARGET_PLAYDATE
 #define __section__(x) __attribute__((section(x)))
 #else

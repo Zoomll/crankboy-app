@@ -56,6 +56,8 @@ const clalign uint8_t PGB_patterns[4][4][4] = {
 
 char* string_copy(const char* string)
 {
+    if (!string) return NULL;
+    
     char* copied = pgb_malloc(strlen(string) + 1);
     strcpy(copied, string);
     return copied;
