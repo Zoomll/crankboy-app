@@ -90,7 +90,7 @@ static float get_note_freq(float note)
 
 static void bass(void)
 {
-    if (rng() > 0.1 && beat != 0) return;
+    if (rng() > 0.1f && beat != 0) return;
     float hz = 0;
     
     if (beat % 2 == 1 && rng() > 0.4f) return;
@@ -178,11 +178,11 @@ void pgmusic_update(float dt)
             if (measure == 2 && rng() > 0.7f)  fill = 1;
             if (measure >= 4)
             {
+                fill = 0;
                 measure = 0;
             }
-            if (rng() < 0.02f || (measure == 0 && rng() < 0.4f))
+            if (rng() < 0.02f || (measure == 3 && rng() < 0.4f))
             {
-                fill = 0;
                 
                 // key change
                 if (rng() < 0.5f)
