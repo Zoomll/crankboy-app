@@ -23,6 +23,14 @@
 
 PGB_Application* PGB_App;
 
+typedef struct
+{
+    char* short_name;
+    char* detailed_name;
+} FetchedNames;
+
+static void PGB_precacheGameNames(void);
+
 #if defined(TARGET_SIMULATOR)
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -114,6 +122,7 @@ void PGB_init(void)
 {
     PGB_App = pgb_calloc(1, sizeof(PGB_Application));
 
+    PGB_App->gameNameCache = array_new();
     PGB_App->scene = NULL;
 
     PGB_App->pendingScene = NULL;
@@ -211,6 +220,8 @@ void PGB_init(void)
 
     free_json_data(manifest);
 
+    PGB_precacheGameNames();
+
     // check if any PNGs are in the covers/ folder
     bool png_found = false;
     pgb_listfiles(PGB_coversPath, checkForPngCallback, &png_found, true, kFileReadData);
@@ -233,6 +244,132 @@ void PGB_init(void)
     PGB_CreditsScene* credits = PGB_CreditsScene_new();
     PGB_present(credits->scene);
 #endif
+}
+
+static FetchedNames get_titles_from_db(const char* fullpath)
+{
+    FetchedNames names = {NULL, NULL};
+
+    uint32_t crc = pgb_calculate_crc32(fullpath);
+    if (crc == 0)
+    {
+        return names;
+    }
+
+    char crc_string_upper[9];
+    char crc_string_lower[9];
+
+    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", crc);
+    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", crc);
+
+    char db_filename[32];
+    snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);
+
+    char* json_string = pgb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
+    if (!json_string)
+    {
+        return names;
+    }
+
+    json_value db_json;
+    if (!parse_json_string(json_string, &db_json))
+    {
+        pgb_free(json_string);
+        return names;
+    }
+    pgb_free(json_string);
+
+    if (db_json.type == kJSONTable)
+    {
+        json_value game_entry = json_get_table_value(db_json, crc_string_upper);
+        if (game_entry.type == kJSONTable)
+        {
+            json_value short_val = json_get_table_value(game_entry, "short");
+            if (short_val.type == kJSONString && short_val.data.stringval)
+            {
+                names.short_name = string_copy(short_val.data.stringval);
+            }
+
+            json_value long_val = json_get_table_value(game_entry, "long");
+            if (long_val.type == kJSONString && long_val.data.stringval)
+            {
+                names.detailed_name = string_copy(long_val.data.stringval);
+            }
+        }
+    }
+
+    free_json_data(db_json);
+    return names;
+}
+
+static void collect_game_filenames_callback(const char* filename, void* userdata)
+{
+    PGB_Array* filenames_array = userdata;
+    char* extension;
+    char* dot = pgb_strrchr(filename, '.');
+
+    if (!dot || dot == filename)
+    {
+        extension = "";
+    }
+    else
+    {
+        extension = dot + 1;
+    }
+
+    if ((pgb_strcmp(extension, "gb") == 0 || pgb_strcmp(extension, "gbc") == 0))
+    {
+        array_push(filenames_array, string_copy(filename));
+    }
+}
+
+static void PGB_precacheGameNames(void)
+{
+    playdate->system->logToConsole("Precaching game names...");
+
+    PGB_Array* game_filenames = array_new();
+    pgb_listfiles(PGB_gamesPath, collect_game_filenames_callback, game_filenames, 0, kFileReadData);
+
+    for (int i = 0; i < game_filenames->length; i++)
+    {
+        const char* filename = game_filenames->items[i];
+
+        char progress_message[100];
+        snprintf(
+            progress_message, sizeof(progress_message), "Scanning Games… (%d/%d)", i + 1,
+            game_filenames->length
+        );
+        pgb_draw_logo_with_message(progress_message);
+
+        PGB_GameName* newName = pgb_malloc(sizeof(PGB_GameName));
+
+        newName->filename = string_copy(filename);
+        newName->name_filename = pgb_basename(filename, true);
+
+        char* fullpath;
+        playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
+
+        FetchedNames fetched = get_titles_from_db(fullpath);
+
+        pgb_free(fullpath);
+
+        newName->name_short =
+            fetched.short_name ? fetched.short_name : string_copy(newName->name_filename);
+        newName->name_detailed =
+            fetched.detailed_name ? fetched.detailed_name : string_copy(newName->name_filename);
+
+        array_push(PGB_App->gameNameCache, newName);
+    }
+
+    for (int i = 0; i < game_filenames->length; i++)
+    {
+        pgb_free(game_filenames->items[i]);
+    }
+    array_free(game_filenames);
+
+    playdate->system->logToConsole(
+        "Finished precaching %d game names.", PGB_App->gameNameCache->length
+    );
 }
 
 __section__(".rare") static void switchToPendingScene(void)
@@ -390,6 +527,20 @@ void PGB_quit(void)
     {
         playdate->sound->synth->freeSynth(PGB_App->clickSynth);
         PGB_App->clickSynth = NULL;
+    }
+
+    if (PGB_App->gameNameCache)
+    {
+        for (int i = 0; i < PGB_App->gameNameCache->length; i++)
+        {
+            PGB_GameName* gameName = PGB_App->gameNameCache->items[i];
+            pgb_free(gameName->filename);
+            pgb_free(gameName->name_short);
+            pgb_free(gameName->name_detailed);
+            pgb_free(gameName->name_filename);
+            pgb_free(gameName);
+        }
+        array_free(PGB_App->gameNameCache);
     }
 
     pgb_free(PGB_App);

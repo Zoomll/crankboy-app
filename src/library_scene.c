@@ -817,52 +817,6 @@ static void PGB_LibraryScene_free(void* object)
     pgb_free(libraryScene);
 }
 
-static char* get_game_title_from_db(const char* fullpath, int mode)
-{
-    uint32_t crc = pgb_calculate_crc32(fullpath);
-    if (crc == 0)
-    {
-        return NULL;
-    }
-
-    char crc_string_upper[9];
-    char crc_string_lower[9];
-    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08X", crc);
-    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08x", crc);
-    playdate->system->logToConsole("Calculated CRC32: %s", crc_string_upper);
-
-    char db_filename[32];
-    snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);
-
-    json_value db_json;
-    if (!parse_json(db_filename, &db_json, kFileRead | kFileReadData))
-    {
-        return NULL;
-    }
-
-    char* title = NULL;
-    json_value game_entry = json_get_table_value(db_json, crc_string_upper);
-
-    if (game_entry.type == kJSONTable)
-    {
-        const char* key = (mode == DISPLAY_NAME_MODE_SHORT) ? "short" : "long";
-        json_value title_val = json_get_table_value(game_entry, key);
-        if (title_val.type == kJSONString && title_val.data.stringval)
-        {
-            title = string_copy(title_val.data.stringval);
-        }
-    }
-    else
-    {
-        playdate->system->logToConsole(
-            "WARNING: Could not find CRC key '%s' in %s.", crc_string_upper, db_filename
-        );
-    }
-
-    free_json_data(db_json);
-    return title;
-}
-
 PGB_Game* PGB_Game_new(const char* filename)
 {
     PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
@@ -872,6 +826,31 @@ PGB_Game* PGB_Game_new(const char* filename)
     playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, filename);
     game->fullpath = fullpath_str;
 
+    game->displayName = NULL;
+
+    // Find the pre-cached name from the global cache
+    for (int i = 0; i < PGB_App->gameNameCache->length; i++)
+    {
+        PGB_GameName* cachedName = PGB_App->gameNameCache->items[i];
+        if (strcmp(cachedName->filename, filename) == 0)
+        {
+            switch (preferences_display_name_mode)
+            {
+            case DISPLAY_NAME_MODE_SHORT:
+                game->displayName = string_copy(cachedName->name_short);
+                break;
+            case DISPLAY_NAME_MODE_DETAILED:
+                game->displayName = string_copy(cachedName->name_detailed);
+                break;
+            case DISPLAY_NAME_MODE_FILENAME:
+            default:
+                game->displayName = string_copy(cachedName->name_filename);
+                break;
+            }
+            break;  // Exit loop once found
+        }
+    }
+
     char* basename_no_ext = string_copy(filename);
     char* ext = pgb_strrchr(basename_no_ext, '.');
     if (ext != NULL)
@@ -879,17 +858,7 @@ PGB_Game* PGB_Game_new(const char* filename)
         *ext = '\0';
     }
 
-    char* title_from_db = NULL;
-    if (preferences_display_name_mode != DISPLAY_NAME_MODE_FILENAME)
-    {
-        title_from_db = get_game_title_from_db(game->fullpath, preferences_display_name_mode);
-    }
-
-    if (title_from_db)
-    {
-        game->displayName = title_from_db;
-    }
-    else
+    if (game->displayName == NULL)
     {
         game->displayName = string_copy(basename_no_ext);
     }
@@ -898,20 +867,6 @@ PGB_Game* PGB_Game_new(const char* filename)
     pgb_sanitize_string_for_filename(cleanName_no_ext);
 
     game->coverPath = pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
-
-#if 0
-    if (game->coverPath)
-    {
-        playdate->system->logToConsole("Cover for '%s': '%s'", game->displayName, game->coverPath);
-    }
-    else
-    {
-        playdate->system->logToConsole(
-            "No cover found for '%s' (basename: '%s', clean: '%s')", game->displayName,
-            basename_no_ext, cleanName_no_ext
-        );
-    }
-#endif
 
     pgb_free(basename_no_ext);
     pgb_free(cleanName_no_ext);

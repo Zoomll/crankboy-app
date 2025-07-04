@@ -39,6 +39,14 @@ extern pthread_mutex_t audio_mutex;
 
 typedef struct
 {
+    char* filename;
+    char* name_short;
+    char* name_detailed;
+    char* name_filename;
+} PGB_GameName;
+
+typedef struct
+{
     PGB_LoadedCoverArt art;
     char* rom_path;
 } PGB_GlobalCoverCache;
@@ -60,6 +68,7 @@ typedef struct PGB_Application
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
     PGB_GlobalCoverCache coverArtCache;
+    PGB_Array* gameNameCache;
     struct PDSynth* clickSynth;
     PDButtons buttons_down;
     PDButtons buttons_pressed;

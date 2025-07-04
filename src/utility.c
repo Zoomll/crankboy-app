@@ -11,7 +11,6 @@
 #include "app.h"
 #include "library_scene.h"
 #include "preferences.h"
-#include "userstack.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -185,7 +184,7 @@ static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
     return crc;
 }
 
-static uint32_t pgb_calculate_crc32_(const char* filepath)
+uint32_t pgb_calculate_crc32(const char* filepath)
 {
     if (!crc32_table_generated)
     {
@@ -221,11 +220,6 @@ static uint32_t pgb_calculate_crc32_(const char* filepath)
     playdate->file->close(file);
 
     return crc ^ 0xffffffffL;
-}
-
-uint32_t pgb_calculate_crc32(const char* filepath)
-{
-    return (uint32_t)(uintptr_t)call_with_user_stack_1(pgb_calculate_crc32_, (void*)filepath);
 }
 
 char* pgb_basename(const char* filename, bool stripExtension)
