@@ -64,7 +64,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     bool stillOnSameGame = (currentlySelectedGame == game);
 
-    if (flags != 0 || data == NULL || data_len == 0)
+    if ((flags & ~HTTP_ENABLE_ASKED) != 0 || data == NULL || data_len == 0)
     {
         if (stillOnSameGame)
         {
@@ -73,6 +73,22 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         pgb_free(userdata);
         return;
     }
+
+    const char* pdi_header = "Playdate IMG";
+    char* actual_data_start = strstr(data, pdi_header);
+
+    if (actual_data_start == NULL)
+    {
+        // The PDI header was not found in the response. The file is invalid.
+        if (stillOnSameGame)
+        {
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Invalid file received.");
+        }
+        pgb_free(userdata);
+        return;
+    }
+
+    size_t new_data_len = data_len - (actual_data_start - data);
 
     char* rom_basename_no_ext = pgb_basename(game->filename, true);
     if (!rom_basename_no_ext)
@@ -97,7 +113,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         return;
     }
 
-    if (pgb_write_entire_file(cover_dest_path, data, data_len))
+    if (pgb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
     {
         if (game->coverPath)
         {
