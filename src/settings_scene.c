@@ -171,7 +171,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
         // (dummy)
         settingsScene->immutable_settings = preferences_store_subset(0);
     }
-    
+
     settingsScene->header_animation_p = preferences_per_game;
 
     preferences_ui_sounds = global_ui_sounds;
@@ -696,7 +696,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     // BIOS
     entries[++i] = (OptionsMenuEntry){
-        .name = "Boot Sequence",
+        .name = "Boot sequence",
         .values = off_on_labels,
         .description =
             "Enables \"Boot ROM\" on\ngame start.\n \n\"dmg_boot.bin\" must\nbe present."
@@ -910,9 +910,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     PGB_GameScene* gameScene = settingsScene->gameScene;
-    
+
     TOWARD(settingsScene->header_animation_p, preferences_per_game, dt * HEADER_ANIMATION_RATE);
-    
+
     int header_y = settingsScene->header_animation_p * HEADER_HEIGHT + 0.5f;
 
     const int kScreenHeight = 240;
@@ -1186,7 +1186,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     int rowHeight = fontHeight + rowSpacing;
     int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
     int initialY = (kScreenHeight - totalMenuHeight) / 2 + header_y / 2;
-    
+
     // header y
     if (header_y > 0 && gameScene && gameScene->name_short)
     {
@@ -1196,15 +1196,15 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             font, gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, 0
         );
         int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        
-        playdate->graphics->fillRect(
-            0, 0, LCD_COLUMNS, header_y, kColorBlack
-        );
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
         playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
-        playdate->graphics->drawText(gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, 2);
+        playdate->graphics->drawText(
+            gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, 2
+        );
     }
-    
+
     playdate->graphics->setFont(PGB_App->bodyFont);
 
     // --- Left Pane (Options - 60%) ---
@@ -1465,7 +1465,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Draw the 60/40 vertical divider line
-    playdate->graphics->drawLine(kDividerX, 0, kDividerX, kScreenHeight, 1, kColorBlack);
+    playdate->graphics->drawLine(kDividerX, header_y, kDividerX, kScreenHeight, 1, kColorBlack);
 }
 
 static void PGB_SettingsScene_didSelectBack(void* userdata)
