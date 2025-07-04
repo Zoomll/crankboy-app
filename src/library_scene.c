@@ -318,6 +318,15 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene)
 
 static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
 {
+    char* selectedFilename = NULL;
+    if (libraryScene->listView->selectedItem >= 0 &&
+        libraryScene->listView->selectedItem < libraryScene->games->length)
+    {
+        PGB_Game* selectedGameBefore =
+            libraryScene->games->items[libraryScene->listView->selectedItem];
+        selectedFilename = string_copy(selectedGameBefore->filename);
+    }
+
     for (int i = 0; i < libraryScene->games->length; i++)
     {
         PGB_Game* game = libraryScene->games->items[i];
@@ -337,6 +346,24 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
     }
 
     pgb_sort_games_array(libraryScene->games);
+
+    int newSelectedIndex = 0;
+    if (selectedFilename)
+    {
+        for (int i = 0; i < libraryScene->games->length; i++)
+        {
+            // Corrected line with the required cast
+            PGB_Game* currentGame = libraryScene->games->items[i];
+            if (strcmp(currentGame->filename, selectedFilename) == 0)
+            {
+                newSelectedIndex = i;
+                break;
+            }
+        }
+        pgb_free(selectedFilename);
+    }
+
+    libraryScene->listView->selectedItem = newSelectedIndex;
 
     PGB_Array* items = libraryScene->listView->items;
     for (int i = 0; i < items->length; i++)
