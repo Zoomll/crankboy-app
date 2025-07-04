@@ -529,7 +529,7 @@ void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
     );
 }
 
-void pgb_draw_logo_with_message(const char* message, int x_offset)
+void pgb_draw_logo_with_message(const char* message)
 {
     const char* logoPath = "images/logo.pdi";
     LCDBitmap* logoBitmap = playdate->graphics->loadBitmap(logoPath, NULL);
@@ -540,10 +540,12 @@ void pgb_draw_logo_with_message(const char* message, int x_offset)
     {
         int screenWidth = LCD_COLUMNS;
         int screenHeight = LCD_ROWS;
-        LCDFont* font = PGB_App->bodyFont;
+        LCDFont* font = PGB_App->subheadFont;
 
         int logoWidth, logoHeight;
         playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
+
+        playdate->graphics->setFont(font);
 
         int textWidth =
             playdate->graphics->getTextWidth(font, message, strlen(message), kUTF8Encoding, 0);
@@ -556,7 +558,7 @@ void pgb_draw_logo_with_message(const char* message, int x_offset)
         int logoX = (screenWidth - logoWidth) / 2;
         int logoY = blockY_start;
 
-        int textX = (screenWidth - textWidth) / 2 + x_offset;
+        int textX = (screenWidth - textWidth) / 2;
         int textY = logoY + logoHeight + lineSpacing;
 
         playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
@@ -792,9 +794,10 @@ bool endswithi(const char* str, const char* suffix)
 int pgb_file_exists(const char* path, FileOptions fopts)
 {
     SDFile* file = playdate->file->open(path, fopts);
-    
-    if (!file) return false;
-    
+
+    if (!file)
+        return false;
+
     playdate->file->close(file);
     return true;
 }
@@ -837,13 +840,13 @@ int pgb_listfiles(
     return playdate->file->listfiles(path, process_file, &lud, showhidden);
 }
 
-char *strltrim(const char *str)
+char* strltrim(const char* str)
 {
     if (str == NULL)
         return NULL;
-        
+
     while (*str != '\0' && (*str == '\n' || *str == ' ' || *str == '\t'))
         str++;
-        
-    return (char *)str;
+
+    return (char*)str;
 }

@@ -9,13 +9,13 @@
 #include "app.h"
 
 #include "../minigb_apu/minigb_apu.h"
+#include "credits_scene.h"
 #include "dtcm.h"
 #include "game_scene.h"
 #include "image_conversion_scene.h"
 #include "jparse.h"
 #include "library_scene.h"
 #include "preferences.h"
-#include "credits_scene.h"
 #include "userstack.h"
 
 // files that have been copied from PDX to data folder
@@ -192,7 +192,7 @@ void PGB_init(void)
         manifest.data.tableval = obj;
     }
 
-    pgb_draw_logo_with_message("Initializing…", 7);
+    pgb_draw_logo_with_message("Initializing…");
 
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
     bool modified = false;
@@ -223,7 +223,7 @@ void PGB_init(void)
     }
     else
     {
-        pgb_draw_logo_with_message("Loading Library…", 9);
+        pgb_draw_logo_with_message("Loading Library…");
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
@@ -258,7 +258,9 @@ __section__(".text.main") void PGB_update(float dt)
 
     PGB_App->crankChange = playdate->system->getCrankChange();
 
-    playdate->system->getButtonState(&PGB_App->buttons_down, &PGB_App->buttons_pressed, &PGB_App->buttons_released);
+    playdate->system->getButtonState(
+        &PGB_App->buttons_down, &PGB_App->buttons_pressed, &PGB_App->buttons_released
+    );
 
     PGB_App->buttons_released &= ~PGB_App->buttons_suppress;
     PGB_App->buttons_suppress &= PGB_App->buttons_down;
@@ -352,7 +354,7 @@ void PGB_dismiss(PGB_Scene* sceneToDismiss)
 
 void PGB_goToLibrary(void)
 {
-    pgb_draw_logo_with_message("Returning to Library…", 12);
+    pgb_draw_logo_with_message("Returning to Library…");
 
     PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
     PGB_present(libraryScene->scene);

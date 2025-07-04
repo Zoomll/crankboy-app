@@ -340,7 +340,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        pgb_draw_logo_with_message("Scanning for new images…", 15);
+        pgb_draw_logo_with_message("Scanning for new images…");
 
         pgb_listfiles(PGB_coversPath, on_list_file, convScene, true, kFileReadData);
 
@@ -376,7 +376,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             if (progress_msg)
             {
-                pgb_draw_logo_with_message(progress_msg, 20);
+                pgb_draw_logo_with_message(progress_msg);
                 free(progress_msg);
             }
 
@@ -394,7 +394,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
     case kStateDone:
     {
-        pgb_draw_logo_with_message("Loading Library…", 9);
+        pgb_draw_logo_with_message("Loading Library…");
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
