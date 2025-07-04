@@ -90,6 +90,7 @@ static float get_note_freq(float note)
 
 static void bass(void)
 {
+    if (rng() > 0.1 && beat != 0) return;
     float hz = 0;
     
     if (beat % 2 == 1 && rng() > 0.4f) return;
