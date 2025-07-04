@@ -21,7 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple Save State slots per game (note: not currently available if game has its own cartridge data)
 - You can download cover art for your library from within CrankBoy.
 - Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
-- ROMs can access Playdate features [via IO registers](gb-extensions) and are also [scriptable with Lua](./lua-docs.md) -- you can add native crank controls to a game if you have the technical know-how.
+- ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) -- you can add native crank controls to a game if you have the technical know-how.
 
 ## Installing
 
