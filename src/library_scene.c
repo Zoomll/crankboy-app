@@ -650,9 +650,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
-            // Check if there is no cover and a download is not already in progress
+            PGB_Game* selectedGame = libraryScene->games->items[selectedItem];
+            bool hasDBMatch = (selectedGame->name_original_long != NULL);
+
+            // Only allow download if a cover is missing, a DB match exists,
+            // and no download is already in progress.
             if (PGB_App->coverArtCache.art.status != PGB_COVER_ART_SUCCESS &&
-                libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE)
+                libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE && hasDBMatch)
             {
                 PGB_LibraryScene_startCoverDownload(libraryScene);
             }
@@ -851,115 +855,205 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         }
                         else
                         {
-                            static const char* title = "Missing Cover";
-                            static const char* message1 = "Press Ⓑ to download.";
-                            static const char* message2 = "- or -";
-                            static const char* message3 = "Connect to a computer";
-                            static const char* message4 = "and copy covers to:";
-                            static const char* message5 = "Data/*crankboy/covers";
+                            PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                            bool hasDBMatch = (selectedGame->name_original_long != NULL);
 
-                            LCDFont* titleFont = PGB_App->bodyFont;
-                            LCDFont* bodyFont = PGB_App->subheadFont;
+                            if (hasDBMatch)
+                            {
+                                static const char* title = "Missing Cover";
+                                static const char* message1 = "Press Ⓑ to download.";
+                                static const char* message2 = "- or -";
+                                static const char* message3 = "Connect to a computer";
+                                static const char* message4 = "and copy covers to:";
+                                static const char* message5 = "Data/*crankboy/covers";
 
-                            int large_gap = 12;
-                            int small_gap = 3;
+                                LCDFont* titleFont = PGB_App->bodyFont;
+                                LCDFont* bodyFont = PGB_App->subheadFont;
+                                int large_gap = 12;
+                                int small_gap = 3;
+                                int titleHeight = playdate->graphics->getFontHeight(titleFont);
+                                int messageHeight = playdate->graphics->getFontHeight(bodyFont);
+                                int containerHeight = titleHeight + large_gap + messageHeight +
+                                                      large_gap + messageHeight + large_gap +
+                                                      messageHeight + small_gap + messageHeight +
+                                                      small_gap + messageHeight;
+                                int containerY_start = (screenHeight - containerHeight) / 2;
+                                int panel_content_width = rightPanelWidth - 1;
 
-                            int titleHeight = playdate->graphics->getFontHeight(titleFont);
-                            int messageHeight = playdate->graphics->getFontHeight(bodyFont);
+                                int titleX = leftPanelWidth + 1 +
+                                             (panel_content_width -
+                                              playdate->graphics->getTextWidth(
+                                                  titleFont, title, strlen(title), kUTF8Encoding, 0
+                                              )) /
+                                                 2;
+                                int message1_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message1, strlen(message1), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message2_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message2, strlen(message2), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message3_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message3, strlen(message3), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message4_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message4, strlen(message4), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message5_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message5, strlen(message5), kUTF8Encoding, 0
+                                     )) /
+                                        2;
 
-                            int containerHeight = titleHeight + large_gap + messageHeight +
-                                                  large_gap + messageHeight + large_gap +
-                                                  messageHeight + small_gap + messageHeight +
-                                                  small_gap + messageHeight;
+                                int currentY = containerY_start;
+                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                                playdate->graphics->setFont(titleFont);
+                                playdate->graphics->drawText(
+                                    title, strlen(title), kUTF8Encoding, titleX, currentY
+                                );
+                                currentY += titleHeight + large_gap;
+                                playdate->graphics->setFont(bodyFont);
+                                playdate->graphics->drawText(
+                                    message1, strlen(message1), kUTF8Encoding, message1_X, currentY
+                                );
+                                currentY += messageHeight + large_gap;
+                                playdate->graphics->drawText(
+                                    message2, strlen(message2), kUTF8Encoding, message2_X, currentY
+                                );
+                                currentY += messageHeight + large_gap;
+                                playdate->graphics->drawText(
+                                    message3, strlen(message3), kUTF8Encoding, message3_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+                                playdate->graphics->drawText(
+                                    message4, strlen(message4), kUTF8Encoding, message4_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+                                playdate->graphics->drawText(
+                                    message5, strlen(message5), kUTF8Encoding, message5_X, currentY
+                                );
+                            }
+                            else
+                            {
+                                static const char* title = "Missing Cover";
+                                static const char* message1 = "No database match";
+                                static const char* message2 = "Connect to a computer";
+                                static const char* message3 = "and copy covers to:";
+                                static const char* message4 = "Data/*crankboy/covers";
 
-                            int containerY_start = (screenHeight - containerHeight) / 2;
-                            int panel_content_width = rightPanelWidth - 1;
+                                LCDFont* titleFont = PGB_App->bodyFont;
+                                LCDFont* bodyFont = PGB_App->subheadFont;
+                                int large_gap = 12;
+                                int small_gap = 3;
+                                int titleHeight = playdate->graphics->getFontHeight(titleFont);
+                                int messageHeight = playdate->graphics->getFontHeight(bodyFont);
 
-                            // --- Calculate X positions for centering ---
-                            int titleX = leftPanelWidth + 1 +
-                                         (panel_content_width -
-                                          playdate->graphics->getTextWidth(
-                                              titleFont, title, strlen(title), kUTF8Encoding, 0
-                                          )) /
-                                             2;
-                            int message1_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message1, strlen(message1), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            int message2_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message2, strlen(message2), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            int message3_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message3, strlen(message3), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            int message4_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message4, strlen(message4), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            int message5_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message5, strlen(message5), kUTF8Encoding, 0
-                                 )) /
-                                    2;
+                                int containerHeight = titleHeight + large_gap + messageHeight +
+                                                      large_gap + messageHeight + small_gap +
+                                                      messageHeight + small_gap + messageHeight;
+                                int containerY_start = (screenHeight - containerHeight) / 2;
+                                int panel_content_width = rightPanelWidth - 1;
 
-                            int currentY = containerY_start;
+                                int titleX = leftPanelWidth + 1 +
+                                             (panel_content_width -
+                                              playdate->graphics->getTextWidth(
+                                                  titleFont, title, strlen(title), kUTF8Encoding, 0
+                                              )) /
+                                                 2;
+                                int message1_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message1, strlen(message1), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message2_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message2, strlen(message2), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message3_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message3, strlen(message3), kUTF8Encoding, 0
+                                     )) /
+                                        2;
+                                int message4_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width -
+                                     playdate->graphics->getTextWidth(
+                                         bodyFont, message4, strlen(message4), kUTF8Encoding, 0
+                                     )) /
+                                        2;
 
-                            // --- Draw all the text lines ---
-                            playdate->graphics->setDrawMode(kDrawModeFillBlack);
-
-                            playdate->graphics->setFont(titleFont);
-                            playdate->graphics->drawText(
-                                title, strlen(title), kUTF8Encoding, titleX, currentY
-                            );
-                            currentY += titleHeight + large_gap;
-
-                            playdate->graphics->setFont(bodyFont);
-                            playdate->graphics->drawText(
-                                message1, strlen(message1), kUTF8Encoding, message1_X, currentY
-                            );
-                            currentY += messageHeight + large_gap;
-
-                            playdate->graphics->drawText(
-                                message2, strlen(message2), kUTF8Encoding, message2_X, currentY
-                            );
-                            currentY += messageHeight + large_gap;
-
-                            playdate->graphics->drawText(
-                                message3, strlen(message3), kUTF8Encoding, message3_X, currentY
-                            );
-                            currentY += messageHeight + small_gap;
-
-                            playdate->graphics->drawText(
-                                message4, strlen(message4), kUTF8Encoding, message4_X, currentY
-                            );
-                            currentY += messageHeight + small_gap;
-
-                            playdate->graphics->drawText(
-                                message5, strlen(message5), kUTF8Encoding, message5_X, currentY
-                            );
+                                int currentY = containerY_start;
+                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                                playdate->graphics->setFont(titleFont);
+                                playdate->graphics->drawText(
+                                    title, strlen(title), kUTF8Encoding, titleX, currentY
+                                );
+                                currentY += titleHeight + large_gap;
+                                playdate->graphics->setFont(bodyFont);
+                                playdate->graphics->drawText(
+                                    message1, strlen(message1), kUTF8Encoding, message1_X, currentY
+                                );
+                                currentY += messageHeight + large_gap;
+                                playdate->graphics->drawText(
+                                    message2, strlen(message2), kUTF8Encoding, message2_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+                                playdate->graphics->drawText(
+                                    message3, strlen(message3), kUTF8Encoding, message3_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+                                playdate->graphics->drawText(
+                                    message4, strlen(message4), kUTF8Encoding, message4_X, currentY
+                                );
+                            }
                         }
                     }
                 }
+
+                int screenWidth = playdate->display->getWidth();
+                int screenHeight = playdate->display->getHeight();
+                int rightPanelWidth = THUMBNAIL_WIDTH + 1;
+                if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
+                    PGB_App->coverArtCache.art.bitmap != NULL)
+                {
+                    playdate->graphics->getBitmapData(
+                        PGB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL
+                    );
+                    if (rightPanelWidth >= THUMBNAIL_WIDTH - 1)
+                        rightPanelWidth = THUMBNAIL_WIDTH;
+                    rightPanelWidth++;
+                }
+                int leftPanelWidth = screenWidth - rightPanelWidth;
+
+                // Draw separator line
+                playdate->graphics->drawLine(
+                    leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
+                );
             }
-            playdate->graphics->drawLine(
-                leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
-            );
         }
     }
     else if (libraryScene->tab == PGB_LibrarySceneTabEmpty)
