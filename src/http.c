@@ -160,7 +160,15 @@ static void readAllData(HTTPConnection* connection)
     }
 
     int response = playdate->network->http->getResponseStatus(connection);
-    if (response != 0 && response != 200)
+    // Check for 404 specifically
+    if (response == 404)
+    {
+        httpud->cb(HTTP_NOT_FOUND | httpud->flags, NULL, 0, httpud->ud);
+        httpud->cb = NULL;  // Clear callback to prevent it from being called again
+        return;
+    }
+    // Handle all other non-success statuses
+    else if (response != 0 && response != 200)
     {
         httpud->cb(HTTP_NON_SUCCESS_STATUS | httpud->flags, NULL, 0, httpud->ud);
         httpud->cb = NULL;  // Clear callback to prevent it from being called again

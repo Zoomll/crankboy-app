@@ -64,7 +64,16 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     bool stillOnSameGame = (currentlySelectedGame == game);
 
-    if ((flags & ~HTTP_ENABLE_ASKED) != 0 || data == NULL || data_len == 0)
+    if (flags & HTTP_NOT_FOUND)
+    {
+        if (stillOnSameGame)
+        {
+            set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, "No cover found.");
+        }
+        pgb_free(userdata);
+        return;
+    }
+    else if ((flags & ~HTTP_ENABLE_ASKED) != 0 || data == NULL || data_len == 0)
     {
         if (stillOnSameGame)
         {
