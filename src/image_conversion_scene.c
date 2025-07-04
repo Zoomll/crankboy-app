@@ -253,15 +253,15 @@ void* png_to_pdi(
     float scale = MAX(wscale, hscale);
 
     // crop image horizontally
-    if (width / scale < max_width)
+    if (width / scale + 0.75f < max_width - 1)
     {
-        max_width = width / scale;
+        max_width = width / scale + 0.75f;
     }
 
     // crop image vertically
-    else if (height / scale < max_height)
+    else if (height / scale + 0.75f < max_height - 1)
     {
-        max_height = height / scale;
+        max_height = height / scale + 0.75f;
     }
 
     if (max_width == 0 || max_height == 0)

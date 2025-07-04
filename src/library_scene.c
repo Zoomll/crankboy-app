@@ -672,34 +672,6 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     if (libraryScene->tab == PGB_LibrarySceneTabList)
     {
-        int screenWidth = playdate->display->getWidth();
-        int screenHeight = playdate->display->getHeight();
-
-        int rightPanelWidth = 241;
-        int leftPanelWidth = screenWidth - rightPanelWidth;
-
-        libraryScene->listView->needsDisplay = needsDisplay;
-        libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
-
-        PGB_ListView_update(libraryScene->listView);
-
-#ifdef TARGET_SIMULATOR
-        while (page_advance > 0)
-        {
-            --page_advance;
-            PGB_App->buttons_pressed = kButtonDown;
-            PGB_ListView_update(libraryScene->listView);
-        }
-        while (page_advance < 0)
-        {
-            ++page_advance;
-            PGB_App->buttons_pressed = kButtonUp;
-            PGB_ListView_update(libraryScene->listView);
-        }
-#endif
-
-        PGB_ListView_draw(libraryScene->listView);
-
         int selectedIndex = libraryScene->listView->selectedItem;
 
         bool selectionChanged = (selectedIndex != libraryScene->lastSelectedItem);
@@ -744,6 +716,45 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 }
             }
         }
+        
+        int screenWidth = playdate->display->getWidth();
+        int screenHeight = playdate->display->getHeight();
+
+        int rightPanelWidth = THUMBNAIL_WIDTH + 1;
+        
+        // use actual thumbnail width if possible
+        if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS && PGB_App->coverArtCache.art.bitmap != NULL)
+        {
+            playdate->graphics->getBitmapData(PGB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL);
+            if (rightPanelWidth >= THUMBNAIL_WIDTH-1) rightPanelWidth = THUMBNAIL_WIDTH;
+            rightPanelWidth++;
+        }
+        
+        int leftPanelWidth = screenWidth - rightPanelWidth;
+
+        libraryScene->listView->needsDisplay = needsDisplay;
+        libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
+
+        PGB_ListView_update(libraryScene->listView);
+
+#ifdef TARGET_SIMULATOR
+        while (page_advance > 0)
+        {
+            --page_advance;
+            PGB_App->buttons_pressed = kButtonDown;
+            PGB_ListView_update(libraryScene->listView);
+        }
+        while (page_advance < 0)
+        {
+            ++page_advance;
+            PGB_App->buttons_pressed = kButtonUp;
+            PGB_ListView_update(libraryScene->listView);
+        }
+#endif
+
+        PGB_ListView_draw(libraryScene->listView);
+
+        
 
         if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
         {
@@ -764,6 +775,9 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         (panel_content_width - PGB_App->coverArtCache.art.scaled_width) / 2;
                     int coverY = (screenHeight - PGB_App->coverArtCache.art.scaled_height) / 2;
 
+                    playdate->graphics->fillRect(
+                        leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
+                    );
                     playdate->graphics->setDrawMode(kDrawModeCopy);
                     playdate->graphics->drawBitmap(
                         PGB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
