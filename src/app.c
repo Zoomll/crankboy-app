@@ -136,12 +136,13 @@ void PGB_init(void)
     playdate->file->mkdir(PGB_statesPath);
     playdate->file->mkdir(PGB_settingsPath);
 
-    preferences_init();
-
     PGB_App->bodyFont = playdate->graphics->loadFont("fonts/Roobert-11-Medium", NULL);
     PGB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
+
+    pgb_draw_logo_with_message("Initializing…");
+    preferences_init();
 
     PGB_App->clickSynth = playdate->sound->synth->newSynth();
     playdate->sound->synth->setWaveform(PGB_App->clickSynth, kWaveformSquare);
@@ -200,8 +201,6 @@ void PGB_init(void)
         obj->n = 0;
         manifest.data.tableval = obj;
     }
-
-    pgb_draw_logo_with_message("Initializing…");
 
     const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
     bool modified = false;
