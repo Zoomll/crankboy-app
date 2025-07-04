@@ -36,27 +36,110 @@ static const int matrix_floyd_steinberg_width = 3;
 static const int matrix_floyd_steinberg_height = 2;
 static const int matrix_floyd_steinberg_x = 1;
 
-// returns false on error
-bool errdiff_dither(
-    unsigned char* rgba, unsigned in_width, unsigned in_height,
-    uint8_t* out,  // 32-bit packed 1-bit
-    unsigned out_width, unsigned out_height, size_t out_stride, float scale
-)
-{
-// fixed-width precision
 #define FW_BITS 10
 #define FW_ONE (1 << FW_BITS)
 #define FW_HALF (FW_ONE / 2)
-    typedef int16_t fw_t;
+typedef int16_t fw_t;
+typedef int32_t fw32_t;
 
+const int GRAYDIV = WEIGHT_DIVISOR / FW_ONE;
+    
+__space static inline
+fw_t rgba_to_gray(unsigned char* rgba)
+{
+    unsigned r = rgba[0];
+    unsigned g = rgba[1];
+    unsigned b = rgba[2];
+    unsigned gray = r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B;
+    return gray / GRAYDIV;
+}
+    
+__space static void get_image_statistics(
+    unsigned char* rgba, unsigned in_width, unsigned in_height,
+    fw_t* o_darkest, fw_t* o_brightest, fw_t* o_avg
+) {
+    uint32_t avg = 0;
+    *o_darkest = FW_ONE;
+    *o_brightest = 0;
+    
+    for (int i = 0; i < in_width * in_height; ++i)
+    {
+        fw_t gray = rgba_to_gray((uint8_t*)rgba + i*4);
+        if (gray < *o_darkest) *o_darkest = gray;
+        if (gray > *o_brightest) *o_brightest = gray;
+        avg += gray;
+    }
+    
+    *o_avg = avg / (in_width * in_height);
+}
+
+// returns false on error
+__space bool errdiff_dither(
+    unsigned char* rgba, unsigned in_width, unsigned in_height,
+    uint8_t* out,  // 32-bit packed 1-bit
+    unsigned out_width, unsigned out_height, size_t out_stride, float scale,
+    float brightness_compensatation
+)
+// fixed-width precision
+{
     const int* const matrix = matrix_floyd_steinberg;
     const int mdiv = matrix_floyd_steinberg_divisor;
     const int mw = matrix_floyd_steinberg_width;
     const int mh = matrix_floyd_steinberg_height;
     const int mx = matrix_floyd_steinberg_x;
+    
+    fw_t lo, hi, avg;
+    get_image_statistics(rgba, in_width, in_height, &lo, &hi, &avg);
+    
+    // lo/hi are at most/min 5%/95%
+    lo = MIN(lo, FW_ONE * 0.05f);
+    hi = MAX(lo, FW_ONE * 0.95f);
+    
+    // avg is at most/min 20%/80%
+    avg = MAX(avg, FW_ONE * 0.2f);
+    avg = MIN(avg, FW_ONE * 0.8f);
+        
+    lo = brightness_compensatation * lo + (1 - brightness_compensatation) * 0;
+    hi = brightness_compensatation * hi + (1 - brightness_compensatation) * FW_ONE;
+    avg = brightness_compensatation * avg + (1 - brightness_compensatation) * FW_ONE / 2;
+    
+    float l = lo / (float)FW_ONE;
+    float h = hi / (float)FW_ONE;
+    float v = avg / (float)FW_ONE;
+    
+    // coefficients of a parabola that passes through
+    // (l, 0), (v, 1), (h, 0)
+    float dva = 1.0f / ((v-l)*(v-h));
+    float va = (l*h) * dva;
+    float vb = (-l-h) * dva;
+    float vc = 1 * dva;
+    
+    // coefficients of a parabola that passes through
+    // (l, 0), (v, 0), (h, 1)
+    float dha = 1.0f / ((h-l)*(h-v));
+    float ha = (l*v) * dha;
+    float hb = (-l-v) * dha;
+    float hc = 1 * dha;
+    
+    // coefficients of a parabola that passes through
+    // (l, 0), (v, 0.5), (h, 1)
+    float a = va * 0.5f + ha;
+    float b = vb * 0.5f + hb;
+    float c = vc * 0.5f + hc;
+    
+#if 0
+    printf("l=%f, v=%f, h=%f\n", l, v, h);
+    printf("[v] l->%f, v->%f, h->%f\n", va + vb*l + vc*l*l, va + vb*v + vc*v*v, va + vb*h + vc*h*h);
+    printf("[h] l->%f, v->%f, h->%f\n", ha + hb*l + hc*l*l, ha + hb*v + hc*v*v, ha + hb*h + hc*h*h);
+    printf("l->%f, v->%f, h->%f\n", a + b*l + c*l*l, a + b*v + c*v*v, a + b*h + c*h*h);
+#endif
+    
+    fw32_t fwa = a * FW_ONE;
+    fw32_t fwb = b * FW_ONE;
+    fw32_t fwc = c * FW_ONE;
+    
 
     assert(WEIGHT_DIVISOR >= FW_ONE);
-    const int GRAYDIV = WEIGHT_DIVISOR / FW_ONE;
 
     const unsigned err_stride = sizeof(fw_t) * out_width;
 
@@ -80,19 +163,25 @@ bool errdiff_dither(
             unsigned x8 = x % 8;
 
             // get graytone value for pixel
-            unsigned gray;
+            int ix = MIN(x * scale, in_width - 1);
+            int iy = MIN(y * scale, in_height - 1);
+            int src_idx = (iy * in_width + ix) * 4;
+
+            fw_t g = rgba_to_gray((uint8_t*)rgba + src_idx);
+            
+            // apply brightness-curve transformation
             {
-                int ix = MIN(x * scale, in_width - 1);
-                int iy = MIN(y * scale, in_height - 1);
-
-                int src_idx = (iy * in_width + ix) * 4;
-                unsigned r = rgba[src_idx];
-                unsigned g = rgba[src_idx + 1];
-                unsigned b = rgba[src_idx + 2];
-                gray = MIN(r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B, WEIGHT_DIVISOR - 1);
+                #ifdef USE_FW_BRIGHTNESS_CURVE
+                g = fwa + (fwb * g) / FW_ONE + (c*g/FW_ONE*g/FW_ONE);
+                #else
+                float fg = g / (float)FW_ONE;
+                g = FW_ONE * (a + fg*b + fg*c*fg);
+                #endif
             }
-
-            fw_t g = gray / GRAYDIV;
+            
+            if (g < 0) g = 0;
+            if (g > FW_ONE) g = FW_ONE;
+            
             fw_t e = error[err_row_idx[0] * out_width + x] / mdiv;
             fw_t ediff;
             if (g + e > FW_HALF)
@@ -273,7 +362,7 @@ void* png_to_pdi(
         }
     }
 #else
-    errdiff_dither(img_data, width, height, ptr, max_width, max_height, stride, scale);
+    errdiff_dither(img_data, width, height, ptr, max_width, max_height, stride, scale, 0.95f);
 #endif
     ptr += white_size;
 
