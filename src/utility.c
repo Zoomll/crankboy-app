@@ -728,13 +728,13 @@ void pgb_play_ui_sound(PGB_UISound sound)
     {
     case PGB_UISound_Navigate:
         playdate->sound->synth->playNote(
-            PGB_App->clickSynth, 1760.0f + (rand() % 64), 0.15f, 0.07f, 0
+            PGB_App->clickSynth, 1760.0f + (rand() % 64), 0.13f, 0.07f, 0
         );
         break;
 
     case PGB_UISound_Confirm:
         playdate->sound->synth->playNote(
-            PGB_App->clickSynth, 1480.0f - (rand() % 32), 0.2f, 0.1f, 0
+            PGB_App->clickSynth, 1480.0f - (rand() % 32), 0.18f, 0.1f, 0
         );
         break;
     }

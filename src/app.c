@@ -324,8 +324,8 @@ static FetchedNames get_titles_from_db(const char* fullpath)
     char crc_string_upper[9];
     char crc_string_lower[9];
 
-    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", crc);
-    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", crc);
+    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
+    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", (unsigned long)crc);
 
     char db_filename[32];
     snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);

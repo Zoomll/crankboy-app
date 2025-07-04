@@ -123,7 +123,7 @@ static void bass(void)
     }
 
     playdate->sound->synth->playNote(
-        bassSynth, get_note_freq(note), 0.23f + rng() * 0.05f, 0.05f + rng() * 0.2f, 0
+        bassSynth, get_note_freq(note), 0.25f + rng() * 0.06f, 0.05f + rng() * 0.3f, 0
     );
 }
 
@@ -154,7 +154,7 @@ static void drums(void)
 
     if (hz > 0)
     {
-        playdate->sound->synth->playNote(drumSynth, hz, 0.12f, 0.08f, 0);
+        playdate->sound->synth->playNote(drumSynth, hz, 0.11f, 0.08f, 0);
     }
 }
 

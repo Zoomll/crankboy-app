@@ -162,6 +162,24 @@ void* png_to_pdi(
     }
 
     float scale = MAX(wscale, hscale);
+    
+    // crop image horizontally
+    if (width / scale < max_width)
+    {
+        max_width = width / scale;
+    }
+    
+    // crop image vertically
+    else if (height / scale < max_height)
+    {
+        max_height = height / scale;
+    }
+    
+    if (max_width == 0 || max_height == 0)
+    {
+        stbi_image_free(img_data);
+        return NULL;
+    }
 
     // Determine if we have transparency
     int has_transparency = false;
@@ -304,7 +322,6 @@ static bool process_png(const char* fname)
     {
         size_t pdi_len = 0;
         void* pdi = png_to_pdi(data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
-
         free(data);
 
         if (pdi && pdi_len > 0)
