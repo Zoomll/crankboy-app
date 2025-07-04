@@ -42,7 +42,7 @@ typedef struct PGB_SettingsScene
 
     // for options which have special on-hold behaviour
     float option_hold_time;
-    
+
     // animation for settings header, ranges 0-1
     float header_animation_p;
 

@@ -42,6 +42,7 @@ typedef struct
     char* filename;
     char* name_short;
     char* name_detailed;
+    char* name_original_long;
     char* name_filename;
     char* sortkey;
 } PGB_GameName;

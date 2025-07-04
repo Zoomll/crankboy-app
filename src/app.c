@@ -23,12 +23,6 @@
 
 PGB_Application* PGB_App;
 
-typedef struct
-{
-    char* short_name;
-    char* detailed_name;
-} FetchedNames;
-
 static void PGB_precacheGameNames(void);
 
 #if defined(TARGET_SIMULATOR)
@@ -245,11 +239,8 @@ void PGB_init(void)
 #endif
 }
 
-static char* articles[] = {
-    ", The", ", Las", ", A", ", Le", ", La", ", Los", ", An",
-    ", Les", ", Der", ", Die", ", Das", ", Un",
-    NULL
-};
+static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",
+                           ", Les", ", Der", ", Die", ", Das", ", Un", NULL};
 
 // arranges names like `Black Onyx, The (Japan)` -> `The Black Onyx (Japan)`
 static char* common_article_form(const char* input)
@@ -258,113 +249,65 @@ static char* common_article_form(const char* input)
     const char* split_pos = NULL;
     const char* dash_pos = strstr(input, " - ");
     const char* paren_pos = strstr(input, " (");
-    
-    if (dash_pos && paren_pos) {
+
+    if (dash_pos && paren_pos)
+    {
         split_pos = (dash_pos < paren_pos) ? dash_pos : paren_pos;
-    } else if (dash_pos) {
+    }
+    else if (dash_pos)
+    {
         split_pos = dash_pos;
-    } else if (paren_pos) {
+    }
+    else if (paren_pos)
+    {
         split_pos = paren_pos;
     }
 
-    if (!split_pos) {
+    if (!split_pos)
+    {
         split_pos = input + strlen(input);
     }
-    
+
     // split into A and B at split_pos
     size_t a_len = split_pos - input;
     char a_part[a_len + 1];
     strncpy(a_part, input, a_len);
     a_part[a_len] = '\0';
-    
+
     const char* b_part = split_pos;
     size_t b_len = strlen(b_part);
-    
+
     // Check if A ends with any article
-    for (int i = 0; articles[i] != NULL; i++) {
+    for (int i = 0; articles[i] != NULL; i++)
+    {
         size_t article_len = strlen(articles[i]);
-        if (a_len >= article_len && strcmp(a_part + a_len - article_len, articles[i]) == 0) {
-            
+        if (a_len >= article_len && strcmp(a_part + a_len - article_len, articles[i]) == 0)
+        {
+
             // matching article found
             size_t new_a_len = a_len - article_len;
             a_part[new_a_len] = 0;
-            
+
             size_t result_len = a_len - 1 + b_len;
             char result[result_len + 1];
-            
+
             // article (without ", ")
             memcpy(result, articles[i] + 2, article_len - 2);
             result[article_len - 2] = ' ';
-            
+
             // A
             memcpy(result + article_len - 1, a_part, new_a_len);
-            
+
             // B
             memcpy(result + article_len - 1 + new_a_len, b_part, b_len);
-            
+
             result[result_len] = 0;
-            
+
             return strdup(result);
         }
     }
-    
+
     return strdup(input);
-}
-
-static FetchedNames get_titles_from_db(const char* fullpath)
-{
-    FetchedNames names = {NULL, NULL};
-
-    uint32_t crc = pgb_calculate_crc32(fullpath);
-    if (crc == 0)
-    {
-        return names;
-    }
-
-    char crc_string_upper[9];
-    char crc_string_lower[9];
-
-    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
-    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", (unsigned long)crc);
-
-    char db_filename[32];
-    snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);
-
-    char* json_string = pgb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
-    if (!json_string)
-    {
-        return names;
-    }
-
-    json_value db_json;
-    if (!parse_json_string(json_string, &db_json))
-    {
-        pgb_free(json_string);
-        return names;
-    }
-    pgb_free(json_string);
-
-    if (db_json.type == kJSONTable)
-    {
-        json_value game_entry = json_get_table_value(db_json, crc_string_upper);
-        if (game_entry.type == kJSONTable)
-        {
-            json_value short_val = json_get_table_value(game_entry, "short");
-            if (short_val.type == kJSONString && short_val.data.stringval)
-            {
-                names.short_name = string_copy(short_val.data.stringval);
-            }
-
-            json_value long_val = json_get_table_value(game_entry, "long");
-            if (long_val.type == kJSONString && long_val.data.stringval)
-            {
-                names.detailed_name = string_copy(long_val.data.stringval);
-            }
-        }
-    }
-
-    free_json_data(db_json);
-    return names;
 }
 
 static void collect_game_filenames_callback(const char* filename, void* userdata)
@@ -414,17 +357,24 @@ static void PGB_precacheGameNames(void)
         char* fullpath;
         playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
 
-        FetchedNames fetched = get_titles_from_db(fullpath);
+        PGB_FetchedNames fetched = pgb_get_titles_from_db(fullpath);
 
         pgb_free(fullpath);
 
-        newName->name_short =
-            fetched.short_name ? common_article_form(fetched.short_name) : common_article_form(newName->name_filename);
-        newName->name_detailed =
-            fetched.detailed_name ? common_article_form(fetched.detailed_name) : common_article_form(newName->name_filename);
-        newName->sortkey = fetched.detailed_name ? fetched.detailed_name : string_copy(newName->name_filename);
+        newName->name_original_long =
+            (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
+        newName->name_short = (fetched.short_name) ? common_article_form(fetched.short_name)
+                                                   : common_article_form(newName->name_filename);
+        newName->name_detailed = (fetched.detailed_name)
+                                     ? common_article_form(fetched.detailed_name)
+                                     : common_article_form(newName->name_filename);
+        newName->sortkey = (fetched.detailed_name) ? string_copy(fetched.detailed_name)
+                                                   : string_copy(newName->name_filename);
 
-        if (fetched.short_name) free(fetched.short_name);
+        if (fetched.short_name)
+            pgb_free(fetched.short_name);
+        if (fetched.detailed_name)
+            pgb_free(fetched.detailed_name);
 
         array_push(PGB_App->gameNameCache, newName);
     }
@@ -605,6 +555,7 @@ void PGB_quit(void)
             pgb_free(gameName->filename);
             pgb_free(gameName->name_short);
             pgb_free(gameName->name_detailed);
+            pgb_free(gameName->name_original_long);
             pgb_free(gameName->name_filename);
             pgb_free(gameName->sortkey);
             pgb_free(gameName);

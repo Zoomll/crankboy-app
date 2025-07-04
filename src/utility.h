@@ -41,6 +41,12 @@ extern const char* PGB_statesPath;
 extern const char* PGB_settingsPath;
 extern const char* PGB_globalPrefsPath;
 
+typedef struct
+{
+    char* short_name;
+    char* detailed_name;
+} PGB_FetchedNames;
+
 typedef enum
 {
     PGB_UISound_Navigate,  // For up/down movement
@@ -110,6 +116,9 @@ char* pgb_find_cover_art_path(
     const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
 );
 
+PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath);
+char* pgb_url_encode_for_github_raw(const char* str);
+
 char* pgb_game_config_path(const char* rom_filename);
 
 // allocate-print-to-string
@@ -129,21 +138,29 @@ void pgb_play_ui_sound(PGB_UISound sound);
 
 char* strltrim(const char* str);
 
-static inline float toward(float x, float dst, float step) {
+static inline float toward(float x, float dst, float step)
+{
     if (dst > x)
     {
         x += step;
-        if (x > dst) x = dst;
+        if (x > dst)
+            x = dst;
     }
     else
     {
         x -= step;
-        if (x < dst) x = dst;
+        if (x < dst)
+            x = dst;
     }
     return x;
 };
 
-#define TOWARD(x, dst, step) do {float* a = &(x); *a = toward(*a, dst, step); } while(0)
+#define TOWARD(x, dst, step)        \
+    do                              \
+    {                               \
+        float* a = &(x);            \
+        *a = toward(*a, dst, step); \
+    } while (0)
 
 #ifdef TARGET_PLAYDATE
 #define __section__(x) __attribute__((section(x)))

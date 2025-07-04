@@ -86,7 +86,7 @@ typedef struct PGB_GameScene
     char* rom_filename;
     char* base_filename;  // rom filename with extension stripped
     char* settings_filename;
-    char* name_short; // human-readable filename
+    char* name_short;  // human-readable filename
 
     bool audioEnabled;
     bool audioLocked;

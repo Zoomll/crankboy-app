@@ -9,9 +9,11 @@
 #include "utility.h"
 
 #include "app.h"
+#include "jparse.h"
 #include "library_scene.h"
 #include "preferences.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,8 +58,9 @@ const clalign uint8_t PGB_patterns[4][4][4] = {
 
 char* string_copy(const char* string)
 {
-    if (!string) return NULL;
-    
+    if (!string)
+        return NULL;
+
     char* copied = pgb_malloc(strlen(string) + 1);
     strcpy(copied, string);
     return copied;
@@ -374,8 +377,7 @@ void pgb_sort_games_array(PGB_Array* games_array)
     if (games_array != NULL && games_array->length > 1)
     {
         qsort(
-            games_array->items, games_array->length, sizeof(PGB_Game*),
-            pgb_compare_games_by_sortkey
+            games_array->items, games_array->length, sizeof(PGB_Game*), pgb_compare_games_by_sortkey
         );
     }
 }
@@ -929,4 +931,99 @@ char* strltrim(const char* str)
         str++;
 
     return (char*)str;
+}
+
+char* pgb_url_encode_for_github_raw(const char* str)
+{
+    if (!str)
+        return NULL;
+
+    int space_count = 0;
+    for (const char* p = str; *p; p++)
+    {
+        if (*p == ' ')
+        {
+            space_count++;
+        }
+    }
+
+    size_t new_len = strlen(str) + space_count * 2;
+    char* encoded = pgb_malloc(new_len + 1);
+    if (!encoded)
+        return NULL;
+
+    const char* p_in = str;
+    char* p_out = encoded;
+    while (*p_in)
+    {
+        if (*p_in == ' ')
+        {
+            *p_out++ = '%';
+            *p_out++ = '2';
+            *p_out++ = '0';
+        }
+        else
+        {
+            *p_out++ = *p_in;
+        }
+        p_in++;
+    }
+    *p_out = '\0';
+    return encoded;
+}
+
+PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
+{
+    PGB_FetchedNames names = {NULL, NULL};
+
+    uint32_t crc = pgb_calculate_crc32(fullpath);
+    if (crc == 0)
+    {
+        return names;
+    }
+
+    char crc_string_upper[9];
+    char crc_string_lower[9];
+
+    snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
+    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", (unsigned long)crc);
+
+    char db_filename[32];
+    snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);
+
+    char* json_string = pgb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
+    if (!json_string)
+    {
+        return names;
+    }
+
+    json_value db_json;
+    if (!parse_json_string(json_string, &db_json))
+    {
+        pgb_free(json_string);
+        return names;
+    }
+    pgb_free(json_string);
+
+    if (db_json.type == kJSONTable)
+    {
+        json_value game_entry = json_get_table_value(db_json, crc_string_upper);
+        if (game_entry.type == kJSONTable)
+        {
+            json_value short_val = json_get_table_value(game_entry, "short");
+            if (short_val.type == kJSONString && short_val.data.stringval)
+            {
+                names.short_name = string_copy(short_val.data.stringval);
+            }
+
+            json_value long_val = json_get_table_value(game_entry, "long");
+            if (long_val.type == kJSONString && long_val.data.stringval)
+            {
+                names.detailed_name = string_copy(long_val.data.stringval);
+            }
+        }
+    }
+
+    free_json_data(db_json);
+    return names;
 }

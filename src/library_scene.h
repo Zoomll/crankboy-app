@@ -26,6 +26,16 @@ typedef struct
     PGB_LibrarySceneTab tab;
 } PGB_LibrarySceneModel;
 
+typedef enum
+{
+    COVER_DOWNLOAD_IDLE,
+    COVER_DOWNLOAD_SEARCHING,
+    COVER_DOWNLOAD_DOWNLOADING,
+    COVER_DOWNLOAD_FAILED,
+    COVER_DOWNLOAD_NO_GAME_IN_DB,
+    COVER_DOWNLOAD_COMPLETE
+} CoverDownloadState;
+
 typedef struct PGB_Game
 {
     char* filename;
@@ -33,9 +43,10 @@ typedef struct PGB_Game
     char* coverPath;
     char* name_short;
     char* name_detailed;
+    char* name_original_long;
     char* name_filename;
     char* sortkey;
-    
+
     // points to one of the other strings in this struct;
     // should not be free'd directly
     char* displayName;
@@ -55,6 +66,9 @@ typedef struct PGB_LibraryScene
     int last_display_name_mode;
 
     LCDBitmap* missingCoverIcon;
+
+    CoverDownloadState coverDownloadState;
+    char* coverDownloadMessage;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);
