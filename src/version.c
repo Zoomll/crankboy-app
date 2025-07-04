@@ -209,7 +209,7 @@ void check_for_updates(update_result_cb cb, void* ud)
 
     http_get(
         localVersionInfo->domain, localVersionInfo->path, "to check for a version update", CB_Get,
-        TIMEOUT_MS, cbud
+        TIMEOUT_MS, cbud, NULL
     );
 }
 

@@ -195,9 +195,9 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
     userdata->libraryScene = libraryScene;
     userdata->game = game;
 
-    libraryScene->activeCoverDownloadConnection = http_get(
+    http_get(
         "github.com", url_path, "to download missing cover art", on_cover_download_finished, 15000,
-        userdata
+        userdata, &libraryScene->activeCoverDownloadConnection
     );
 
     pgb_free(url_path);

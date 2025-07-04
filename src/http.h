@@ -24,8 +24,7 @@ typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void
 
 // performs an HTTP request, then invokes the callback.
 // automatically does enable_http as part of this.
-// returns the connection handle, or NULL on immediate failure.
-HTTPConnection* http_get(
+void http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
-    void* ud
+    void* ud, HTTPConnection** out_connection_handle
 );

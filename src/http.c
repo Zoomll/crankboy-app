@@ -11,10 +11,12 @@ char* _reason = NULL;
 
 struct HTTPUD
 {
+    HTTPConnection** out_connection_handle;
     HTTPConnection* connection;
     http_result_cb cb;
     char* domain;
     char* path;
+    char* location;
     char* contentType;
     char* data;
     size_t data_len;
@@ -38,6 +40,8 @@ static void http_cleanup(HTTPConnection* connection)
 
         if (httpud->data)
             free(httpud->data);
+        if (httpud->location)
+            free(httpud->location);
         if (httpud->contentType)
             free(httpud->contentType);
         free(httpud->domain);
@@ -49,19 +53,92 @@ static void http_cleanup(HTTPConnection* connection)
     playdate->network->http->close(connection);
 }
 
+// Helper function to parse a full URL into domain and path
+static bool parse_url(const char* url, char** domain, char** path)
+{
+    const char* domain_start = strstr(url, "://");
+    if (!domain_start)
+    {
+        return false;  // Not a full URL
+    }
+    domain_start += 3;  // Move past "://"
+
+    const char* path_start = strchr(domain_start, '/');
+    if (!path_start)
+    {
+        // URL has no path (e.g., "https://github.com") - unlikely for us
+        return false;
+    }
+
+    size_t domain_len = path_start - domain_start;
+    *domain = malloc(domain_len + 1);
+    strncpy(*domain, domain_start, domain_len);
+    (*domain)[domain_len] = '\0';
+
+    *path = strdup(path_start);
+
+    return true;
+}
+
 static void CB_Header(HTTPConnection* connection, const char* key, const char* value)
 {
     printf("Header received: \"%s\": \"%s\"\n", key, value);
+
+    struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+    if (httpud == NULL)
+        return;
+
     if (strcasecmp(key, "Content-Type") == 0)
     {
-        struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
         httpud->contentType = string_copy(value);
+    }
+    else if (strcasecmp(key, "Location") == 0)
+    {
+        httpud->location = string_copy(value);
     }
 }
 
 static void CB_HeadersRead(HTTPConnection* connection)
 {
     printf("Headers read\n");
+    struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+    if (httpud == NULL)
+        return;
+
+    int status = playdate->network->http->getResponseStatus(connection);
+
+    // Check for redirect status codes (301, 302, 307, etc.)
+    if (status >= 300 && status < 400 && httpud->location)
+    {
+        printf("Handling redirect to: %s\n", httpud->location);
+
+        char* new_domain = NULL;
+        char* new_path = NULL;
+
+        if (parse_url(httpud->location, &new_domain, &new_path))
+        {
+            // Store original request data before cleaning up
+            http_result_cb orig_cb = httpud->cb;
+            void* orig_ud = httpud->ud;
+            int orig_timeout = httpud->timeout;
+            unsigned orig_flags = httpud->flags;
+
+            // Mark the current request's callback as NULL so it doesn't fire an error on cleanup
+            httpud->cb = NULL;
+
+            // Start a brand new request with the new URL and original userdata
+            http_get(
+                new_domain, new_path, "following redirect", orig_cb, orig_timeout, orig_ud,
+                httpud->out_connection_handle  // Pass the original handle pointer along
+            );
+
+            free(new_domain);
+            free(new_path);
+        }
+
+        http_cleanup(connection);
+        return;
+    }
 }
 
 static void CB_Closed(HTTPConnection* connection)
@@ -163,8 +240,10 @@ static void CB_Permission(unsigned flags, void* ud)
         if (!connection)
             goto fail;
 
-        // 10 seconds
-        playdate->network->http->setConnectTimeout(connection, httpud->timeout);
+        if (httpud->out_connection_handle)
+        {
+            *(httpud->out_connection_handle) = connection;
+        }
 
         playdate->network->http->setUserdata(connection, httpud);
         playdate->network->http->retain(connection);
@@ -174,6 +253,7 @@ static void CB_Permission(unsigned flags, void* ud)
         playdate->network->http->setConnectionClosedCallback(connection, CB_Closed);
         playdate->network->http->setResponseCallback(connection, readAllData);
         playdate->network->http->setRequestCompleteCallback(connection, CB_RequestComplete);
+        playdate->network->http->setConnectTimeout(connection, httpud->timeout);
 
         PDNetErr err = playdate->network->http->get(connection, httpud->path, NULL, 0);
         if (err != NET_OK)
@@ -206,16 +286,21 @@ static void CB_Permission(unsigned flags, void* ud)
     }
 }
 
-HTTPConnection* http_get(
+void http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout,
-    void* ud
+    void* ud, HTTPConnection** out_connection_handle
 )
 {
     struct HTTPUD* httpud = malloc(sizeof(struct HTTPUD));
     if (!httpud)
     {
         cb(HTTP_MEM_ERROR, NULL, 0, ud);
-        return NULL;
+        return;
+    }
+
+    if (out_connection_handle)
+    {
+        *out_connection_handle = NULL;  // Clear the handle pointer immediately
     }
 
     memset(httpud, 0, sizeof(*httpud));
@@ -225,10 +310,10 @@ HTTPConnection* http_get(
     httpud->timeout = timeout;
     httpud->domain = strdup(domain);
     httpud->path = strdup(path);
+    httpud->location = NULL;
+    httpud->out_connection_handle = out_connection_handle;
 
     enable_http(domain, reason, CB_Permission, httpud);
-
-    return httpud->connection;
 }
 
 struct CB_UserData_EnableHTTP
