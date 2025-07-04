@@ -237,7 +237,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         {
             result = (int)(intptr_t)call_with_user_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
-                settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds
+                settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds |
+                    PREFBIT_display_name_mode
             );
         }
         else
@@ -246,8 +247,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                 preferences_save_to_disk, PGB_globalPrefsPath,
                 0
                     // never save these to global prefs
-                    | PREFBIT_per_game | PREFBIT_save_state_slot |
-                    PREFBIT_ui_sounds
+                    | PREFBIT_per_game | PREFBIT_save_state_slot | PREFBIT_ui_sounds |
+                    PREFBIT_display_name_mode
 
                     // these prefs are locked, so we shouldn't be able to change them
                     | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
@@ -306,6 +307,7 @@ static const char* overclock_labels[] = {"Off", "x2", "x4"};
 static const char* dynamic_level_labels[] = {"1", "2", "3", "4",  "5", "6",
                                              "7", "8", "9", "10", "11"};
 static const char* settings_scope_labels[] = {"Global", "Game"};
+static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
 
 static void update_thumbnail(PGB_SettingsScene* settingsScene)
 {
@@ -687,7 +689,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 3,
         .on_press = NULL
     };
-    
+
     // BIOS
     entries[++i] = (OptionsMenuEntry){
         .name = "Boot Sequence",
@@ -713,7 +715,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 2,
         .on_press = NULL
     };
-    
+
     #define BASE_LUA_STRING "Lua scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA
@@ -778,9 +780,23 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
-    // ui sounds
     if (!gameScene)
     {
+        // display name mode
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Title display",
+            .values = display_name_mode_labels,
+            .description = "Choose how game titles\n"
+                           "are displayed in the list.\n \n"
+                           "Short:\nThe common game title.\n \n"
+                           "Detailed:\nThe full title, including\nregion and version info.\n \n"
+                           "Filename:\nThe original ROM filename.",
+            .pref_var = &preferences_display_name_mode,
+            .max_value = 3,
+            .on_press = NULL
+        };
+
+        // ui sounds
         entries[++i] = (OptionsMenuEntry){
             .name = "UI sounds",
             .values = off_on_labels,

@@ -27,5 +27,6 @@ PREF(itcm, (pd_rev == PD_REV_A))
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
+PREF(display_name_mode, 0)  // 0: Short, 1: Detailed, 2: Filename
 
 #undef PREF

@@ -22,6 +22,10 @@
 #define CRANK_MODE_TURBO_CCW 2
 #define CRANK_MODE_OFF 3
 
+#define DISPLAY_NAME_MODE_SHORT 0
+#define DISPLAY_NAME_MODE_DETAILED 1
+#define DISPLAY_NAME_MODE_FILENAME 2
+
 // at least 1 bit for each setting.
 // WARNING: don't change this blindly, since these are
 // casted down to uintptr_t (potentially 32-bit) for call_with_user_stack

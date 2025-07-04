@@ -45,6 +45,7 @@ typedef struct PGB_LibraryScene
     bool firstLoad;
     bool initialLoadComplete;
     int lastSelectedItem;
+    int last_display_name_mode;
 
     LCDBitmap* missingCoverIcon;
 } PGB_LibraryScene;

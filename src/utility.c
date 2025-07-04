@@ -11,7 +11,9 @@
 #include "app.h"
 #include "library_scene.h"
 #include "preferences.h"
+#include "userstack.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -142,6 +144,88 @@ char* en_human_time(unsigned secondsAgo)
 
     playdate->system->formatString(&tr, "%d  day%s", daysAgo, en_plural(daysAgo));
     return tr;
+}
+
+// CRC32 implementation
+static uint32_t crc32_table[256];
+static int crc32_table_generated = 0;
+
+static void generate_crc32_table(void)
+{
+    uint32_t c;
+    for (int n = 0; n < 256; n++)
+    {
+        c = (uint32_t)n;
+        for (int k = 0; k < 8; k++)
+        {
+            if (c & 1)
+            {
+                c = 0xedb88320L ^ (c >> 1);
+            }
+            else
+            {
+                c = c >> 1;
+            }
+        }
+        crc32_table[n] = c;
+    }
+    crc32_table_generated = 1;
+}
+
+static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
+{
+    if (!crc32_table_generated)
+    {
+        generate_crc32_table();
+    }
+    for (size_t i = 0; i < len; i++)
+    {
+        crc = crc32_table[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
+    }
+    return crc;
+}
+
+static uint32_t pgb_calculate_crc32_(const char* filepath)
+{
+    if (!crc32_table_generated)
+    {
+        generate_crc32_table();
+    }
+
+    SDFile* file = playdate->file->open(filepath, kFileRead | kFileReadData);
+    if (!file)
+    {
+        playdate->system->logToConsole(
+            "CRC Error: Could not open file '%s'. Error: %s", filepath, playdate->file->geterr()
+        );
+        return 0;
+    }
+
+    uint32_t crc = 0xffffffffL;
+    const int buffer_size = 4096;
+    unsigned char* buffer = pgb_malloc(buffer_size);
+    if (!buffer)
+    {
+        playdate->system->logToConsole("CRC Error: Failed to allocate buffer.");
+        playdate->file->close(file);
+        return 0;
+    }
+
+    int bytes_read;
+    while ((bytes_read = playdate->file->read(file, buffer, buffer_size)) > 0)
+    {
+        crc = update_crc32(crc, buffer, bytes_read);
+    }
+
+    pgb_free(buffer);
+    playdate->file->close(file);
+
+    return crc ^ 0xffffffffL;
+}
+
+uint32_t pgb_calculate_crc32(const char* filepath)
+{
+    return (uint32_t)(uintptr_t)call_with_user_stack_1(pgb_calculate_crc32_, (void*)filepath);
 }
 
 char* pgb_basename(const char* filename, bool stripExtension)

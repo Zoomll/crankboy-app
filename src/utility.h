@@ -13,6 +13,7 @@
 #include "pd_api.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 extern PlaydateAPI* playdate;
@@ -102,6 +103,8 @@ void pgb_free(void* ptr);
 size_t pgb_strlen(const char* s);
 char* pgb_strrchr(const char* s, int c);
 int pgb_strcmp(const char* s1, const char* s2);
+
+uint32_t pgb_calculate_crc32(const char* filepath);
 
 char* pgb_find_cover_art_path(
     const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
