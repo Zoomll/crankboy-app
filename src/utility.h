@@ -72,6 +72,7 @@ char* pgb_extract_fs_error_code(const char* filename);
 
 float pgb_easeInOutQuad(float x);
 
+// like playdate->file->listfiles, but can filter by file type (pdx/data)
 int pgb_listfiles(
     const char* path, void (*callback)(const char* filename, void* userdata), void* userdata,
     int showhidden, FileOptions fopts

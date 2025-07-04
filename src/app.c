@@ -15,6 +15,7 @@
 #include "jparse.h"
 #include "library_scene.h"
 #include "preferences.h"
+#include "credits_scene.h"
 #include "userstack.h"
 
 // files that have been copied from PDX to data folder
@@ -135,7 +136,7 @@ void PGB_init(void)
 
     PGB_App->clickSynth = playdate->sound->synth->newSynth();
     playdate->sound->synth->setWaveform(PGB_App->clickSynth, kWaveformSquare);
-    playdate->sound->synth->setAttackTime(PGB_App->clickSynth, 0.0f);
+    playdate->sound->synth->setAttackTime(PGB_App->clickSynth, 0.0001f);
     playdate->sound->synth->setDecayTime(PGB_App->clickSynth, 0.05f);
     playdate->sound->synth->setSustainLevel(PGB_App->clickSynth, 0.0f);
     playdate->sound->synth->setReleaseTime(PGB_App->clickSynth, 0.0f);
@@ -202,7 +203,7 @@ void PGB_init(void)
         ud.manifest = &manifest;
         ud.directory = sources[i];
         ud.modified = &modified;
-        playdate->file->listfiles(sources[i], copy_file_callback, &ud, true);
+        pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
     }
 
     // TODO: save manifest
@@ -212,8 +213,9 @@ void PGB_init(void)
 
     // check if any PNGs are in the covers/ folder
     bool png_found = false;
-    playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, true);
+    pgb_listfiles(PGB_coversPath, checkForPngCallback, &png_found, true, kFileReadData);
 
+#if 1
     if (png_found)
     {
         PGB_ImageConversionScene* imageConversionScene = PGB_ImageConversionScene_new();
@@ -226,6 +228,11 @@ void PGB_init(void)
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
     }
+#else
+    // test credits
+    PGB_CreditsScene* credits = PGB_CreditsScene_new();
+    PGB_present(credits->scene);
+#endif
 }
 
 __section__(".rare") static void switchToPendingScene(void)

@@ -3,6 +3,7 @@
 #include "app.h"
 #include "jparse.h"
 #include "version.h"
+#include "pgmusic.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -57,6 +58,7 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
     int space_after_each = 24;
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
+    pgmusic_update(dt);
     int HEADER_SPACE = 48;
     int FOOTER_SPACE = 48;
     int y = HEADER_SPACE - creditsScene->scroll;
@@ -206,12 +208,13 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
             if (creditsScene->logo)
             {
+                playdate->graphics->setDrawMode(kDrawModeCopy);
                 int lwidth, lheight;
                 playdate->graphics->getBitmapData(
                     creditsScene->logo, &lwidth, &lheight, NULL, NULL, NULL
                 );
                 playdate->graphics->drawBitmap(
-                    creditsScene->logo, (width - lwidth) / 2, y, kBitmapUnflipped
+                    creditsScene->logo, (LCD_COLUMNS - lwidth) / 2, y, kBitmapUnflipped
                 );
                 ADVANCE(i, lheight + 24);
             }
@@ -264,6 +267,7 @@ static void PGB_CreditsScene_menu(void* object)
 
 static void PGB_CreditsScene_free(void* object)
 {
+    pgmusic_end();
     PGB_CreditsScene* creditsScene = object;
     PGB_Scene_free(creditsScene->scene);
     free_json_data(creditsScene->jcred);
@@ -274,6 +278,7 @@ static void PGB_CreditsScene_free(void* object)
 
 PGB_CreditsScene* PGB_CreditsScene_new(void)
 {
+    pgmusic_begin();
     playdate->system->getCrankChange();
     PGB_CreditsScene* creditsScene = pgb_malloc(sizeof(PGB_CreditsScene));
     if (!creditsScene)
@@ -316,8 +321,6 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
             creditsScene->y_advance_by_item[i] = -1;
         }
     }
-
-    PGB_Scene_refreshMenu(scene);
 
     return creditsScene;
 }

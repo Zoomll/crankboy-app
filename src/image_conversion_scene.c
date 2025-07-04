@@ -342,7 +342,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
         pgb_draw_logo_with_message("Scanning for new images…", 15);
 
-        playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
+        pgb_listfiles(PGB_coversPath, on_list_file, convScene, true, kFileReadData);
 
         if (convScene->files_count == 0)
         {
