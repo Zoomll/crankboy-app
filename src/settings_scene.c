@@ -794,7 +794,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
                            "are displayed in the list.\n \n"
                            "Short:\nThe common game title.\n \n"
                            "Detailed:\nThe full title, including\nregion and version info.\n \n"
-                           "Filename:\nThe original ROM filename.",
+                           "Filename:\nThe original ROM filename.\n \n",
             .pref_var = &preferences_display_name_mode,
             .max_value = 3,
             .on_press = NULL

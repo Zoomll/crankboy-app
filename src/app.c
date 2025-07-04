@@ -419,9 +419,9 @@ static void PGB_precacheGameNames(void)
         pgb_free(fullpath);
 
         newName->name_short =
-            fetched.short_name ? common_article_form(fetched.short_name) : string_copy(newName->name_filename);
+            fetched.short_name ? common_article_form(fetched.short_name) : common_article_form(newName->name_filename);
         newName->name_detailed =
-            fetched.detailed_name ? common_article_form(fetched.detailed_name) : string_copy(newName->name_filename);
+            fetched.detailed_name ? common_article_form(fetched.detailed_name) : common_article_form(newName->name_filename);
         newName->sortkey = fetched.detailed_name ? fetched.detailed_name : string_copy(newName->name_filename);
 
         if (fetched.short_name) free(fetched.short_name);
