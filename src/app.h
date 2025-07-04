@@ -43,6 +43,7 @@ typedef struct
     char* name_short;
     char* name_detailed;
     char* name_filename;
+    char* sortkey;
 } PGB_GameName;
 
 typedef struct

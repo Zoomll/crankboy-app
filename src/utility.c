@@ -340,12 +340,12 @@ float pgb_easeInOutQuad(float x)
     return (x < 0.5f) ? 2 * x * x : 1 - powf(-2 * x + 2, 2) * 0.5f;
 }
 
-int pgb_compare_games_by_display_name(const void* a, const void* b)
+int pgb_compare_games_by_sortkey(const void* a, const void* b)
 {
     PGB_Game* gameA = *(PGB_Game**)a;
     PGB_Game* gameB = *(PGB_Game**)b;
 
-    return strcasecmp(gameA->displayName, gameB->displayName);
+    return strcasecmp(gameA->sortkey, gameB->sortkey);
 }
 
 void pgb_sanitize_string_for_filename(char* str)
@@ -373,7 +373,7 @@ void pgb_sort_games_array(PGB_Array* games_array)
     {
         qsort(
             games_array->items, games_array->length, sizeof(PGB_Game*),
-            pgb_compare_games_by_display_name
+            pgb_compare_games_by_sortkey
         );
     }
 }
