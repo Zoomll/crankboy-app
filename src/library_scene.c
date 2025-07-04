@@ -316,6 +316,46 @@ static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene)
     PGB_ListView_reload(libraryScene->listView);
 }
 
+static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
+{
+    for (int i = 0; i < libraryScene->games->length; i++)
+    {
+        PGB_Game* game = libraryScene->games->items[i];
+        switch (preferences_display_name_mode)
+        {
+        case DISPLAY_NAME_MODE_SHORT:
+            game->displayName = game->name_short;
+            break;
+        case DISPLAY_NAME_MODE_DETAILED:
+            game->displayName = game->name_detailed;
+            break;
+        case DISPLAY_NAME_MODE_FILENAME:
+        default:
+            game->displayName = game->name_filename;
+            break;
+        }
+    }
+
+    pgb_sort_games_array(libraryScene->games);
+
+    PGB_Array* items = libraryScene->listView->items;
+    for (int i = 0; i < items->length; i++)
+    {
+        PGB_ListItem* item = items->items[i];
+        PGB_ListItem_free(item);
+    }
+    array_clear(items);
+
+    for (int i = 0; i < libraryScene->games->length; i++)
+    {
+        PGB_Game* game = libraryScene->games->items[i];
+        PGB_ListItemButton* itemButton = PGB_ListItemButton_new(game->displayName);
+        array_push(items, itemButton->item);
+    }
+
+    PGB_ListView_reload(libraryScene->listView);
+}
+
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
     PGB_LibraryScene* libraryScene = object;
@@ -323,7 +363,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (libraryScene->last_display_name_mode != preferences_display_name_mode)
     {
         libraryScene->last_display_name_mode = preferences_display_name_mode;
-        PGB_LibraryScene_reloadList(libraryScene);
+        PGB_LibraryScene_updateDisplayNames(libraryScene);
     }
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -826,41 +866,43 @@ PGB_Game* PGB_Game_new(const char* filename)
     playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, filename);
     game->fullpath = fullpath_str;
 
-    game->displayName = NULL;
+    game->name_short = NULL;
+    game->name_detailed = NULL;
+    game->name_filename = NULL;
 
-    // Find the pre-cached name from the global cache
     for (int i = 0; i < PGB_App->gameNameCache->length; i++)
     {
         PGB_GameName* cachedName = PGB_App->gameNameCache->items[i];
         if (strcmp(cachedName->filename, filename) == 0)
         {
-            switch (preferences_display_name_mode)
-            {
-            case DISPLAY_NAME_MODE_SHORT:
-                game->displayName = string_copy(cachedName->name_short);
-                break;
-            case DISPLAY_NAME_MODE_DETAILED:
-                game->displayName = string_copy(cachedName->name_detailed);
-                break;
-            case DISPLAY_NAME_MODE_FILENAME:
-            default:
-                game->displayName = string_copy(cachedName->name_filename);
-                break;
-            }
-            break;  // Exit loop once found
+            game->name_short = string_copy(cachedName->name_short);
+            game->name_detailed = string_copy(cachedName->name_detailed);
+            game->name_filename = string_copy(cachedName->name_filename);
+            break;
         }
     }
 
-    char* basename_no_ext = string_copy(filename);
-    char* ext = pgb_strrchr(basename_no_ext, '.');
-    if (ext != NULL)
-    {
-        *ext = '\0';
-    }
+    char* basename_no_ext = pgb_basename(filename, true);
 
-    if (game->displayName == NULL)
+    if (game->name_filename == NULL)
+        game->name_filename = string_copy(basename_no_ext);
+    if (game->name_short == NULL)
+        game->name_short = string_copy(basename_no_ext);
+    if (game->name_detailed == NULL)
+        game->name_detailed = string_copy(basename_no_ext);
+
+    switch (preferences_display_name_mode)
     {
-        game->displayName = string_copy(basename_no_ext);
+    case DISPLAY_NAME_MODE_SHORT:
+        game->displayName = game->name_short;
+        break;
+    case DISPLAY_NAME_MODE_DETAILED:
+        game->displayName = game->name_detailed;
+        break;
+    case DISPLAY_NAME_MODE_FILENAME:
+    default:
+        game->displayName = game->name_filename;
+        break;
     }
 
     char* cleanName_no_ext = string_copy(basename_no_ext);
@@ -879,7 +921,9 @@ void PGB_Game_free(PGB_Game* game)
     pgb_free(game->filename);
     pgb_free(game->fullpath);
     pgb_free(game->coverPath);
-    pgb_free(game->displayName);
+    pgb_free(game->name_short);
+    pgb_free(game->name_detailed);
+    pgb_free(game->name_filename);
 
     pgb_free(game);
 }

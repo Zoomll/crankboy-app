@@ -31,6 +31,9 @@ typedef struct PGB_Game
     char* filename;
     char* fullpath;
     char* coverPath;
+    char* name_short;
+    char* name_detailed;
+    char* name_filename;
     char* displayName;
 } PGB_Game;
 
