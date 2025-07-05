@@ -486,101 +486,110 @@ void PGB_ListView_draw(PGB_ListView* listView)
         int listX = listView->frame.x;
         int listY = listView->frame.y;
 
-        int screenWidth = playdate->display->getWidth();
-        int rightPanelWidth = 241;
-        int leftPanelWidth = screenWidth - rightPanelWidth;
-
         playdate->graphics->fillRect(
             listX, listY, listView->frame.width, listView->frame.height, kColorWhite
         );
 
-        for (int i = 0; i < listView->items->length; i++)
+        int offsets[3];
+        offsets[0] = listView->contentOffset;
+        offsets[1] = listView->contentOffset - listView->contentSize;
+        offsets[2] = listView->contentOffset + listView->contentSize;
+
+        int num_passes = (listView->contentSize > listView->frame.height) ? 3 : 1;
+
+        for (int pass = 0; pass < num_passes; pass++)
         {
-            PGB_ListItem* item = listView->items->items[i];
+            int current_offset = offsets[pass];
 
-            int rowY = listY + item->offsetY - listView->contentOffset;
-
-            if (rowY + item->height < listY)
+            for (int i = 0; i < listView->items->length; i++)
             {
-                continue;
-            }
-            if (rowY > listY + listView->frame.height)
-            {
-                break;
-            }
+                PGB_ListItem* item = listView->items->items[i];
+                int rowY = listY + item->offsetY - current_offset;
 
-            bool selected = (i == listView->selectedItem);
+                if (rowY + item->height < listY)
+                {
+                    continue;
+                }
+                if (rowY > listY + listView->frame.height)
+                {
+                    break;
+                }
 
-            if (selected)
-            {
-                playdate->graphics->fillRect(
-                    listX, rowY, listView->frame.width, item->height, kColorBlack
-                );
-            }
-
-            if (item->type == PGB_ListViewItemTypeButton)
-            {
-                PGB_ListItemButton* itemButton = item->object;
+                bool selected = (i == listView->selectedItem);
 
                 if (selected)
                 {
-                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
-                }
-                else
-                {
-                    playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                }
-
-                int textX = listX + PGB_ListView_inset;
-                int textY =
-                    rowY + (float)(item->height -
-                                   playdate->graphics->getFontHeight(PGB_App->subheadFont)) /
-                               2;
-
-                playdate->graphics->setFont(PGB_App->subheadFont);
-
-                int rightSidePadding;
-
-                if (listView->scroll.indicatorVisible)
-                {
-                    // If the scrollbar is visible, the padding must be wide enough
-                    // to contain the scrollbar itself plus its inset.
-                    rightSidePadding = PGB_ListView_scrollIndicatorWidth + PGB_ListView_scrollInset;
-                }
-                else
-                {
-                    // If no scrollbar, we just need a 1-pixel gap to avoid
-                    // text touching the divider line on the right.
-                    rightSidePadding = 1;
-                }
-
-                int maxTextWidth = listView->frame.width - PGB_ListView_inset - rightSidePadding;
-
-                if (maxTextWidth < 0)
-                {
-                    maxTextWidth = 0;
-                }
-
-                playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
-
-                if (selected && itemButton->needsTextScroll)
-                {
-                    int scrolledX = textX - (int)itemButton->textScrollOffset;
-                    playdate->graphics->drawText(
-                        itemButton->title, strlen(itemButton->title), kUTF8Encoding, scrolledX,
-                        textY
-                    );
-                }
-                else
-                {
-                    playdate->graphics->drawText(
-                        itemButton->title, strlen(itemButton->title), kUTF8Encoding, textX, textY
+                    playdate->graphics->fillRect(
+                        listX, rowY, listView->frame.width, item->height, kColorBlack
                     );
                 }
 
-                playdate->graphics->clearClipRect();
+                if (item->type == PGB_ListViewItemTypeButton)
+                {
+                    PGB_ListItemButton* itemButton = item->object;
 
-                playdate->graphics->setDrawMode(kDrawModeCopy);
+                    if (selected)
+                    {
+                        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                    }
+                    else
+                    {
+                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                    }
+
+                    int textX = listX + PGB_ListView_inset;
+                    int textY =
+                        rowY + (float)(item->height -
+                                       playdate->graphics->getFontHeight(PGB_App->subheadFont)) /
+                                   2;
+
+                    playdate->graphics->setFont(PGB_App->subheadFont);
+
+                    int rightSidePadding;
+
+                    if (listView->scroll.indicatorVisible)
+                    {
+                        // If the scrollbar is visible, the padding must be wide enough
+                        // to contain the scrollbar itself plus its inset.
+                        rightSidePadding =
+                            PGB_ListView_scrollIndicatorWidth + PGB_ListView_scrollInset;
+                    }
+                    else
+                    {
+                        // If no scrollbar, we just need a 1-pixel gap to avoid
+                        // text touching the divider line on the right.
+                        rightSidePadding = 1;
+                    }
+
+                    int maxTextWidth =
+                        listView->frame.width - PGB_ListView_inset - rightSidePadding;
+
+                    if (maxTextWidth < 0)
+                    {
+                        maxTextWidth = 0;
+                    }
+
+                    playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
+
+                    if (selected && itemButton->needsTextScroll)
+                    {
+                        int scrolledX = textX - (int)itemButton->textScrollOffset;
+                        playdate->graphics->drawText(
+                            itemButton->title, strlen(itemButton->title), kUTF8Encoding, scrolledX,
+                            textY
+                        );
+                    }
+                    else
+                    {
+                        playdate->graphics->drawText(
+                            itemButton->title, strlen(itemButton->title), kUTF8Encoding, textX,
+                            textY
+                        );
+                    }
+
+                    playdate->graphics->clearClipRect();
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                }
             }
         }
 
