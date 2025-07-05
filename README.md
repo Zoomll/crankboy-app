@@ -59,7 +59,15 @@ Also note that ROMs and cover art cannot be *replaced* or *deleted* through this
 
 Bundling a ROM allows you to have a Game Boy ROM appear directly on the Playdate OS main menu along with your other non-game-boy games and apps. The primary reason for this is to allow Game Boy developers to release their games directly as playdate games. However, you can also use it if you'd simply like for one or more ROMs to appear directly in the Playdate OS main menu.
 
+<<<<<<< HEAD
 To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >` and remove the `// comments`):
+||||||| parent of 8dad2cd (update README and BundleID check)
+To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >`):
+=======
+There are two steps to enabling Bundle mode. Step 1 is to modify the [launcher assets](./Source/launcher/) and [pdxinfo](./Source/pdxinfo) to suit your application. You **must** change the `bundleID` field to something other than `app.crankboyhq.crankboy`.
+
+Step 2 is to create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >` and remove the `// comments`):
+>>>>>>> 8dad2cd (update README and BundleID check)
 
 ```
 {
@@ -84,6 +92,8 @@ To enable Bundle mode, create a file called `bundle.json` and place it in the ro
 The value for each preference under `"default"` must be a non-negative integer, i.e. 0 or higher. If the value is out of range for the preference in question, it might crash the game or cause other glitches.
 
 As an alternative to marking preferences as hidden, you can instead whitelist preferences that you wish to be exposed to the user by using `"visible"` instead of `"hidden"`. If you wish for the preferences menu to be hidden *entirely*, simply use `"visible": []`. A list of preferences and their names can be found [here](./src/prefs.x).
+
+Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`.
 
 ## Contributions
 

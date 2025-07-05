@@ -18,6 +18,7 @@
 #include "library_scene.h"
 #include "preferences.h"
 #include "userstack.h"
+#include "info_scene.h"
 
 PGB_Application* PGB_App;
 
@@ -110,7 +111,7 @@ static void copy_file_callback(const char* filename, void* userdata)
     free(full_path);
 }
 
-static bool check_is_bundle(void)
+static int check_is_bundle(void)
 {
     json_value jbundle;
     if (!parse_json(BUNDLE_FILE, &jbundle, kFileRead | kFileReadData)) return false;
@@ -129,7 +130,9 @@ static bool check_is_bundle(void)
             pdxinfo[pdxlen-1] = 0;
             if (strstr(pdxinfo, "bundleID=" PDX_BUNDLE_ID))
             {
-                playdate->system->logToConsole("\nWARNING: for bundled ROMs, bundleID in pdxinfo should differ from \"" PDX_BUNDLE_ID "\" so that settings are not shared with CrankBoy in general.\n");
+                PGB_InfoScene* infoScene = PGB_InfoScene_new("ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_BUNDLE_ID "\".\n");
+                PGB_presentModal(infoScene->scene);
+                return -1;
             }
             
             free(pdxinfo);
@@ -257,7 +260,7 @@ void PGB_init(void)
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
     
-    check_is_bundle();
+    if (check_is_bundle() < 0) return;
 
     if (!PGB_App->bundled_rom)
         pgb_draw_logo_with_message("Initializing…");
