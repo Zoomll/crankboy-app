@@ -415,3 +415,19 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
 
     playdate->network->setEnabled(true, CB_SetEnabled);
 }
+
+void http_cancel_and_cleanup(HTTPConnection* connection)
+{
+    if (connection == NULL)
+    {
+        return;
+    }
+
+    struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+    if (httpud)
+    {
+        httpud->cb = NULL;
+    }
+
+    http_cleanup(connection);
+}

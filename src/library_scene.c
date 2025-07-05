@@ -697,7 +697,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 playdate->system->logToConsole(
                     "Selection changed, closing active cover download connection."
                 );
-                playdate->network->http->close(libraryScene->activeCoverDownloadConnection);
+                http_cancel_and_cleanup(libraryScene->activeCoverDownloadConnection);
                 libraryScene->activeCoverDownloadConnection = NULL;
             }
 
@@ -1237,7 +1237,7 @@ static void PGB_LibraryScene_free(void* object)
 
     if (libraryScene->activeCoverDownloadConnection)
     {
-        playdate->network->http->close(libraryScene->activeCoverDownloadConnection);
+        http_cancel_and_cleanup(libraryScene->activeCoverDownloadConnection);
         libraryScene->activeCoverDownloadConnection = NULL;
     }
 

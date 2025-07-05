@@ -29,3 +29,6 @@ void http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
     void* ud, HTTPConnection** out_connection_handle
 );
+
+// Manually cancels and cleans up an active HTTP connection.
+void http_cancel_and_cleanup(HTTPConnection* connection);
