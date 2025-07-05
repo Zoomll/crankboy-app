@@ -171,12 +171,6 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         return;
     }
 
-    const char* rom_folder = "GB_Boxarts";
-    if (endswithi(game->filename, ".gbc"))
-    {
-        rom_folder = "GBC_Boxarts";
-    }
-
     char* encoded_name = pgb_url_encode_for_github_raw(game->name_original_long);
     if (!encoded_name)
     {
@@ -186,7 +180,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
 
     char* url_path;
     playdate->system->formatString(
-        &url_path, "/CrankBoyHQ/crankboy-covers/raw/refs/heads/main/%s/%s.pdi", rom_folder,
+        &url_path, "/CrankBoyHQ/crankboy-covers/raw/refs/heads/main/Combined_Boxarts/%s.pdi",
         encoded_name
     );
 
