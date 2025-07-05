@@ -416,6 +416,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->last_display_name_mode = preferences_display_name_mode;
     libraryScene->initialLoadComplete = false;
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
+    libraryScene->showCrc = false;
 
     pgb_clear_global_cover_cache();
 
@@ -689,6 +690,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 pgb_play_ui_sound(PGB_UISound_Confirm);
                 PGB_LibraryScene_startCoverDownload(libraryScene);
             }
+            else if ((PGB_App->coverArtCache.art.status != PGB_COVER_ART_SUCCESS && !hasDBMatch) ||
+                     libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB)
+            {
+                libraryScene->showCrc = !libraryScene->showCrc;
+                libraryScene->scene->forceFullRefresh = true;
+                pgb_play_ui_sound(PGB_UISound_Navigate);
+            }
         }
     }
 
@@ -720,6 +728,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         if (selectionChanged)
         {
+            libraryScene->showCrc = false;
+
             // Reset download state when user navigates away
             if (libraryScene->activeCoverDownloadConnection)
             {
@@ -865,9 +875,33 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
                             libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                         {
-                            const char* message = libraryScene->coverDownloadMessage
-                                                      ? libraryScene->coverDownloadMessage
-                                                      : "Please wait...";
+                            char message[32];
+
+                            if (libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
+                                libraryScene->showCrc)
+                            {
+                                PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                                if (selectedGame->crc32 != 0)
+                                {
+                                    snprintf(
+                                        message, sizeof(message), "%08lX",
+                                        (unsigned long)selectedGame->crc32
+                                    );
+                                }
+                                else
+                                {
+                                    snprintf(message, sizeof(message), "No CRC found");
+                                }
+                            }
+                            else
+                            {
+                                const char* defaultMessage =
+                                    libraryScene->coverDownloadMessage
+                                        ? libraryScene->coverDownloadMessage
+                                        : "Please wait...";
+                                snprintf(message, sizeof(message), "%s", defaultMessage);
+                            }
+
                             playdate->graphics->setFont(PGB_App->bodyFont);
                             int textWidth = playdate->graphics->getTextWidth(
                                 PGB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
@@ -982,7 +1016,28 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             else
                             {
                                 static const char* title = "Missing Cover";
-                                static const char* message1 = "No database match";
+                                char message1[32];
+
+                                if (libraryScene->showCrc)
+                                {
+                                    PGB_Game* selectedGame =
+                                        libraryScene->games->items[selectedIndex];
+                                    if (selectedGame->crc32 != 0)
+                                    {
+                                        snprintf(
+                                            message1, sizeof(message1), "%08lX",
+                                            (unsigned long)selectedGame->crc32
+                                        );
+                                    }
+                                    else
+                                    {
+                                        snprintf(message1, sizeof(message1), "No CRC found");
+                                    }
+                                }
+                                else
+                                {
+                                    snprintf(message1, sizeof(message1), "No database match");
+                                }
                                 static const char* message2 = "Connect to a computer";
                                 static const char* message3 = "and copy cover to:";
                                 static const char* message4 = "Data/*crankboy/covers";
@@ -1263,6 +1318,8 @@ PGB_Game* PGB_Game_new(PGB_GameName* cachedName)
 {
     PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
     game->filename = string_copy(cachedName->filename);
+
+    game->crc32 = cachedName->crc32;
 
     char* fullpath_str;
     playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, cachedName->filename);

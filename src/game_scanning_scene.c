@@ -43,6 +43,8 @@ static void process_one_game(const char* filename)
 {
     PGB_GameName* newName = pgb_malloc(sizeof(PGB_GameName));
 
+    memset(newName, 0, sizeof(PGB_GameName));
+
     newName->filename = string_copy(filename);
     newName->name_filename = pgb_basename(filename, true);
 
@@ -50,6 +52,7 @@ static void process_one_game(const char* filename)
     playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
 
     PGB_FetchedNames fetched = pgb_get_titles_from_db(fullpath);
+    newName->crc32 = fetched.crc32;
 
     pgb_free(fullpath);
 

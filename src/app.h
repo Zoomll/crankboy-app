@@ -45,6 +45,7 @@ typedef struct
     char* name_detailed;
     char* name_original_long;
     char* name_filename;
+    uint32_t crc32;
 } PGB_GameName;
 
 typedef struct

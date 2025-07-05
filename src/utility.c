@@ -976,9 +976,10 @@ char* pgb_url_encode_for_github_raw(const char* str)
 
 PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
 {
-    PGB_FetchedNames names = {NULL, NULL};
+    PGB_FetchedNames names = {NULL, NULL, 0};
 
     uint32_t crc = pgb_calculate_crc32(fullpath, kFileReadDataOrBundle);
+    names.crc32 = crc;
     if (crc == 0)
     {
         return names;

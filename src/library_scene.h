@@ -55,6 +55,7 @@ typedef struct PGB_Game
     char* name_detailed;
     char* name_original_long;
     char* name_filename;
+    uint32_t crc32;
 
     // points to one of the other strings in this struct;
     // should not be free'd directly
@@ -82,6 +83,7 @@ typedef struct PGB_LibraryScene
     CoverDownloadState coverDownloadState;
     char* coverDownloadMessage;
     HTTPConnection* activeCoverDownloadConnection;
+    bool showCrc;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);

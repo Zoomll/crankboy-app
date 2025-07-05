@@ -45,6 +45,7 @@ typedef struct
 {
     char* short_name;
     char* detailed_name;
+    uint32_t crc32;
 } PGB_FetchedNames;
 
 typedef enum
