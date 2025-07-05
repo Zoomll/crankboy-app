@@ -42,16 +42,23 @@ jobs:
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
-            # Step 4: Update Version and Build Number in pdxinfo
+            # Step 4: Update Version and Build Number in version.json
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
-                  CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  # Read the base version from version.json
+                  CURRENT_VERSION=$(jq -r '.version' Source/version.json)
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
-                  echo "Updating version in Source/pdxinfo to $NEW_VERSION"
-                  sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
-                  echo "Contents of pdxinfo after update:"
-                  cat Source/pdxinfo
+
+                  echo "Updating version in Source/version.json to $NEW_VERSION"
+
+                  # Use jq to create an updated temporary file, then replace the original
+                  jq --arg new_ver "$NEW_VERSION" --arg build_num "$DATE_STAMP" \
+                     '.version = $new_ver | .buildNumber = $build_num' \
+                     Source/version.json > tmp.json && mv tmp.json Source/version.json
+
+                  echo "Contents of version.json after update:"
+                  cat Source/version.json
 
             # Step 5: Build the Project
             - name: Build Project
