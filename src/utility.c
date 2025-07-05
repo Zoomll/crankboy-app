@@ -189,7 +189,7 @@ static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
     return crc;
 }
 
-uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts)
+bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc)
 {
     if (!crc32_table_generated)
     {
@@ -202,7 +202,7 @@ uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts)
         playdate->system->logToConsole(
             "CRC Error: Could not open file '%s'. Error: %s", filepath, playdate->file->geterr()
         );
-        return 0;
+        return false;
     }
 
     uint32_t crc = 0xffffffffL;
@@ -212,7 +212,7 @@ uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts)
     {
         playdate->system->logToConsole("CRC Error: Failed to allocate buffer.");
         playdate->file->close(file);
-        return 0;
+        return false;
     }
 
     int bytes_read;
@@ -224,7 +224,8 @@ uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts)
     pgb_free(buffer);
     playdate->file->close(file);
 
-    return crc ^ 0xffffffffL;
+    *o_crc = crc ^ 0xffffffffL;
+    return true;
 }
 
 char* pgb_basename(const char* filename, bool stripExtension)
@@ -976,11 +977,12 @@ char* pgb_url_encode_for_github_raw(const char* str)
 
 PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
 {
-    PGB_FetchedNames names = {NULL, NULL, 0};
+    PGB_FetchedNames names = {NULL, NULL, 0, true};
 
-    uint32_t crc = pgb_calculate_crc32(fullpath, kFileReadDataOrBundle);
+    uint32_t crc;
+    names.failedToOpenROM = !pgb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
     names.crc32 = crc;
-    if (crc == 0)
+    if (names.failedToOpenROM)
     {
         return names;
     }

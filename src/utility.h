@@ -46,6 +46,7 @@ typedef struct
     char* short_name;
     char* detailed_name;
     uint32_t crc32;
+    bool failedToOpenROM;
 } PGB_FetchedNames;
 
 typedef enum
@@ -112,7 +113,8 @@ size_t pgb_strlen(const char* s);
 char* pgb_strrchr(const char* s, int c);
 int pgb_strcmp(const char* s1, const char* s2);
 
-uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts);
+// returns false on failure
+bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
 
 char* pgb_find_cover_art_path(
     const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
