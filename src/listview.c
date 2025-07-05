@@ -581,7 +581,7 @@ static void PGB_ListView_selectItem(PGB_ListView* listView, unsigned int index, 
 
     PGB_ListItem* item = listView->items->items[index];
 
-    int listHeight = playdate->display->getHeight();
+    int listHeight = listView->frame.height;
 
     int centeredOffset = 0;
 
