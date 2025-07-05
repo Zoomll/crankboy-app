@@ -62,6 +62,7 @@ PGB_ListView* PGB_ListView_new(void)
                                           .scrollIndicatorOffset = 0,
                                           .scrollIndicatorVisible = false};
 
+    listView->scrollVelocity = 0;
     listView->textScrollTime = 0;
     listView->textScrollPause = 0;
 
@@ -141,7 +142,7 @@ void PGB_ListView_update(PGB_ListView* listView)
 
     if (pushed & kButtonDown)
     {
-        if (listView->items->length > 0)
+        if (listView->items->length > 0 && !listView->scroll.active)
         {
             int nextIndex = listView->selectedItem + 1;
             if (nextIndex >= listView->items->length)
@@ -153,7 +154,7 @@ void PGB_ListView_update(PGB_ListView* listView)
     }
     else if (pushed & kButtonUp)
     {
-        if (listView->items->length > 0)
+        if (listView->items->length > 0 && !listView->scroll.active)
         {
             int prevIndex = listView->selectedItem - 1;
             if (prevIndex < 0)
@@ -222,68 +223,97 @@ void PGB_ListView_update(PGB_ListView* listView)
 
     if (listView->direction == PGB_ListViewDirectionNone || listView->direction != old_direction)
     {
+        if (old_direction != PGB_ListViewDirectionNone && listView->scrollVelocity > 0)
+        {
+            PGB_ListView_selectItem(listView, listView->selectedItem, true);
+        }
         listView->repeatIncrementTime = 0;
         listView->repeatLevel = 0;
-        listView->repeatTime = 0;
+        listView->scrollVelocity = 0;
     }
     else
     {
         listView->repeatIncrementTime += PGB_App->dt;
-
-        float repeatInterval = PGB_ListView_repeatInterval1;
-        if (listView->repeatLevel > 0)
+        if (listView->repeatLevel == 0 &&
+            listView->repeatIncrementTime >= PGB_ListView_repeatInterval1)
         {
-            repeatInterval = PGB_ListView_repeatInterval2;
+            listView->repeatLevel = 1;
+            listView->repeatIncrementTime = 0;
+        }
+        else if (listView->repeatLevel > 0 && listView->repeatLevel < 3 &&
+                 listView->repeatIncrementTime >= PGB_ListView_repeatInterval2)
+        {
+            listView->repeatLevel++;
+            listView->repeatIncrementTime = 0;
         }
 
-        if (listView->repeatIncrementTime >= repeatInterval)
-        {
-            listView->repeatLevel = PGB_MIN(3, listView->repeatLevel + 1);
-            listView->repeatIncrementTime = fmodf(listView->repeatIncrementTime, repeatInterval);
-        }
-
         if (listView->repeatLevel > 0)
         {
-            listView->repeatTime += PGB_App->dt;
+            listView->scroll.active = false;
 
-            float repeatRate = 0.16;
+            const float SCROLL_SPEED_LEVEL_1 = 150.0f;
+            const float SCROLL_SPEED_LEVEL_2 = 400.0f;
+            const float SCROLL_SPEED_LEVEL_3 = 900.0f;
 
-            if (listView->repeatLevel == 2)
+            if (listView->repeatLevel == 1)
             {
-                repeatRate = 0.1;
+                listView->scrollVelocity = SCROLL_SPEED_LEVEL_1;
+            }
+            else if (listView->repeatLevel == 2)
+            {
+                listView->scrollVelocity = SCROLL_SPEED_LEVEL_2;
             }
             else if (listView->repeatLevel == 3)
             {
-                repeatRate = 0.05;
+                listView->scrollVelocity = SCROLL_SPEED_LEVEL_3;
             }
 
-            if (listView->repeatTime >= repeatRate)
+            float delta = listView->scrollVelocity * PGB_App->dt;
+            if (listView->direction == PGB_ListViewDirectionUp)
             {
-                listView->repeatTime = fmodf(listView->repeatTime, repeatRate);
+                delta = -delta;
+            }
 
-                if (listView->direction == PGB_ListViewDirectionUp)
+            listView->contentOffset += delta;
+
+            if (listView->contentSize > listView->frame.height)
+            {
+                while (listView->contentOffset < 0)
                 {
-                    if (listView->items->length > 0)
-                    {
-                        int prevIndex = listView->selectedItem - 1;
-                        if (prevIndex < 0)
-                        {
-                            prevIndex = listView->items->length - 1;
-                        }
-                        PGB_ListView_selectItem(listView, prevIndex, true);
-                    }
+                    listView->contentOffset += listView->contentSize;
                 }
-                else if (listView->direction == PGB_ListViewDirectionDown)
+                while (listView->contentOffset >= listView->contentSize)
                 {
-                    if (listView->items->length > 0)
+                    listView->contentOffset -= listView->contentSize;
+                }
+            }
+            else
+            {
+                listView->contentOffset = 0;
+            }
+
+            int listCenterY = listView->contentOffset + (listView->frame.height / 2);
+            while (listCenterY < 0)
+            {
+                listCenterY += listView->contentSize;
+            }
+            while (listCenterY >= listView->contentSize)
+            {
+                listCenterY -= listView->contentSize;
+            }
+
+            for (int i = 0; i < listView->items->length; i++)
+            {
+                PGB_ListItem* item = listView->items->items[i];
+                if (listCenterY >= item->offsetY && listCenterY < (item->offsetY + item->height))
+                {
+                    if (listView->selectedItem != i)
                     {
-                        int nextIndex = listView->selectedItem + 1;
-                        if (nextIndex >= listView->items->length)
-                        {
-                            nextIndex = 0;
-                        }
-                        PGB_ListView_selectItem(listView, nextIndex, true);
+                        pgb_play_ui_sound(PGB_UISound_Navigate);
+                        listView->selectedItem = i;
+                        listView->textScrollTime = 0;
                     }
+                    break;
                 }
             }
         }
@@ -606,6 +636,7 @@ static void PGB_ListView_selectItem(PGB_ListView* listView, unsigned int index, 
         listView->contentOffset = centeredOffset;
     }
 
+    listView->scrollVelocity = 0;
     listView->textScrollTime = 0;
     listView->textScrollPause = 0;
 
