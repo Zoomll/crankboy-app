@@ -60,6 +60,10 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
 void* preferences_store_subset(preferences_bitfield_t subset);
 void preferences_restore_subset(void* stored);
 
+// preferences that bundle 
+extern void* preferences_bundle_default;
+extern preferences_bitfield_t preferences_bundle_hidden;
+
 // all the preferences that need the game to restart to apply
 #define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_lua_support)
 

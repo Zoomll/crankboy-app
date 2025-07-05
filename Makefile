@@ -88,15 +88,17 @@ override LDSCRIPT=./link_map.ld
 
 include $(SDK)/C_API/buildsupport/common.mk
 
-# Update pdxinfo from version.json
+# Update pdxinfo from version.json (unless bundle.json present)
 VERSION_JSON := Source/version.json
 PDXINFO := Source/pdxinfo
 PYTHON := $(shell command -v python3b 2>/dev/null)
 
+ifneq ("$(wildcard Source/bundle.json)","")
 ifdef PYTHON
     $(shell python3 ./pdxinfo.py Source/pdxinfo Source/version.json Source/pdxinfo)
 else
     $(info WARNING: python3 required to update pdxinfo from version.json)
+endif
 endif
 
 PDCFLAGS += --quiet

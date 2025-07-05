@@ -4,6 +4,7 @@
 #include "jparse.h"
 #include "pd_api.h"
 #include "utility.h"
+#include "app.h"
 
 #define ERRMEM -255
 #define STR_ERRMEM "malloc error"
@@ -40,7 +41,7 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     if (oinfo->path)
         free(oinfo->path);
 
-    int jparse_result = (ispath) ? parse_json("version.json", &jvinfo, kFileRead | kFileReadData)
+    int jparse_result = (ispath) ? parse_json(VERSION_INFO_FILE, &jvinfo, kFileRead | kFileReadData)
                                  : parse_json_string(text, &jvinfo);
 
     if (jparse_result == 0 || jvinfo.type != kJSONTable)

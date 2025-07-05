@@ -19,9 +19,6 @@
 #include "preferences.h"
 #include "userstack.h"
 
-// files that have been copied from PDX to data folder
-#define COPIED_FILES "manifest.json"
-
 PGB_Application* PGB_App;
 
 static void PGB_precacheGameNames(void);
@@ -113,9 +110,133 @@ static void copy_file_callback(const char* filename, void* userdata)
     free(full_path);
 }
 
+static bool check_is_bundle(void)
+{
+    json_value jbundle;
+    if (!parse_json(BUNDLE_FILE, &jbundle, kFileRead | kFileReadData)) return false;
+    
+    json_value jrom = json_get_table_value(jbundle, "rom");
+    
+    if (jrom.type == kJSONString) PGB_App->bundled_rom = strdup(jrom.data.stringval);
+    
+    if (PGB_App->bundled_rom)
+    {
+        // verify pdxinfo has different bundle ID
+        size_t pdxlen;
+        char* pdxinfo = (void*)pgb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
+        if (pdxinfo)
+        {
+            pdxinfo[pdxlen-1] = 0;
+            if (strstr(pdxinfo, "bundleID=" PDX_BUNDLE_ID))
+            {
+                playdate->system->logToConsole("\nWARNING: for bundled ROMs, bundleID in pdxinfo should differ from \"" PDX_BUNDLE_ID "\" so that settings are not shared with CrankBoy in general.\n");
+            }
+            
+            free(pdxinfo);
+        }
+        
+        // check for default/visible/hidden preferences
+        json_value jdefault = json_get_table_value(jbundle, "default");
+        json_value jhidden = json_get_table_value(jbundle, "hidden");
+        json_value jvisible = json_get_table_value(jbundle, "visible");
+        
+        #define getvalue(j, value) \
+            int value = -1; \
+            if (j.type == kJSONInteger) \
+            { \
+                value = j.data.intval; \
+            } \
+            else if (j.type == kJSONTrue) \
+            { \
+                value = 1; \
+            } \
+            else if (j.type == kJSONFalse) \
+            { \
+                value = 0; \
+            } \
+            if (value < 0) continue
+        
+        preferences_bitfield_t preferences_default_bitfield = 0;
+        
+        // defaults
+        if (jdefault.type == kJSONTable)
+        {
+            JsonObject* obj = jdefault.data.tableval;
+            for (size_t i = 0; i < obj->n; ++i)
+            {
+                getvalue(obj->data[i].value, value);
+                
+                const char* key = obj->data[i].key;
+                int i = 0;
+                
+                #define PREF(p, ...) if (!strcmp(key, #p)) { \
+                    preferences_##p = value; \
+                    preferences_default_bitfield |= (preferences_bitfield_t)1 << i; \
+                    continue; \
+                } ++i;
+                #include "prefs.x"
+            }
+            
+            preferences_bundle_default;
+        }
+        
+        // hidden
+        if (jhidden.type == kJSONArray)
+        {
+            preferences_bundle_hidden = 0;
+            JsonArray* obj = jhidden.data.arrayval;
+            for (size_t i = 0; i < obj->n; ++i)
+            {
+                json_value value = obj->data[i];
+                if (value.type != kJSONString) continue;
+                const char* key = value.data.stringval;
+                
+                int i = 0;
+                #define PREF(p, ...) if (!strcmp(key, #p)) { \
+                    preferences_bundle_hidden |= ((preferences_bitfield_t)1 << i); \
+                    continue; \
+                } ++i;
+                #include "prefs.x"
+            }
+        }
+        
+        // visible
+        if (jvisible.type == kJSONArray)
+        {
+            preferences_bundle_hidden = -1;
+            JsonArray* obj = jvisible.data.arrayval;
+            for (size_t i = 0; i < obj->n; ++i)
+            {
+                json_value value = obj->data[i];
+                if (value.type != kJSONString) continue;
+                const char* key = value.data.stringval;
+                
+                int i = 0;
+                #define PREF(p, ...) if (!strcmp(key, #p)) { \
+                    preferences_bundle_hidden &= ~((preferences_bitfield_t)1 << i); \
+                    continue; \
+                } ++i;
+                #include "prefs.x"
+            }
+        }
+        
+        // always fixed in a bundle
+        preferences_default_bitfield |= PREFBIT_per_game;
+        preferences_bundle_hidden |= PREFBIT_per_game;
+        preferences_per_game = 0;
+        
+        // store the default values for engine use
+        preferences_bundle_default = preferences_store_subset(preferences_default_bitfield);
+    }
+    
+    free_json_data(jbundle);
+    return !!PGB_App->bundled_rom;
+}
+
 void PGB_init(void)
 {
     PGB_App = pgb_calloc(1, sizeof(PGB_Application));
+    memset(PGB_App, 0, sizeof(*PGB_App));
 
     PGB_App->gameNameCache = array_new();
     PGB_App->scene = NULL;
@@ -135,8 +256,11 @@ void PGB_init(void)
     PGB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
+    
+    check_is_bundle();
 
-    pgb_draw_logo_with_message("Initializing…");
+    if (!PGB_App->bundled_rom)
+        pgb_draw_logo_with_message("Initializing…");
     preferences_init();
 
     PGB_App->clickSynth = playdate->sound->synth->newSynth();
@@ -153,7 +277,7 @@ void PGB_init(void)
 
     // --- Boot ROM data ---
     const char* bootRomPath = "dmg_boot.bin";
-    SDFile* file = playdate->file->open(bootRomPath, kFileRead);
+    SDFile* file = playdate->file->open(bootRomPath, kFileRead | kFileReadData);
     if (file)
     {
         PGB_App->bootRomData = pgb_malloc(256);
@@ -175,7 +299,7 @@ void PGB_init(void)
     else
     {
         playdate->system->logToConsole(
-            "Warning: Could not find %s. Skipping Boot ROM.", bootRomPath
+            "Note: could not find %s. Skipping Boot ROM.", bootRomPath
         );
     }
 
@@ -186,36 +310,48 @@ void PGB_init(void)
     playdate->display->setRefreshRate(0);
 
     // copy in files if not already copied in
-    json_value manifest;
-    parse_json(COPIED_FILES, &manifest, kFileReadData | kFileRead);
-
-    if (manifest.type != kJSONTable)
+    if (!PGB_App->bundled_rom)
     {
-        manifest.type = kJSONTable;
-        JsonObject* obj = malloc(sizeof(JsonObject));
-        obj->n = 0;
-        manifest.data.tableval = obj;
+        json_value manifest;
+        parse_json(COPIED_FILES, &manifest, kFileReadData | kFileRead);
+
+        if (manifest.type != kJSONTable)
+        {
+            manifest.type = kJSONTable;
+            JsonObject* obj = malloc(sizeof(JsonObject));
+            obj->n = 0;
+            manifest.data.tableval = obj;
+        }
+
+        const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
+        bool modified = false;
+
+        for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)
+        {
+            struct copy_file_callback_ud ud;
+            ud.manifest = &manifest;
+            ud.directory = sources[i];
+            ud.modified = &modified;
+            pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
+        }
+
+        write_json_to_disk(COPIED_FILES, manifest);
+
+        PGB_GameScanningScene* scanningScene = PGB_GameScanningScene_new();
+        PGB_present(scanningScene->scene);
     }
-
-    const char* sources[] = {".", PGB_coversPath, PGB_gamesPath, PGB_savesPath, PGB_statesPath};
-    bool modified = false;
-
-    for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)
+    else
     {
-        struct copy_file_callback_ud ud;
-        ud.manifest = &manifest;
-        ud.directory = sources[i];
-        ud.modified = &modified;
-        pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
+        PGB_GameScene* gameScene = PGB_GameScene_new(PGB_App->bundled_rom, "Bundled ROM");
+        if (gameScene)
+        {
+            PGB_present(gameScene->scene);
+        }
+        else
+        {
+            playdate->system->error("Failed to launch bundled ROM \"%s\"", PGB_App->bundled_rom);
+        }
     }
-
-    // TODO: save manifest
-    write_json_to_disk(COPIED_FILES, manifest);
-
-    free_json_data(manifest);
-
-    PGB_GameScanningScene* scanningScene = PGB_GameScanningScene_new();
-    PGB_present(scanningScene->scene);
 }
 
 static void collect_game_filenames_callback(const char* filename, void* userdata)

@@ -27,3 +27,5 @@ typedef struct PGB_CreditsScene
 } PGB_CreditsScene;
 
 PGB_CreditsScene* PGB_CreditsScene_new(void);
+
+void PGB_showCredits(void* userdata);

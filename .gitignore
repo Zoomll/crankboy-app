@@ -12,3 +12,7 @@
 
 # symbol file, for manually checking alignment
 syms*.txt
+
+# paranoia
+*.gb
+*.gbc

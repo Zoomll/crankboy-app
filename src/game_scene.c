@@ -21,6 +21,7 @@
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
+#include "credits_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -249,24 +250,33 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     // Global settings are loaded by default. Check for a game-specific file.
     gameScene->settings_filename = pgb_game_config_path(rom_filename);
 
-    // Try loading game-specific preferences
-    preferences_per_game = 0;
-    call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
-
-    void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
-
-    // If the game-specific settings explicitly says "use Global"
-    // (or there is no game-specific settings file),
-    // load the global preferences file instead.
-    if (preferences_per_game == 0)
+    if (!PGB_App->bundled_rom)
     {
-        call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+        // Try loading game-specific preferences
+        preferences_per_game = 0;
+        call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
+
+        // we always use the per-game save slot, even if global settings are enabled
+        void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
+
+        // If the game-specific settings explicitly says "use Global"
+        // (or there is no game-specific settings file),
+        // load the global preferences file instead.
+        if (preferences_per_game == 0)
+        {
+            call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+        }
+
+        if (stored_save_slot)
+        {
+            preferences_restore_subset(stored_save_slot);
+            free(stored_save_slot);
+        }
     }
-
-    if (stored_save_slot)
+    else
     {
-        preferences_restore_subset(stored_save_slot);
-        free(stored_save_slot);
+        // bundled ROMs always use global preferences
+        call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
     }
 
     PGB_GameScene_generateBitmask();
@@ -624,7 +634,7 @@ static uint8_t* read_rom_to_ram(
 {
     *sceneError = PGB_GameSceneErrorUndefined;
 
-    SDFile* rom_file = playdate->file->open(filename, kFileReadData);
+    SDFile* rom_file = playdate->file->open(filename, kFileReadDataOrBundle);
 
     if (rom_file == NULL)
     {
@@ -1703,7 +1713,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         }
 
         // Always request the update loop to run at 30 FPS.
-        // (60 gameboy frames per second.)
+        // (60 game boy frames per second.)
         // This ensures gb_run_frame() is called at a consistent rate.
         gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
 
@@ -2057,7 +2067,10 @@ static void PGB_GameScene_menu(void* object)
 
     if (gameScene->state == PGB_GameSceneStateError)
     {
-        playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+        if (!PGB_App->bundled_rom)
+        {
+            playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+        }
         return;
     }
 
@@ -2312,8 +2325,18 @@ static void PGB_GameScene_menu(void* object)
     }
 
     playdate->system->setMenuImage(gameScene->menuImage, 0);
-    playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
-    playdate->system->addMenuItem("Settings", PGB_GameScene_showSettings, gameScene);
+    if (!PGB_App->bundled_rom)
+    {
+        playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+    }
+    if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
+    {
+        playdate->system->addMenuItem("Settings", PGB_GameScene_showSettings, gameScene);
+    }
+    else
+    {
+        playdate->system->addMenuItem("About", PGB_showCredits, gameScene);
+    }
 
     buttonMenuItem = playdate->system->addOptionsMenuItem(
         "Button", buttonMenuOptions, 4, PGB_GameScene_buttonMenuCallback, gameScene

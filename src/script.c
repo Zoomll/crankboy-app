@@ -686,7 +686,7 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
 {
     // first, open the ROM to read the game name
     size_t len;
-    SDFile* file = playdate->file->open(game_path, kFileReadData);
+    SDFile* file = playdate->file->open(game_path, kFileReadDataOrBundle);
     if (!file)
         return NULL;
 

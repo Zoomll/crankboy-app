@@ -262,7 +262,23 @@ static void PGB_CreditsScene_menu(void* object)
     PGB_CreditsScene* creditsScene = object;
     playdate->system->removeAllMenuItems();
 
-    playdate->system->addMenuItem("Library", PGB_CreditsScene_didSelectBack, creditsScene);
+    if (!PGB_App->bundled_rom)
+    {
+        playdate->system->addMenuItem("Library", PGB_CreditsScene_didSelectBack, creditsScene);
+    }
+    else
+    {
+        if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
+        {
+            // Back to settings
+            playdate->system->addMenuItem("Back", PGB_CreditsScene_didSelectBack, creditsScene);
+        }
+        else
+        {
+            // Back to game
+            playdate->system->addMenuItem("Resume", PGB_CreditsScene_didSelectBack, creditsScene);
+        }
+    }
 }
 
 static void PGB_CreditsScene_free(void* object)
@@ -303,7 +319,7 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     creditsScene->logo = playdate->graphics->loadBitmap("images/logo", NULL);
 
     json_value j;
-    int result = parse_json("./credits.json", &j, kFileRead);
+    int result = parse_json("./credits.json", &j, kFileRead | kFileReadData);
     if (!result || j.type != kJSONArray)
     {
         free_json_data(j);
@@ -323,4 +339,10 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     }
 
     return creditsScene;
+}
+
+void PGB_showCredits(void* userdata)
+{
+    PGB_CreditsScene* creditsScene = PGB_CreditsScene_new();
+    PGB_presentModal(creditsScene->scene);
 }

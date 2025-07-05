@@ -1194,15 +1194,9 @@ static void PGB_LibraryScene_showSettings(void* userdata)
     PGB_presentModal(settingsScene->scene);
 }
 
-static void PGB_LibraryScene_showCredits(void* userdata)
-{
-    PGB_CreditsScene* creditsScene = PGB_CreditsScene_new();
-    PGB_presentModal(creditsScene->scene);
-}
-
 static void PGB_LibraryScene_menu(void* object)
 {
-    playdate->system->addMenuItem("Credits", PGB_LibraryScene_showCredits, object);
+    playdate->system->addMenuItem("Credits", PGB_showCredits, object);
 
     playdate->system->addMenuItem("Settings", PGB_LibraryScene_showSettings, object);
 }

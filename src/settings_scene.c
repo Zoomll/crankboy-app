@@ -14,6 +14,7 @@
 #include "revcheck.h"
 #include "userstack.h"
 #include "utility.h"
+#include "credits_scene.h"
 
 #include <stdlib.h>
 
@@ -64,6 +65,11 @@ typedef struct OptionsMenuEntry
 } OptionsMenuEntry;
 
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
+
+void display_credits(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
+{
+    PGB_showCredits(settingsScene);
+}
 
 void display_script_info(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
 {
@@ -449,8 +455,9 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
                 .description =
                     "CrankBoy does not\ncurrently support\ncreating save states\n"
                     "with a ROM that has its\nown save data.",
-                .pref_var = NULL,
+                .pref_var = &preferences_save_state_slot,
                 .max_value = 0,
+                .locked = 1,
                 .on_press = NULL
             };
         }
@@ -841,9 +848,46 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             entries[i].description = itcm_base_desc;
         }
     #endif
+    
+    if (PGB_App->bundled_rom)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "About CrankBoy",
+            .values = NULL,
+            .description = "This game is bundled for\nPlaydate via CrankBoy,\na Game Boy emulator.\n \nPress Ⓐ now to learn\nmore about CrankBoy\nand its developers.",
+            .pref_var = NULL,
+            .max_value = 0,
+            .on_press = display_credits
+        };
+    }
 
     /* clang-format on */
-    PGB_ASSERT(i < max_entries);
+    PGB_ASSERT(i < max_entries - 1);
+    
+    // remove any entries hidden by bundle
+    if (preferences_bundle_hidden)
+    {
+        for (size_t j = max_entries - 1; j --> 0;)
+        {
+            bool remove = false;
+            struct OptionsMenuEntry* entry = &entries[j];
+            
+            // remove header if no options below it
+            if (entry->header && (entries[j+1].header || !entries[j+1].name)) goto do_remove;
+            
+            // remove normal option (if hidden)
+            #define PREF(p, ...) if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) goto do_remove;
+            #include "prefs.x"
+            
+            continue;
+        
+        do_remove:
+            for (size_t k = j; k < max_entries - 1; ++k)
+            {
+                entries[k] = entries[k + 1];
+            }
+        }
+    }
 
     // disable any entries if script requires it
     for (int i = 0; i < max_entries; ++i)
@@ -875,6 +919,7 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
 
     settingsScene->entries = getOptionsEntries(settingsScene->gameScene);
 
+    // count all entries that have a name
     settingsScene->totalMenuItemCount = 0;
     if (settingsScene->entries)
     {

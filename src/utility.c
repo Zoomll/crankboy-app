@@ -189,14 +189,14 @@ static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
     return crc;
 }
 
-uint32_t pgb_calculate_crc32(const char* filepath)
+uint32_t pgb_calculate_crc32(const char* filepath, FileOptions fopts)
 {
     if (!crc32_table_generated)
     {
         generate_crc32_table();
     }
 
-    SDFile* file = playdate->file->open(filepath, kFileRead | kFileReadData);
+    SDFile* file = playdate->file->open(filepath, fopts);
     if (!file)
     {
         playdate->system->logToConsole(
@@ -976,7 +976,7 @@ PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
 {
     PGB_FetchedNames names = {NULL, NULL};
 
-    uint32_t crc = pgb_calculate_crc32(fullpath);
+    uint32_t crc = pgb_calculate_crc32(fullpath, kFileReadDataOrBundle);
     if (crc == 0)
     {
         return names;

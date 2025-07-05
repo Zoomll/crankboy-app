@@ -12,6 +12,7 @@
 #include "pd_api.h"
 #include "scene.h"
 #include "utility.h"
+#include "preferences.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -77,6 +78,14 @@ typedef struct PGB_Application
     PDButtons buttons_released;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
+                                 
+    // If this is non-null, then the app is intended to contain exactly one ROM due to the presence of bundle.json
+    // The following changes are made:
+    // - library view is omitted
+    // - credits accessible via setings
+    // - no per-game/global settings distinction
+    // - some settings become inaccessible
+    char* bundled_rom;
 } PGB_Application;
 
 extern PGB_Application* PGB_App;
@@ -159,5 +168,15 @@ void itcm_core_init(void);
 
 #define THUMBNAIL_WIDTH 240
 #define THUMBNAIL_HEIGHT 240
+
+// files that have been copied from PDX to data folder
+#define COPIED_FILES "manifest.json"
+#define VERSION_INFO_FILE "version.json"
+#define BUNDLE_FILE "bundle.json"
+
+#define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
+
+// for files which should only appear in data unless we're in bundle mode
+#define kFileReadDataOrBundle (PGB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)
 
 #endif /* app_h */

@@ -1,6 +1,6 @@
-# Gameboy IO Extensions for Playdate
+# Game Boy IO Extensions for Playdate
 
-To allow gameboy games access to Playdate features such as the crank and accelerometer,
+To allow game boy games access to Playdate features such as the crank and accelerometer,
 CrankBoy includes some custom I/O registers for this purpose. They must first be enabled before use (`FF57`)
 
 ## `FF57` [w] - Features Enable
@@ -16,7 +16,7 @@ bits 3-7 - reserved (assume 0 as safe default)
 
 If bit 0 is set, accelerometer is enabled; otherwise it is disabled.
 
-If bit 1 is set, RAM range 0xFEA0-0xFEFF becomes a read-writeable 0x60-byte region. (Normally this region is unused.) Together with a Lua script, this area can function as a trainer, to hold shared gameboy-lua variables, or to store state which is included in the save file.
+If bit 1 is set, RAM range 0xFEA0-0xFEFF becomes a read-writeable 0x60-byte region. (Normally this region is unused.) Together with a Lua script, this area can function as a trainer, to hold shared gb-lua variables, or to store state which is included in the save file.
 
 If bit 2 is set, the crank register `FF58` behaves as a menu-indexer. As the user cranks, it increments/decrements each time the next/previous menu item should be selected, and it can be reset to 0 by writing to it. (See below.)
 
