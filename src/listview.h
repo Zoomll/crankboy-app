@@ -85,7 +85,6 @@ typedef struct
     bool needsDisplay;
     PDRect frame;
 
-    float scrollVelocity;
     float textScrollTime;
     float textScrollPause;
 } PGB_ListView;
