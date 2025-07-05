@@ -24,11 +24,16 @@ PREF(bios, true)
 PREF(lua_support, false)
 PREF(lua_has_prompted, false)  // (not a real setting)
 
+// library
+PREF(display_name_mode, 0)  // 0: Short, 1: Detailed, 2: Filename
+PREF(display_article, 0) // 0: leading article; 1: article as-is
+PREF(display_sort, 1) // 0: by filename; 1: by detailed name; 2 by detailed name (with leading article); 3 by filename (with leading article)
+PREF(library_remember_selection, 1)
+
 // misc
 PREF(itcm, (pd_rev == PD_REV_A))
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
-PREF(display_name_mode, 0)  // 0: Short, 1: Detailed, 2: Filename
 
 #undef PREF

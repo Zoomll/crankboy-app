@@ -37,6 +37,7 @@ static void process_one_game(const char* filename)
 
     newName->filename = string_copy(filename);
     newName->name_filename = pgb_basename(filename, true);
+    newName->name_filename_leading_article = common_article_form(newName->name_filename);
 
     char* fullpath;
     playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
@@ -46,12 +47,15 @@ static void process_one_game(const char* filename)
 
     pgb_free(fullpath);
 
-    newName->name_original_long =
+    newName->name_database =
         (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
-    newName->name_short = (fetched.short_name) ? common_article_form(fetched.short_name)
-                                               : common_article_form(newName->name_filename);
-    newName->name_detailed = (fetched.detailed_name) ? common_article_form(fetched.detailed_name)
-                                                     : common_article_form(newName->name_filename);
+    newName->name_short = (fetched.short_name) ? strdup(fetched.short_name)
+                                               : strdup(newName->name_filename);
+    newName->name_detailed = (fetched.detailed_name) ? strdup(fetched.detailed_name)
+                                                     : strdup(newName->name_filename);
+                                                     
+    newName->name_short_leading_article = common_article_form(newName->name_short);
+    newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
 
     if (fetched.short_name)
         pgb_free(fetched.short_name);

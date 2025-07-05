@@ -40,13 +40,27 @@ extern pthread_mutex_t audio_mutex;
 
 typedef struct
 {
+    // basename, including extension
     char* filename;
+    
+    // CRC32 of rom's contents
+    uint32_t crc32;
+    
+    // common database name, for thumbnail matching etc.
+    char* name_database;
+    
+    // human-readable variations
     char* name_short;
     char* name_detailed;
-    char* name_original_long;
-    char* name_filename;
-    uint32_t crc32;
+    char* name_filename; // (basename, extension stripped)
+    char* name_short_leading_article;
+    char* name_detailed_leading_article;
+    char* name_filename_leading_article;
 } PGB_GameName;
+
+// Note: does not free PGB_GameName struct, only its members.
+void free_game_names(const PGB_GameName* gameNames);
+void copy_game_names(const PGB_GameName* src, PGB_GameName* dst);
 
 typedef struct
 {

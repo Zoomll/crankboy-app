@@ -326,6 +326,8 @@ static const char* dynamic_level_labels[] = {"1", "2", "3", "4",  "5", "6",
                                              "7", "8", "9", "10", "11"};
 static const char* settings_scope_labels[] = {"Global", "Game"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
+static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
+static const char* article_labels[] = {"Leading", "As-is"};
 
 static void update_thumbnail(PGB_SettingsScene* settingsScene)
 {
@@ -768,6 +770,63 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         }
     }
     #endif
+    
+    if (!gameScene)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Library",
+            .header = 1
+        };
+
+        // display name mode
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Title display",
+            .values = display_name_mode_labels,
+            .description = "Choose how game titles\n"
+                        "are displayed in the list.\n \n"
+                        "Short:\nThe common game title\n(by database match).\n \n"
+                        "Detailed:\nThe full title, including\nregion and version info.\n \n"
+                        "Filename:\nThe original ROM filename.\n \n",
+            .pref_var = &preferences_display_name_mode,
+            .max_value = 3,
+            .on_press = NULL
+        };
+        
+        // display article
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Article",
+            .values = article_labels,
+            .description = "If a game title ends with\n"
+                        "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
+                        "then it can displayed at\n"
+                        "the start instead, i.e.\n \n"
+                        "  \"The Mummy (USA)\"\n",
+            .pref_var = &preferences_display_article,
+            .max_value = 2,
+            .on_press = NULL
+        };
+        
+        // sorting
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Sort",
+            .values = sort_labels,
+            .description = "Sort the games list\nby filename or\nby database name.\n \nCan also choose to include\narticles that have been\nmoved to the front of the\nname toward sorting.",
+            .pref_var = &preferences_display_sort,
+            .max_value = 4,
+            .on_press = NULL
+        };
+        
+        // remember selection
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Remember Last",
+            .values = off_on_labels,
+            .description = "When opening the library,\n"
+                "Initial selection will\nbe the last game played.\n",
+            .pref_var = &preferences_library_remember_selection,
+            .max_value = 2,
+            .on_press = NULL
+        };
+    }
 
     entries[++i] = (OptionsMenuEntry){
         .name = "Miscellaneous",
@@ -801,20 +860,6 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     if (!gameScene)
     {
-        // display name mode
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Title display",
-            .values = display_name_mode_labels,
-            .description = "Choose how game titles\n"
-                           "are displayed in the list.\n \n"
-                           "Short:\nThe common game title.\n \n"
-                           "Detailed:\nThe full title, including\nregion and version info.\n \n"
-                           "Filename:\nThe original ROM filename.\n \n",
-            .pref_var = &preferences_display_name_mode,
-            .max_value = 3,
-            .on_press = NULL
-        };
-
         // ui sounds
         entries[++i] = (OptionsMenuEntry){
             .name = "UI sounds",

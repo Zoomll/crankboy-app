@@ -48,18 +48,17 @@ typedef enum
 
 typedef struct PGB_Game
 {
-    char* filename;
     char* fullpath;
     char* coverPath;
-    char* name_short;
-    char* name_detailed;
-    char* name_original_long;
-    char* name_filename;
-    uint32_t crc32;
+    
+    // local copy; must be free'd
+    // (TODO: just point within a permanent list of these.)
+    PGB_GameName names;
 
-    // points to one of the other strings in this struct;
+    // points to one of the strings in the name struct.
     // should not be free'd directly
     char* displayName;
+    char* sortName;
 } PGB_Game;
 
 typedef struct PGB_LibraryScene
