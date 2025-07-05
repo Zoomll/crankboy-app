@@ -403,11 +403,15 @@ void* png_to_pdi(
     return pdi_data;
 }
 
-// returns true on success
-static bool process_png(const char* fname)
+// returns 1 on success
+// returns 0 on failure
+// returns -1 if file not found (i.e. not in PDX directory)
+static int process_png(const char* fname)
 {
     size_t len;
     void* data = pgb_read_entire_file(fname, &len, kFileReadData);
+    if (!data) return -1;
+    
     bool success = false;
 
     if (data)
@@ -452,15 +456,47 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
         pgb_draw_logo_with_message("Scanning for new images…");
 
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
+        
+        convScene->state = kStateDone;
 
-        if (convScene->files_count == 0)
+        // check if any files are in the data directory.
+        for (int i = 0; i < convScene->files_count; ++i)
         {
-            convScene->state = kStateDone;
+            char* fpath = aprintf("%s/%s", PGB_coversPath, convScene->files[i]);
+            if (fpath)
+            {
+                if (pgb_file_exists(fpath, kFileReadData))
+                {
+                    convScene->state = kStatePrompt;
+                    free(fpath);
+                    break;
+                }
+                free(fpath);
+            }
         }
-        else
+        break;
+    }
+    
+    case kStatePrompt:
+    {
+        playdate->graphics->clear(kColorWhite);
+        
+        int margin = 16;
+        int width = LCD_COLUMNS - 2*margin;
+        
+        const char* msg = "One or more image files need to be converted to PDI format.\n\nThe original image files will then be deleted.\n\nPress Ⓐ to confirm.";
+        
+        playdate->graphics->setFont(PGB_App->bodyFont);
+        playdate->graphics->drawTextInRect(
+            msg, strlen(msg), kUTF8Encoding, margin,
+            50, width, 300, kWrapWord, kAlignTextCenter
+        );
+        
+        if (PGB_App->buttons_pressed & kButtonA)
         {
             convScene->state = kStateConverting;
         }
+        
         break;
     }
 
@@ -489,10 +525,13 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 free(progress_msg);
             }
 
-            bool result = process_png(full_fname);
+            int result = process_png(full_fname);
             free(full_fname);
-
-            printf("  result: %d\n", (int)result);
+            
+            if (result >= 0)
+            {
+                printf("  result: %d\n", (int)result);
+            }
         }
         else
         {

@@ -15,6 +15,7 @@ void* png_to_pdi(
 typedef enum
 {
     kStateListingFiles,
+    kStatePrompt,
     kStateConverting,
     kStateDone
 } ConversionState;

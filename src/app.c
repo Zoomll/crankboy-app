@@ -85,13 +85,20 @@ static void copy_file_callback(const char* filename, void* userdata)
 
     if (already_copied.type != kJSONTrue)
     {
-        printf("Extracting \"%s\" from PDX...\n", full_path);
 
         size_t size;
         void* dat = pgb_read_entire_file(full_path, &size, kFileRead);
 
         if (dat && size > 0)
         {
+            char* msg = aprintf("Copying \"%s\" from PDX…", full_path);
+            if (msg)
+            {
+                printf("%s\n", msg);
+                pgb_draw_logo_with_message(msg);
+                free(msg);
+            }
+            
             bool success = pgb_write_entire_file(dst_path, dat, size);
             free(dat);
 
@@ -103,6 +110,10 @@ static void copy_file_callback(const char* filename, void* userdata)
                 json_set_table_value(manifest, full_path, _true);
                 *ud->modified = true;
             }
+        }
+        else
+        {
+            // file was not in PDX directory; silently skip it.
         }
     }
 
@@ -349,7 +360,8 @@ void PGB_init(void)
             ud.manifest = &manifest;
             ud.directory = sources[i];
             ud.modified = &modified;
-            pgb_listfiles(sources[i], copy_file_callback, &ud, true, kFileRead);
+            
+            playdate->file->listfiles(sources[i], copy_file_callback, &ud, true);
         }
 
         write_json_to_disk(COPIED_FILES, manifest);
