@@ -90,6 +90,7 @@ static bool string_has_descenders(const char* str)
 
 PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 {
+    setCrankSoundsEnabled(true);
     PGB_SettingsScene* settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
@@ -313,6 +314,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
+static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
@@ -691,9 +693,31 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .description =
             "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
             "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
-            "B/A:\nCW for B, CCW for A.",
+            "B/A:\nCW for B, CCW for A.\n \n",
         .pref_var = &preferences_crank_mode,
         .max_value = 4,
+        .on_press = NULL
+    };
+    
+    // undock
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Undock",
+        .values = gb_button_labels,
+        .description =
+            "Assign a button input\nfor undocking the crank.\n \n",
+        .pref_var = &preferences_crank_undock_button,
+        .max_value = 3,
+        .on_press = NULL
+    };
+    
+    // dock
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Dock",
+        .values = gb_button_labels,
+        .description =
+            "Assign a button input\nfor docking the crank.\n \n",
+        .pref_var = &preferences_crank_dock_button,
+        .max_value = 3,
         .on_press = NULL
     };
 

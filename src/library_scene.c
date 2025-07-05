@@ -388,7 +388,7 @@ __section__(".rare") static void PGB_LibraryScene_event(
 
 PGB_LibraryScene* PGB_LibraryScene_new(void)
 {
-    playdate->system->setCrankSoundsDisabled(false);
+    setCrankSoundsEnabled(true);
 
     PGB_Scene* scene = PGB_Scene_new();
 

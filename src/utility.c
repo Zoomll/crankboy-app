@@ -688,6 +688,16 @@ void pgb_free(void* ptr)
     }
 }
 
+void setCrankSoundsEnabled(bool enabled)
+{
+static int was_enabled = -1;
+    if (was_enabled == enabled) return;
+    
+    playdate->system->setCrankSoundsDisabled(!enabled);
+    
+    was_enabled = enabled;
+}
+
 char* aprintf(const char* fmt, ...)
 {
     if (fmt == NULL)

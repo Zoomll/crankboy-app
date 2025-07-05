@@ -294,6 +294,7 @@ static void PGB_CreditsScene_free(void* object)
 
 PGB_CreditsScene* PGB_CreditsScene_new(void)
 {
+    setCrankSoundsEnabled(true);
     pgmusic_begin();
     playdate->system->getCrankChange();
     PGB_CreditsScene* creditsScene = pgb_malloc(sizeof(PGB_CreditsScene));

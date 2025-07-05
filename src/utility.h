@@ -244,4 +244,6 @@ bool startswithi(const char* str, const char* prefix);
 bool endswith(const char* str, const char* suffix);
 bool endswithi(const char* str, const char* suffix);
 
+void setCrankSoundsEnabled(bool enabled);
+
 #endif /* utility_h */

@@ -18,6 +18,8 @@ PREF(transparency, 0)
 
 // behaviour
 PREF(crank_mode, CRANK_MODE_START_SELECT)
+PREF(crank_undock_button, PREF_BUTTON_NONE)
+PREF(crank_dock_button, PREF_BUTTON_NONE)
 PREF(joypad_interrupts, 0)
 PREF(overclock, 0)
 PREF(bios, true)

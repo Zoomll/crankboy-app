@@ -1,7 +1,9 @@
 require "common"
 
 pgb.setCrankSoundsDisabled()
-pgb.force_pref("crank_mode", 3)
+pgb.force_pref("crank_mode", 5)
+pgb.force_pref("undock", 0)
+pgb.force_pref("dock", 0)
 
 -- decide version based on name in header
 if pgb.rom_peek(0x13C) == 0x52 then
