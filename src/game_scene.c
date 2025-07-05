@@ -2142,8 +2142,7 @@ static void PGB_GameScene_menu(void* object)
 
                 if (has_cover_art)
                 {
-                    playdate->graphics->fillRect(0, 0, 400, 40, kColorBlack);
-                    playdate->graphics->fillRect(0, 200, 400, 40, kColorBlack);
+                    playdate->graphics->fillRect(0, 0, 400, 240, kColorBlack);
 
                     PGB_LoadedCoverArt* cached_art = &PGB_App->coverArtCache.art;
 
