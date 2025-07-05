@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "app.h"
 #include "array.h"
 #include "listview.h"
 #include "scene.h"
@@ -36,6 +37,15 @@ typedef enum
     COVER_DOWNLOAD_COMPLETE
 } CoverDownloadState;
 
+typedef enum
+{
+    kLibraryStateInit,
+    kLibraryStateBuildGameList,
+    kLibraryStateSort,
+    kLibraryStateBuildUIList,
+    kLibraryStateDone
+} PGB_LibraryState;
+
 typedef struct PGB_Game
 {
     char* filename;
@@ -59,6 +69,9 @@ typedef struct PGB_LibraryScene
     PGB_ListView* listView;
     PGB_LibrarySceneTab tab;
 
+    PGB_LibraryState state;
+    int build_index;
+
     bool firstLoad;
     bool initialLoadComplete;
     int lastSelectedItem;
@@ -73,5 +86,5 @@ typedef struct PGB_LibraryScene
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);
 
-PGB_Game* PGB_Game_new(const char* filename);
+PGB_Game* PGB_Game_new(PGB_GameName* cachedName);
 void PGB_Game_free(PGB_Game* game);

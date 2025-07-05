@@ -393,11 +393,12 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     PGB_Scene* scene = PGB_Scene_new();
 
-    PGB_LibraryScene* libraryScene = pgb_malloc(sizeof(PGB_LibraryScene));
+    PGB_LibraryScene* libraryScene = pgb_calloc(1, sizeof(PGB_LibraryScene));
+
+    libraryScene->state = kLibraryStateInit;
+    libraryScene->build_index = 0;
+
     libraryScene->scene = scene;
-
-    DTCM_VERIFY_DEBUG();
-
     scene->managedObject = libraryScene;
 
     scene->update = PGB_LibraryScene_update;
@@ -414,93 +415,11 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->lastSelectedItem = -1;
     libraryScene->last_display_name_mode = preferences_display_name_mode;
     libraryScene->initialLoadComplete = false;
-
-    libraryScene->missingCoverIcon = NULL;
-
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
-    libraryScene->coverDownloadMessage = NULL;
-    libraryScene->activeCoverDownloadConnection = NULL;
 
     pgb_clear_global_cover_cache();
 
-    DTCM_VERIFY_DEBUG();
-
-    PGB_LibraryScene_reloadList(libraryScene);
-
     return libraryScene;
-}
-
-static void PGB_LibraryScene_listFiles(const char* filename, void* userdata)
-{
-    PGB_LibraryScene* libraryScene = userdata;
-
-    char* extension;
-    char* dot = pgb_strrchr(filename, '.');
-
-    if (!dot || dot == filename)
-    {
-        extension = "";
-    }
-    else
-    {
-        extension = dot + 1;
-    }
-
-    if ((pgb_strcmp(extension, "gb") == 0 || pgb_strcmp(extension, "gbc") == 0))
-    {
-        PGB_Game* game = PGB_Game_new(filename);
-        array_push(libraryScene->games, game);
-    }
-}
-
-static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene)
-{
-    for (int i = 0; i < libraryScene->games->length; i++)
-    {
-        PGB_Game* game = libraryScene->games->items[i];
-        PGB_Game_free(game);
-    }
-
-    array_clear(libraryScene->games);
-
-    DTCM_VERIFY();
-
-    pgb_listfiles(PGB_gamesPath, PGB_LibraryScene_listFiles, libraryScene, 0, kFileReadData);
-
-    DTCM_VERIFY();
-    pgb_sort_games_array(libraryScene->games);
-    DTCM_VERIFY_DEBUG();
-
-    PGB_Array* items = libraryScene->listView->items;
-
-    for (int i = 0; i < items->length; i++)
-    {
-        PGB_ListItem* item = items->items[i];
-        PGB_ListItem_free(item);
-    }
-
-    array_clear(items);
-
-    for (int i = 0; i < libraryScene->games->length; i++)
-    {
-        PGB_Game* game = libraryScene->games->items[i];
-
-        PGB_ListItemButton* itemButton = PGB_ListItemButton_new(game->displayName);
-        array_push(items, itemButton->item);
-    }
-
-    if (items->length > 0)
-    {
-        libraryScene->tab = PGB_LibrarySceneTabList;
-    }
-    else
-    {
-        libraryScene->tab = PGB_LibrarySceneTabEmpty;
-    }
-
-    DTCM_VERIFY_DEBUG();
-
-    PGB_ListView_reload(libraryScene->listView);
 }
 
 static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
@@ -573,6 +492,98 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
     PGB_LibraryScene* libraryScene = object;
+
+    if (libraryScene->state != kLibraryStateDone)
+    {
+        switch (libraryScene->state)
+        {
+        case kLibraryStateInit:
+        {
+            pgb_draw_logo_with_message("Loading Library…");
+            libraryScene->state = kLibraryStateBuildGameList;
+            return;
+        }
+
+        case kLibraryStateBuildGameList:
+        {
+            if (libraryScene->build_index < PGB_App->gameNameCache->length)
+            {
+                PGB_GameName* cachedName = PGB_App->gameNameCache->items[libraryScene->build_index];
+                PGB_Game* game = PGB_Game_new(cachedName);
+                array_push(libraryScene->games, game);
+
+                libraryScene->build_index++;
+
+                char progress_message[100];
+                int total = PGB_App->gameNameCache->length;
+                int percentage =
+                    (total > 0) ? ((float)libraryScene->build_index / total) * 100 : 100;
+                snprintf(
+                    progress_message, sizeof(progress_message), "Building Games List… %d%%",
+                    percentage
+                );
+                pgb_draw_logo_with_message(progress_message);
+            }
+            else
+            {
+                libraryScene->state = kLibraryStateSort;
+            }
+            return;
+        }
+
+        case kLibraryStateSort:
+        {
+            pgb_draw_logo_with_message("Sorting…");
+            pgb_sort_games_array(libraryScene->games);
+
+            libraryScene->build_index = 0;
+            libraryScene->state = kLibraryStateBuildUIList;
+            return;
+        }
+
+        case kLibraryStateBuildUIList:
+        {
+            const int chunk_size = 20;
+            if (libraryScene->build_index < libraryScene->games->length)
+            {
+                for (int i = 0;
+                     i < chunk_size && libraryScene->build_index < libraryScene->games->length; ++i)
+                {
+                    PGB_Game* game = libraryScene->games->items[libraryScene->build_index];
+                    PGB_ListItemButton* itemButton = PGB_ListItemButton_new(game->displayName);
+                    array_push(libraryScene->listView->items, itemButton->item);
+                    libraryScene->build_index++;
+                }
+
+                char progress_message[100];
+                int total = libraryScene->games->length;
+                int percentage =
+                    (total > 0) ? ((float)libraryScene->build_index / total) * 100 : 100;
+                snprintf(
+                    progress_message, sizeof(progress_message), "Loading Library… %d%%", percentage
+                );
+                pgb_draw_logo_with_message(progress_message);
+            }
+            else
+            {
+                if (libraryScene->listView->items->length > 0)
+                {
+                    libraryScene->tab = PGB_LibrarySceneTabList;
+                }
+                else
+                {
+                    libraryScene->tab = PGB_LibrarySceneTabEmpty;
+                }
+
+                PGB_ListView_reload(libraryScene->listView);
+                libraryScene->state = kLibraryStateDone;
+            }
+            return;
+        }
+        case kLibraryStateDone:
+            break;
+        }
+    }
 
     if (libraryScene->last_display_name_mode != preferences_display_name_mode)
     {
@@ -1238,41 +1249,19 @@ static void PGB_LibraryScene_free(void* object)
     pgb_free(libraryScene);
 }
 
-PGB_Game* PGB_Game_new(const char* filename)
+PGB_Game* PGB_Game_new(PGB_GameName* cachedName)
 {
     PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
-    game->filename = string_copy(filename);
+    game->filename = string_copy(cachedName->filename);
 
     char* fullpath_str;
-    playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, filename);
+    playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, cachedName->filename);
     game->fullpath = fullpath_str;
 
-    game->name_short = NULL;
-    game->name_detailed = NULL;
-    game->name_original_long = NULL;
-    game->name_filename = NULL;
-
-    for (int i = 0; i < PGB_App->gameNameCache->length; i++)
-    {
-        PGB_GameName* cachedName = PGB_App->gameNameCache->items[i];
-        if (strcmp(cachedName->filename, filename) == 0)
-        {
-            game->name_short = string_copy(cachedName->name_short);
-            game->name_detailed = string_copy(cachedName->name_detailed);
-            game->name_original_long = string_copy(cachedName->name_original_long);
-            game->name_filename = string_copy(cachedName->name_filename);
-            break;
-        }
-    }
-
-    char* basename_no_ext = pgb_basename(filename, true);
-
-    if (game->name_filename == NULL)
-        game->name_filename = string_copy(basename_no_ext);
-    if (game->name_short == NULL)
-        game->name_short = string_copy(basename_no_ext);
-    if (game->name_detailed == NULL)
-        game->name_detailed = string_copy(basename_no_ext);
+    game->name_short = string_copy(cachedName->name_short);
+    game->name_detailed = string_copy(cachedName->name_detailed);
+    game->name_original_long = string_copy(cachedName->name_original_long);
+    game->name_filename = string_copy(cachedName->name_filename);
 
     switch (preferences_display_name_mode)
     {
@@ -1288,6 +1277,7 @@ PGB_Game* PGB_Game_new(const char* filename)
         break;
     }
 
+    char* basename_no_ext = pgb_basename(cachedName->filename, true);
     char* cleanName_no_ext = string_copy(basename_no_ext);
     pgb_sanitize_string_for_filename(cleanName_no_ext);
 
