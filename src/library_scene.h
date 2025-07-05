@@ -45,7 +45,6 @@ typedef struct PGB_Game
     char* name_detailed;
     char* name_original_long;
     char* name_filename;
-    char* sortkey;
 
     // points to one of the other strings in this struct;
     // should not be free'd directly

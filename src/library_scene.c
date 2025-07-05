@@ -1261,7 +1261,6 @@ PGB_Game* PGB_Game_new(const char* filename)
             game->name_detailed = string_copy(cachedName->name_detailed);
             game->name_original_long = string_copy(cachedName->name_original_long);
             game->name_filename = string_copy(cachedName->name_filename);
-            game->sortkey = string_copy(cachedName->sortkey);
             break;
         }
     }
@@ -1309,7 +1308,6 @@ void PGB_Game_free(PGB_Game* game)
     pgb_free(game->name_detailed);
     pgb_free(game->name_original_long);
     pgb_free(game->name_filename);
-    pgb_free(game->sortkey);
 
     pgb_free(game);
 }

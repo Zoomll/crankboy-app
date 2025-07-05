@@ -22,8 +22,6 @@
 
 PGB_Application* PGB_App;
 
-static void PGB_precacheGameNames(void);
-
 #if defined(TARGET_SIMULATOR)
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -392,65 +390,6 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
     }
 }
 
-static void PGB_precacheGameNames(void)
-{
-    playdate->system->logToConsole("Precaching game names...");
-
-    PGB_Array* game_filenames = array_new();
-    pgb_listfiles(PGB_gamesPath, collect_game_filenames_callback, game_filenames, 0, kFileReadData);
-
-    for (int i = 0; i < game_filenames->length; i++)
-    {
-        const char* filename = game_filenames->items[i];
-
-        char progress_message[100];
-        snprintf(
-            progress_message, sizeof(progress_message), "Scanning Games… (%d/%d)", i + 1,
-            game_filenames->length
-        );
-        pgb_draw_logo_with_message(progress_message);
-
-        PGB_GameName* newName = pgb_malloc(sizeof(PGB_GameName));
-
-        newName->filename = string_copy(filename);
-        newName->name_filename = pgb_basename(filename, true);
-
-        char* fullpath;
-        playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
-
-        PGB_FetchedNames fetched = pgb_get_titles_from_db(fullpath);
-
-        pgb_free(fullpath);
-
-        newName->name_original_long =
-            (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
-        newName->name_short = (fetched.short_name) ? common_article_form(fetched.short_name)
-                                                   : common_article_form(newName->name_filename);
-        newName->name_detailed = (fetched.detailed_name)
-                                     ? common_article_form(fetched.detailed_name)
-                                     : common_article_form(newName->name_filename);
-        newName->sortkey = (fetched.detailed_name) ? string_copy(fetched.detailed_name)
-                                                   : string_copy(newName->name_filename);
-
-        if (fetched.short_name)
-            pgb_free(fetched.short_name);
-        if (fetched.detailed_name)
-            pgb_free(fetched.detailed_name);
-
-        array_push(PGB_App->gameNameCache, newName);
-    }
-
-    for (int i = 0; i < game_filenames->length; i++)
-    {
-        pgb_free(game_filenames->items[i]);
-    }
-    array_free(game_filenames);
-
-    playdate->system->logToConsole(
-        "Finished precaching %d game names.", PGB_App->gameNameCache->length
-    );
-}
-
 __section__(".rare") static void switchToPendingScene(void)
 {
     PGB_Scene* scene = PGB_App->scene;
@@ -618,7 +557,6 @@ void PGB_quit(void)
             pgb_free(gameName->name_detailed);
             pgb_free(gameName->name_original_long);
             pgb_free(gameName->name_filename);
-            pgb_free(gameName->sortkey);
             pgb_free(gameName);
         }
         array_free(PGB_App->gameNameCache);

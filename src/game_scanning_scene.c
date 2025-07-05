@@ -49,8 +49,6 @@ static void process_one_game(const char* filename)
                                                : common_article_form(newName->name_filename);
     newName->name_detailed = (fetched.detailed_name) ? common_article_form(fetched.detailed_name)
                                                      : common_article_form(newName->name_filename);
-    newName->sortkey = (fetched.detailed_name) ? string_copy(fetched.detailed_name)
-                                               : string_copy(newName->name_filename);
 
     if (fetched.short_name)
         pgb_free(fetched.short_name);
