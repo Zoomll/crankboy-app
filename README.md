@@ -87,7 +87,7 @@ The value for each preference under `"default"` must be a non-negative integer, 
 
 As an alternative to marking preferences as hidden, you can instead whitelist preferences that you wish to be exposed to the user by using `"visible"` instead of `"hidden"`. If you wish for the preferences menu to be hidden *entirely*, simply use `"visible": []`. A list of preferences and their names can be found [here](./src/prefs.x).
 
-Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`.
+Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`. It's also strongly recommended that you add a [Lua script](./lua-docs.md) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy.
 
 ## Contributions
 
