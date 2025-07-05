@@ -1027,3 +1027,74 @@ PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
     free_json_data(db_json);
     return names;
 }
+
+static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",
+                           ", Les", ", Der", ", Die", ", Das", ", Un", NULL};
+
+// arranges names like `Black Onyx, The (Japan)` -> `The Black Onyx (Japan)`
+char* common_article_form(const char* input)
+{
+    // Find the first occurrence of " - " or " ("
+    const char* split_pos = NULL;
+    const char* dash_pos = strstr(input, " - ");
+    const char* paren_pos = strstr(input, " (");
+
+    if (dash_pos && paren_pos)
+    {
+        split_pos = (dash_pos < paren_pos) ? dash_pos : paren_pos;
+    }
+    else if (dash_pos)
+    {
+        split_pos = dash_pos;
+    }
+    else if (paren_pos)
+    {
+        split_pos = paren_pos;
+    }
+
+    if (!split_pos)
+    {
+        split_pos = input + strlen(input);
+    }
+
+    // split into A and B at split_pos
+    size_t a_len = split_pos - input;
+    char a_part[a_len + 1];
+    strncpy(a_part, input, a_len);
+    a_part[a_len] = '\0';
+
+    const char* b_part = split_pos;
+    size_t b_len = strlen(b_part);
+
+    // Check if A ends with any article
+    for (int i = 0; articles[i] != NULL; i++)
+    {
+        size_t article_len = strlen(articles[i]);
+        if (a_len >= article_len && strcmp(a_part + a_len - article_len, articles[i]) == 0)
+        {
+
+            // matching article found
+            size_t new_a_len = a_len - article_len;
+            a_part[new_a_len] = 0;
+
+            size_t result_len = a_len - 1 + b_len;
+            char result[result_len + 1];
+
+            // article (without ", ")
+            memcpy(result, articles[i] + 2, article_len - 2);
+            result[article_len - 2] = ' ';
+
+            // A
+            memcpy(result + article_len - 1, a_part, new_a_len);
+
+            // B
+            memcpy(result + article_len - 1 + new_a_len, b_part, b_len);
+
+            result[result_len] = 0;
+
+            return strdup(result);
+        }
+    }
+
+    return strdup(input);
+}

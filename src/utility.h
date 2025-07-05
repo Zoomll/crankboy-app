@@ -76,6 +76,7 @@ char* string_copy(const char* string);
 char* pgb_basename(const char* filename, bool stripExtension);
 char* pgb_save_filename(const char* filename, bool isRecovery);
 char* pgb_extract_fs_error_code(const char* filename);
+char* common_article_form(const char* input);
 
 float pgb_easeInOutQuad(float x);
 

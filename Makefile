@@ -35,6 +35,7 @@ SRC += src/http.c
 SRC += src/version.c
 SRC += src/credits_scene.c
 SRC += src/modal.c
+SRC += src/game_scanning_scene.c
 SRC += src/game_scene.c
 SRC += src/userstack.c
 SRC += src/jparse.c

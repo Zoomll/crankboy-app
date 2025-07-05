@@ -11,6 +11,7 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "credits_scene.h"
 #include "dtcm.h"
+#include "game_scanning_scene.h"
 #include "game_scene.h"
 #include "image_conversion_scene.h"
 #include "jparse.h"
@@ -213,101 +214,8 @@ void PGB_init(void)
 
     free_json_data(manifest);
 
-    PGB_precacheGameNames();
-
-    // check if any PNGs are in the covers/ folder
-    bool png_found = false;
-    pgb_listfiles(PGB_coversPath, checkForPngCallback, &png_found, true, kFileReadData);
-
-#if 1
-    if (png_found)
-    {
-        PGB_ImageConversionScene* imageConversionScene = PGB_ImageConversionScene_new();
-        PGB_present(imageConversionScene->scene);
-    }
-    else
-    {
-        pgb_draw_logo_with_message("Loading Library…");
-
-        PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
-        PGB_present(libraryScene->scene);
-    }
-#else
-    // test credits
-    PGB_CreditsScene* credits = PGB_CreditsScene_new();
-    PGB_present(credits->scene);
-#endif
-}
-
-static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",
-                           ", Les", ", Der", ", Die", ", Das", ", Un", NULL};
-
-// arranges names like `Black Onyx, The (Japan)` -> `The Black Onyx (Japan)`
-static char* common_article_form(const char* input)
-{
-    // Find the first occurrence of " - " or " ("
-    const char* split_pos = NULL;
-    const char* dash_pos = strstr(input, " - ");
-    const char* paren_pos = strstr(input, " (");
-
-    if (dash_pos && paren_pos)
-    {
-        split_pos = (dash_pos < paren_pos) ? dash_pos : paren_pos;
-    }
-    else if (dash_pos)
-    {
-        split_pos = dash_pos;
-    }
-    else if (paren_pos)
-    {
-        split_pos = paren_pos;
-    }
-
-    if (!split_pos)
-    {
-        split_pos = input + strlen(input);
-    }
-
-    // split into A and B at split_pos
-    size_t a_len = split_pos - input;
-    char a_part[a_len + 1];
-    strncpy(a_part, input, a_len);
-    a_part[a_len] = '\0';
-
-    const char* b_part = split_pos;
-    size_t b_len = strlen(b_part);
-
-    // Check if A ends with any article
-    for (int i = 0; articles[i] != NULL; i++)
-    {
-        size_t article_len = strlen(articles[i]);
-        if (a_len >= article_len && strcmp(a_part + a_len - article_len, articles[i]) == 0)
-        {
-
-            // matching article found
-            size_t new_a_len = a_len - article_len;
-            a_part[new_a_len] = 0;
-
-            size_t result_len = a_len - 1 + b_len;
-            char result[result_len + 1];
-
-            // article (without ", ")
-            memcpy(result, articles[i] + 2, article_len - 2);
-            result[article_len - 2] = ' ';
-
-            // A
-            memcpy(result + article_len - 1, a_part, new_a_len);
-
-            // B
-            memcpy(result + article_len - 1 + new_a_len, b_part, b_len);
-
-            result[result_len] = 0;
-
-            return strdup(result);
-        }
-    }
-
-    return strdup(input);
+    PGB_GameScanningScene* scanningScene = PGB_GameScanningScene_new();
+    PGB_present(scanningScene->scene);
 }
 
 static void collect_game_filenames_callback(const char* filename, void* userdata)
