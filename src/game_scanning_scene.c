@@ -75,9 +75,9 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     case kScanningStateInit:
     {
         pgb_draw_logo_with_message("Finding Games…");
-        pgb_listfiles(
-            PGB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0,
-            kFileReadData
+
+        playdate->file->listfiles(
+            PGB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
         );
 
         if (scanScene->game_filenames->length == 0)
