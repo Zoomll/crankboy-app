@@ -255,6 +255,8 @@ void PGB_init(void)
     memset(PGB_App, 0, sizeof(*PGB_App));
 
     PGB_App->gameNameCache = array_new();
+    PGB_App->gameListCache = array_new();
+    PGB_App->gameListCacheIsSorted = false;
     PGB_App->scene = NULL;
 
     PGB_App->pendingScene = NULL;
@@ -509,8 +511,6 @@ void PGB_dismiss(PGB_Scene* sceneToDismiss)
 
 void PGB_goToLibrary(void)
 {
-    pgb_draw_logo_with_message("Returning to Library…");
-
     PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
     PGB_present(libraryScene->scene);
 }
@@ -560,6 +560,16 @@ void PGB_quit(void)
             pgb_free(gameName);
         }
         array_free(PGB_App->gameNameCache);
+    }
+
+    if (PGB_App->gameListCache)
+    {
+        for (int i = 0; i < PGB_App->gameListCache->length; i++)
+        {
+            PGB_Game_free(PGB_App->gameListCache->items[i]);
+        }
+        array_free(PGB_App->gameListCache);
+        PGB_App->gameListCache = NULL;
     }
 
     pgb_free(PGB_App);

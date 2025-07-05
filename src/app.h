@@ -71,6 +71,8 @@ typedef struct PGB_Application
     SoundSource* soundSource;
     PGB_GlobalCoverCache coverArtCache;
     PGB_Array* gameNameCache;
+    PGB_Array* gameListCache;
+    bool gameListCacheIsSorted;
     struct PDSynth* clickSynth;
     PDButtons buttons_down;
     PDButtons buttons_pressed;

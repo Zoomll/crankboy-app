@@ -408,7 +408,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->model = (PGB_LibrarySceneModel){.empty = true, .tab = PGB_LibrarySceneTabList};
 
-    libraryScene->games = array_new();
+    libraryScene->games = PGB_App->gameListCache;
     libraryScene->listView = PGB_ListView_new();
     libraryScene->listView->selectedItem = last_selected_game_index;
     libraryScene->tab = PGB_LibrarySceneTabList;
@@ -452,6 +452,7 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
     }
 
     pgb_sort_games_array(libraryScene->games);
+    PGB_App->gameListCacheIsSorted = true;
 
     int newSelectedIndex = 0;
     if (selectedFilename)
@@ -499,8 +500,22 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
         case kLibraryStateInit:
         {
-            pgb_draw_logo_with_message("Loading Library…");
-            libraryScene->state = kLibraryStateBuildGameList;
+            if (libraryScene->games->length > 0)
+            {
+                if (PGB_App->gameListCacheIsSorted)
+                {
+                    libraryScene->build_index = 0;
+                    libraryScene->state = kLibraryStateBuildUIList;
+                }
+                else
+                {
+                    libraryScene->state = kLibraryStateSort;
+                }
+            }
+            else
+            {
+                libraryScene->state = kLibraryStateBuildGameList;
+            }
             return;
         }
 
@@ -526,6 +541,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
             else
             {
+                PGB_App->gameListCacheIsSorted = false;
                 libraryScene->state = kLibraryStateSort;
             }
             return;
@@ -535,6 +551,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             pgb_draw_logo_with_message("Sorting…");
             pgb_sort_games_array(libraryScene->games);
+            PGB_App->gameListCacheIsSorted = true;
 
             libraryScene->build_index = 0;
             libraryScene->state = kLibraryStateBuildUIList;
@@ -1226,15 +1243,7 @@ static void PGB_LibraryScene_free(void* object)
         PGB_ListItem_free(item);
     }
 
-    for (int i = 0; i < libraryScene->games->length; i++)
-    {
-        PGB_Game* game = libraryScene->games->items[i];
-        PGB_Game_free(game);
-    }
-
     PGB_ListView_free(libraryScene->listView);
-
-    array_free(libraryScene->games);
 
     if (libraryScene->coverDownloadMessage)
     {
