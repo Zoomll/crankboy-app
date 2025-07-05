@@ -122,7 +122,7 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         );
 
         bool png_found = false;
-        pgb_listfiles(PGB_coversPath, checkForPngCallback, &png_found, true, kFileReadData);
+        playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, true);
 
         if (png_found)
         {
