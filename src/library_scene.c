@@ -669,6 +669,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             if (PGB_App->coverArtCache.art.status != PGB_COVER_ART_SUCCESS &&
                 libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE && hasDBMatch)
             {
+                pgb_play_ui_sound(PGB_UISound_Confirm);
                 PGB_LibraryScene_startCoverDownload(libraryScene);
             }
         }
