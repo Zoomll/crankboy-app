@@ -10,9 +10,9 @@
 #define app_h
 
 #include "pd_api.h"
+#include "preferences.h"
 #include "scene.h"
 #include "utility.h"
-#include "preferences.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -78,9 +78,9 @@ typedef struct PGB_Application
     PDButtons buttons_released;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
-                                 
-    // If this is non-null, then the app is intended to contain exactly one ROM due to the presence of bundle.json
-    // The following changes are made:
+
+    // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
+    // of bundle.json The following changes are made:
     // - library view is omitted
     // - credits accessible via setings
     // - no per-game/global settings distinction

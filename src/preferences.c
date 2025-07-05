@@ -8,9 +8,9 @@
 
 #include "preferences.h"
 
+#include "app.h"
 #include "jparse.h"
 #include "revcheck.h"
-#include "app.h"
 
 static const int pref_version = 1;
 
@@ -21,7 +21,7 @@ static const int pref_version = 1;
 const int pref_count =
 #include "prefs.x"
     0;
-    
+
 void* preferences_bundle_default = NULL;
 preferences_bitfield_t preferences_bundle_hidden = 0;
 
@@ -40,7 +40,8 @@ static void preferences_set_defaults(void)
 #include "prefs.x"
 
     // check bundle
-    if (preferences_bundle_default) preferences_restore_subset(preferences_bundle_default);
+    if (preferences_bundle_default)
+        preferences_restore_subset(preferences_bundle_default);
 }
 
 void preferences_init(void)

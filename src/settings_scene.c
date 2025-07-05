@@ -8,13 +8,13 @@
 
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
+#include "credits_scene.h"
 #include "dtcm.h"
 #include "modal.h"
 #include "preferences.h"
 #include "revcheck.h"
 #include "userstack.h"
 #include "utility.h"
-#include "credits_scene.h"
 
 #include <stdlib.h>
 
@@ -863,24 +863,27 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     /* clang-format on */
     PGB_ASSERT(i < max_entries - 1);
-    
+
     // remove any entries hidden by bundle
     if (preferences_bundle_hidden)
     {
-        for (size_t j = max_entries - 1; j --> 0;)
+        for (size_t j = max_entries - 1; j-- > 0;)
         {
             bool remove = false;
             struct OptionsMenuEntry* entry = &entries[j];
-            
+
             // remove header if no options below it
-            if (entry->header && (entries[j+1].header || !entries[j+1].name)) goto do_remove;
-            
-            // remove normal option (if hidden)
-            #define PREF(p, ...) if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) goto do_remove;
-            #include "prefs.x"
-            
+            if (entry->header && (entries[j + 1].header || !entries[j + 1].name))
+                goto do_remove;
+
+// remove normal option (if hidden)
+#define PREF(p, ...)                                                                      \
+    if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) \
+        goto do_remove;
+#include "prefs.x"
+
             continue;
-        
+
         do_remove:
             for (size_t k = j; k < max_entries - 1; ++k)
             {

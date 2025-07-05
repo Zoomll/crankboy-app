@@ -11,6 +11,7 @@
 #include "../minigb_apu/minigb_apu.h"
 #include "../peanut_gb/peanut_gb.h"
 #include "app.h"
+#include "credits_scene.h"
 #include "dtcm.h"
 #include "info_scene.h"
 #include "library_scene.h"
@@ -21,7 +22,6 @@
 #include "settings_scene.h"
 #include "userstack.h"
 #include "utility.h"
-#include "credits_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
