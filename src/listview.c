@@ -470,6 +470,15 @@ void PGB_ListView_draw(PGB_ListView* listView)
 
             int rowY = listY + item->offsetY - listView->contentOffset;
 
+            if (rowY + item->height < listY)
+            {
+                continue;
+            }
+            if (rowY > listY + listView->frame.height)
+            {
+                break;
+            }
+
             bool selected = (i == listView->selectedItem);
 
             if (selected)
