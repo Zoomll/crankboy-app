@@ -59,15 +59,9 @@ Also note that ROMs and cover art cannot be *replaced* or *deleted* through this
 
 Bundling a ROM allows you to have a Game Boy ROM appear directly on the Playdate OS main menu along with your other non-game-boy games and apps. The primary reason for this is to allow Game Boy developers to release their games directly as playdate games. However, you can also use it if you'd simply like for one or more ROMs to appear directly in the Playdate OS main menu.
 
-<<<<<<< HEAD
-To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >` and remove the `// comments`):
-||||||| parent of 8dad2cd (update README and BundleID check)
-To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >`):
-=======
 There are two steps to enabling Bundle mode. Step 1 is to modify the [launcher assets](./Source/launcher/) and [pdxinfo](./Source/pdxinfo) to suit your application. You **must** change the `bundleID` field to something other than `app.crankboyhq.crankboy`.
 
 Step 2 is to create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >` and remove the `// comments`):
->>>>>>> 8dad2cd (update README and BundleID check)
 
 ```
 {
