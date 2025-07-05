@@ -500,7 +500,27 @@ void PGB_ListView_draw(PGB_ListView* listView)
 
                 playdate->graphics->setFont(PGB_App->subheadFont);
 
-                int maxTextWidth = leftPanelWidth - PGB_ListView_inset - 1;
+                int rightSidePadding;
+
+                if (listView->scroll.indicatorVisible)
+                {
+                    // If the scrollbar is visible, the padding must be wide enough
+                    // to contain the scrollbar itself plus its inset.
+                    rightSidePadding = PGB_ListView_scrollIndicatorWidth + PGB_ListView_scrollInset;
+                }
+                else
+                {
+                    // If no scrollbar, we just need a 1-pixel gap to avoid
+                    // text touching the divider line on the right.
+                    rightSidePadding = 1;
+                }
+
+                int maxTextWidth = listView->frame.width - PGB_ListView_inset - rightSidePadding;
+
+                if (maxTextWidth < 0)
+                {
+                    maxTextWidth = 0;
+                }
 
                 playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
 
