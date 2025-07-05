@@ -83,7 +83,9 @@ typedef struct PGB_LibraryScene
     CoverDownloadState coverDownloadState;
     char* coverDownloadMessage;
     HTTPConnection* activeCoverDownloadConnection;
+
     bool showCrc;
+    bool isReloading;
 } PGB_LibraryScene;
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);

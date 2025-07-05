@@ -417,6 +417,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->initialLoadComplete = false;
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
     libraryScene->showCrc = false;
+    libraryScene->isReloading = false;
 
     pgb_clear_global_cover_cache();
 
@@ -503,6 +504,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             if (libraryScene->games->length > 0)
             {
+                libraryScene->isReloading = true;
                 if (PGB_App->gameListCacheIsSorted)
                 {
                     libraryScene->build_index = 0;
@@ -550,7 +552,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         case kLibraryStateSort:
         {
-            pgb_draw_logo_with_message("Sorting…");
+            if (!libraryScene->isReloading)
+            {
+                pgb_draw_logo_with_message("Sorting…");
+            }
+
             pgb_sort_games_array(libraryScene->games);
             PGB_App->gameListCacheIsSorted = true;
 
@@ -580,7 +586,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 snprintf(
                     progress_message, sizeof(progress_message), "Loading Library… %d%%", percentage
                 );
-                pgb_draw_logo_with_message(progress_message);
+
+                if (!libraryScene->isReloading)
+                {
+                    pgb_draw_logo_with_message(progress_message);
+                }
             }
             else
             {

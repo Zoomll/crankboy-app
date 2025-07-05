@@ -98,7 +98,7 @@ static void copy_file_callback(const char* filename, void* userdata)
                 pgb_draw_logo_with_message(msg);
                 free(msg);
             }
-            
+
             bool success = pgb_write_entire_file(dst_path, dat, size);
             free(dat);
 
@@ -360,7 +360,7 @@ void PGB_init(void)
             ud.manifest = &manifest;
             ud.directory = sources[i];
             ud.modified = &modified;
-            
+
             playdate->file->listfiles(sources[i], copy_file_callback, &ud, true);
         }
 

@@ -58,8 +58,9 @@ static void process_one_game(const char* filename)
     if (fetched.detailed_name)
         pgb_free(fetched.detailed_name);
 
-    // We omit un-openable ROMs, as they are likely not in the Data directory (PDX only) for some reason.
-    // Perhaps the user wanted to remove a ROM after earlier installing it with the copy-from-PDX method.
+    // We omit un-openable ROMs, as they are likely not in the Data directory (PDX only) for some
+    // reason. Perhaps the user wanted to remove a ROM after earlier installing it with the
+    // copy-from-PDX method.
     if (!fetched.failedToOpenROM)
     {
         array_push(PGB_App->gameNameCache, newName);

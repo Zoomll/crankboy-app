@@ -410,8 +410,9 @@ static int process_png(const char* fname)
 {
     size_t len;
     void* data = pgb_read_entire_file(fname, &len, kFileReadData);
-    if (!data) return -1;
-    
+    if (!data)
+        return -1;
+
     bool success = false;
 
     if (data)
@@ -456,7 +457,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
         pgb_draw_logo_with_message("Scanning for new images…");
 
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
-        
+
         convScene->state = kStateDone;
 
         // check if any files are in the data directory.
@@ -476,27 +477,28 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
         }
         break;
     }
-    
+
     case kStatePrompt:
     {
         playdate->graphics->clear(kColorWhite);
-        
+
         int margin = 16;
-        int width = LCD_COLUMNS - 2*margin;
-        
-        const char* msg = "One or more image files need to be converted to PDI format.\n\nThe original image files will then be deleted.\n\nPress Ⓐ to confirm.";
-        
+        int width = LCD_COLUMNS - 2 * margin;
+
+        const char* msg =
+            "One or more image files need to be converted to PDI format.\n\nThe original image "
+            "files will then be deleted.\n\nPress Ⓐ to confirm.";
+
         playdate->graphics->setFont(PGB_App->bodyFont);
         playdate->graphics->drawTextInRect(
-            msg, strlen(msg), kUTF8Encoding, margin,
-            50, width, 300, kWrapWord, kAlignTextCenter
+            msg, strlen(msg), kUTF8Encoding, margin, 50, width, 300, kWrapWord, kAlignTextCenter
         );
-        
+
         if (PGB_App->buttons_pressed & kButtonA)
         {
             convScene->state = kStateConverting;
         }
-        
+
         break;
     }
 
@@ -527,7 +529,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             int result = process_png(full_fname);
             free(full_fname);
-            
+
             if (result >= 0)
             {
                 printf("  result: %d\n", (int)result);
