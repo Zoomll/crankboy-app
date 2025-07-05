@@ -17,6 +17,7 @@
 #include "utility.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -78,6 +79,13 @@ void display_script_info(struct OptionsMenuEntry* entry, PGB_SettingsScene* sett
     {
         show_game_script_info(gameScene->rom_filename);
     }
+}
+
+static bool string_has_descenders(const char* str)
+{
+    if (!str)
+        return false;
+    return strpbrk(str, "gjpqy") != NULL;
 }
 
 PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
@@ -848,7 +856,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             entries[i].description = itcm_base_desc;
         }
     #endif
-    
+
     if (PGB_App->bundled_rom)
     {
         entries[++i] = (OptionsMenuEntry){
@@ -1245,11 +1253,19 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         );
         int textX = LCD_COLUMNS / 2 - nameWidth / 2;
 
+        // Dynamically adjust vertical offset based on text content
+        int fontHeight = playdate->graphics->getFontHeight(font);
+
+        // Check if the title has descenders and apply a different offset.
+        // This provides a better visual center for all titles.
+        int vertical_offset = string_has_descenders(gameScene->name_short) ? 0 : 2;
+        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
+
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
         playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
         playdate->graphics->drawText(
-            gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, 2
+            gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, textY
         );
     }
 
