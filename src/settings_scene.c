@@ -65,6 +65,8 @@ typedef struct OptionsMenuEntry
     void* ud;
 } OptionsMenuEntry;
 
+static void* last_selected_preference;
+
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
 
 void display_credits(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
@@ -192,6 +194,19 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     preferences_ui_sounds = global_ui_sounds;
 
     PGB_Scene_refreshMenu(scene);
+    
+    if (last_selected_preference)
+    {
+        int i = 0;
+        for (OptionsMenuEntry* entry = settingsScene->entries; entry->name; ++entry, ++i)
+        {
+            if (entry->pref_var == last_selected_preference)
+            {
+                settingsScene->cursorIndex = i;
+                break;
+            }
+        }
+    }
 
     update_thumbnail(settingsScene);
 
@@ -1168,6 +1183,14 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             } while (settingsScene->entries[settingsScene->cursorIndex].header);
         }
     }
+    
+    // Note that storing last selected by the entry's corresponding pref var
+    // has the unexpected side effect that "load state" will always be stored
+    // as "save state."
+    //
+    // This is actually a good thing! We don't want to mess with players' muscle
+    // memories and cause them to accidentally load state when they mean to save state
+    last_selected_preference = settingsScene->entries[settingsScene->cursorIndex].pref_var;
 
     if (oldCursorIndex != settingsScene->cursorIndex)
     {
