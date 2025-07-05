@@ -59,7 +59,7 @@ Also note that ROMs and cover art cannot be *replaced* or *deleted* through this
 
 Bundling a ROM allows you to have a Game Boy ROM appear directly on the Playdate OS main menu along with your other non-game-boy games and apps. The primary reason for this is to allow Game Boy developers to release their games directly as playdate games. However, you can also use it if you'd simply like for one or more ROMs to appear directly in the Playdate OS main menu.
 
-To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >`):
+To enable Bundle mode, create a file called `bundle.json` and place it in the root of the PDX. It should be a standard `JSON` file like so (replace the fields marked by `< >` and remove the `// comments`):
 
 ```
 {
