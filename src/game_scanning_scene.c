@@ -25,17 +25,7 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
 
     if ((pgb_strcmp(extension, "gb") == 0 || pgb_strcmp(extension, "gbc") == 0))
     {
-        char* fullpath = aprintf("%s/%s", PGB_gamesPath, filename);
-        if (fullpath)
-        {
-            // unless we're in bundled mode (where we shouldn't be scanning regardless),
-            // only add ROMs if they are present in the data directory.
-            if (PGB_App->bundled_rom || pgb_file_exists(fullpath, kFileReadData))
-            {
-                array_push(filenames_array, string_copy(filename));
-            }
-            free(fullpath);
-        }
+        array_push(filenames_array, string_copy(filename));
     }
 }
 
