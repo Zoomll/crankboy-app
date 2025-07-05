@@ -188,8 +188,6 @@ static int check_is_bundle(void)
     ++i;
 #include "prefs.x"
             }
-
-            preferences_bundle_default;
         }
 
         // hidden
