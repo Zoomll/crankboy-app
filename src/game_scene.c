@@ -1343,16 +1343,16 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
-    if (preferences_crank_undock_button && !gameScene->crank_was_docked &&
-        playdate->system->isCrankDocked())
+    if (preferences_crank_undock_button && gameScene->crank_was_docked &&
+        !playdate->system->isCrankDocked())
     {
         if (preferences_crank_undock_button == PREF_BUTTON_START)
             gameScene->selector.startPressed = true;
         else if (preferences_crank_undock_button == PREF_BUTTON_SELECT)
             gameScene->selector.selectPressed = true;
     }
-    if (preferences_crank_dock_button && gameScene->crank_was_docked &&
-        !playdate->system->isCrankDocked())
+    if (preferences_crank_dock_button && !gameScene->crank_was_docked &&
+        playdate->system->isCrankDocked())
     {
         if (preferences_crank_dock_button == PREF_BUTTON_START)
             gameScene->selector.startPressed = true;
