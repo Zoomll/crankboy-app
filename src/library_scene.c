@@ -214,6 +214,14 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         return;
     }
 
+    for (char* p = encoded_name; *p; ++p)
+    {
+        if (*p == '&')
+        {
+            *p = '_';
+        }
+    }
+
     char* url_path;
     playdate->system->formatString(
         &url_path, "/CrankBoyHQ/crankboy-covers/raw/refs/heads/main/Combined_Boxarts/%s.pdi",
