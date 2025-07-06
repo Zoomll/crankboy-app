@@ -5,7 +5,7 @@
 #include "library_scene.h"
 #include "utility.h"
 
-#define MAX_CACHE_SIZE_BYTES (2048 * 1024)  // 2MB
+#define MAX_CACHE_SIZE_BYTES (3072 * 1024)  // 3MB
 
 void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt);
 void PGB_CoverCacheScene_free(void* object);
@@ -61,8 +61,6 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
     {
     case kCoverCacheStateInit:
     {
-        pgb_draw_logo_screen_to_buffer("Finding Covers…");
-
         playdate->file->listfiles(
             PGB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
         );
@@ -168,7 +166,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
                             int compressed_size = LZ4_compress_HC(
                                 (const char*)uncompressed_buffer, compressed_buffer, original_size,
-                                max_dst_size, LZ4HC_CLEVEL_MAX
+                                max_dst_size, LZ4HC_CLEVEL_MIN
                             );
 
                             pgb_free(uncompressed_buffer);
