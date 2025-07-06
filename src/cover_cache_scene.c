@@ -99,9 +99,10 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             PGB_Game* game = PGB_App->gameListCache->items[cacheScene->current_index];
 
             char progress_message[100];
+            int total = PGB_App->gameListCache->length;
+            int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 100;
             snprintf(
-                progress_message, sizeof(progress_message), "Caching Covers… (%d/%d)",
-                cacheScene->current_index + 1, PGB_App->gameListCache->length
+                progress_message, sizeof(progress_message), "Caching Covers… %d%%", percentage
             );
             pgb_draw_logo_screen_to_buffer(progress_message);
 
