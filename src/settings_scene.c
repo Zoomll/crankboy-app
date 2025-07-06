@@ -194,7 +194,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     preferences_ui_sounds = global_ui_sounds;
 
     PGB_Scene_refreshMenu(scene);
-    
+
     if (last_selected_preference)
     {
         int i = 0;
@@ -1183,7 +1183,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             } while (settingsScene->entries[settingsScene->cursorIndex].header);
         }
     }
-    
+
     // Note that storing last selected by the entry's corresponding pref var
     // has the unexpected side effect that "load state" will always be stored
     // as "save state."

@@ -47,13 +47,12 @@ static void process_one_game(const char* filename)
 
     pgb_free(fullpath);
 
-    newName->name_database =
-        (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
-    newName->name_short = (fetched.short_name) ? strdup(fetched.short_name)
-                                               : strdup(newName->name_filename);
-    newName->name_detailed = (fetched.detailed_name) ? strdup(fetched.detailed_name)
-                                                     : strdup(newName->name_filename);
-                                                     
+    newName->name_database = (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
+    newName->name_short =
+        (fetched.short_name) ? strdup(fetched.short_name) : strdup(newName->name_filename);
+    newName->name_detailed =
+        (fetched.detailed_name) ? strdup(fetched.detailed_name) : strdup(newName->name_filename);
+
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
 

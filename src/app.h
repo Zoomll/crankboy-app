@@ -42,17 +42,17 @@ typedef struct
 {
     // basename, including extension
     char* filename;
-    
+
     // CRC32 of rom's contents
     uint32_t crc32;
-    
+
     // common database name, for thumbnail matching etc.
     char* name_database;
-    
+
     // human-readable variations
     char* name_short;
     char* name_detailed;
-    char* name_filename; // (basename, extension stripped)
+    char* name_filename;  // (basename, extension stripped)
     char* name_short_leading_article;
     char* name_detailed_leading_article;
     char* name_filename_leading_article;

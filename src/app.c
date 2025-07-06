@@ -546,7 +546,8 @@ __section__(".rare") void PGB_event(PDSystemEvent event, uint32_t arg)
 void free_game_names(const PGB_GameName* gameName)
 {
     pgb_free(gameName->filename);
-    if (gameName->name_database) pgb_free(gameName->name_database);
+    if (gameName->name_database)
+        pgb_free(gameName->name_database);
     pgb_free(gameName->name_short);
     pgb_free(gameName->name_detailed);
     pgb_free(gameName->name_filename);
@@ -559,11 +560,11 @@ void copy_game_names(const PGB_GameName* src, PGB_GameName* dst)
 {
     dst->filename = strdup(src->filename);
     dst->name_database = src->name_database ? strdup(src->name_database) : 0;
-    
+
     dst->name_short = strdup(src->name_short);
     dst->name_detailed = strdup(src->name_detailed);
     dst->name_filename = strdup(src->name_filename);
-    
+
     dst->name_short_leading_article = strdup(src->name_short_leading_article);
     dst->name_detailed_leading_article = strdup(src->name_detailed_leading_article);
     dst->name_filename_leading_article = strdup(src->name_filename_leading_article);
