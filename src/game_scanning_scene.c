@@ -156,8 +156,6 @@ void PGB_GameScanningScene_free(void* object)
 {
     PGB_GameScanningScene* scanScene = object;
 
-    playdate->system->logToConsole("Freeing GameScanningScene");
-
     if (scanScene->game_filenames)
     {
         for (int i = 0; i < scanScene->game_filenames->length; i++)
