@@ -38,7 +38,8 @@ typedef struct
 
 static unsigned combined_display_mode(void)
 {
-    return preferences_display_name_mode | (preferences_display_article << 3) | (preferences_display_sort << 6);
+    return preferences_display_name_mode | (preferences_display_article << 3) |
+           (preferences_display_sort << 6);
 }
 
 static void set_download_status(
@@ -68,6 +69,8 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     }
 
     bool stillOnSameGame = (currentlySelectedGame == game);
+    char* rom_basename_no_ext = NULL;
+    char* cover_dest_path = NULL;
 
     if (flags & HTTP_NOT_FOUND)
     {
@@ -75,8 +78,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         {
             set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, "No cover found.");
         }
-        pgb_free(userdata);
-        return;
+        goto cleanup;
     }
     else if ((flags & ~HTTP_ENABLE_ASKED) != 0 || data == NULL || data_len == 0)
     {
@@ -84,8 +86,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         {
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Download failed.");
         }
-        pgb_free(userdata);
-        return;
+        goto cleanup;
     }
 
     const char* pdi_header = "Playdate IMG";
@@ -93,38 +94,32 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     if (actual_data_start == NULL)
     {
-        // The PDI header was not found in the response. The file is invalid.
         if (stillOnSameGame)
         {
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Invalid file received.");
         }
-        pgb_free(userdata);
-        return;
+        goto cleanup;
     }
 
     size_t new_data_len = data_len - (actual_data_start - data);
 
-    char* rom_basename_no_ext = pgb_basename(game->names.filename, true);
+    rom_basename_no_ext = pgb_basename(game->names.filename, true);
     if (!rom_basename_no_ext)
     {
         if (stillOnSameGame)
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
-        pgb_free(userdata);
-        return;
+        goto cleanup;
     }
 
-    char* cover_dest_path;
     playdate->system->formatString(
         &cover_dest_path, "%s/%s.pdi", PGB_coversPath, rom_basename_no_ext
     );
 
     if (!cover_dest_path)
     {
-        pgb_free(rom_basename_no_ext);
         if (stillOnSameGame)
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
-        pgb_free(userdata);
-        return;
+        goto cleanup;
     }
 
     if (pgb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
@@ -153,8 +148,18 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Failed to save cover.");
     }
 
-    pgb_free(cover_dest_path);
-    pgb_free(rom_basename_no_ext);
+cleanup:
+    if (cover_dest_path)
+    {
+        pgb_free(cover_dest_path);
+    }
+    if (rom_basename_no_ext)
+    {
+        pgb_free(rom_basename_no_ext);
+    }
+
+    libraryScene->activeCoverDownloadConnection = NULL;
+
     pgb_free(userdata);
 }
 
@@ -307,7 +312,8 @@ static void launch_game(void* ud, int option)
     case 3:  // launch game
     launch_normal:
     {
-        PGB_GameScene* gameScene = PGB_GameScene_new(game->fullpath, game->names.name_short_leading_article);
+        PGB_GameScene* gameScene =
+            PGB_GameScene_new(game->fullpath, game->names.name_short_leading_article);
         if (gameScene)
         {
             PGB_present(gameScene->scene);
@@ -409,7 +415,8 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->games = PGB_App->gameListCache;
     libraryScene->listView = PGB_ListView_new();
-    libraryScene->listView->selectedItem = (preferences_library_remember_selection) ? last_selected_game_index : 0;
+    libraryScene->listView->selectedItem =
+        (preferences_library_remember_selection) ? last_selected_game_index : 0;
     libraryScene->tab = PGB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
     libraryScene->last_display_name_mode = combined_display_mode();
@@ -1318,14 +1325,19 @@ static void set_display_and_sort_name(PGB_Game* game)
     switch (preferences_display_name_mode)
     {
     case DISPLAY_NAME_MODE_SHORT:
-        game->displayName = (preferences_display_article) ? game->names.name_short : game->names.name_short_leading_article;
+        game->displayName = (preferences_display_article) ? game->names.name_short
+                                                          : game->names.name_short_leading_article;
         break;
     case DISPLAY_NAME_MODE_DETAILED:
-        game->displayName = (preferences_display_article) ? game->names.name_detailed : game->names.name_detailed_leading_article;
+        game->displayName = (preferences_display_article)
+                                ? game->names.name_detailed
+                                : game->names.name_detailed_leading_article;
         break;
     case DISPLAY_NAME_MODE_FILENAME:
     default:
-        game->displayName = (preferences_display_article) ? game->names.name_filename : game->names.name_filename_leading_article;
+        game->displayName = (preferences_display_article)
+                                ? game->names.name_filename
+                                : game->names.name_filename_leading_article;
         break;
     }
 
@@ -1359,7 +1371,7 @@ PGB_Game* PGB_Game_new(PGB_GameName* cachedName)
     game->fullpath = fullpath_str;
 
     copy_game_names(cachedName, &game->names);
-    
+
     set_display_and_sort_name(game);
 
     char* basename_no_ext = pgb_basename(cachedName->filename, true);
@@ -1378,7 +1390,7 @@ void PGB_Game_free(PGB_Game* game)
 {
     pgb_free(game->fullpath);
     pgb_free(game->coverPath);
-    
+
     free_game_names(&game->names);
 
     pgb_free(game);

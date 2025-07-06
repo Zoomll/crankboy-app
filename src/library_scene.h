@@ -50,7 +50,7 @@ typedef struct PGB_Game
 {
     char* fullpath;
     char* coverPath;
-    
+
     // local copy; must be free'd
     // (TODO: just point within a permanent list of these.)
     PGB_GameName names;

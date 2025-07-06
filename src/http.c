@@ -152,54 +152,70 @@ static void readAllData(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
 
-    // This callback can fire multiple times. If our main callback (httpud->cb)
-    // has already been cleared by an error, we shouldn't do anything else.
-    if (httpud == NULL || httpud->cb == NULL)
+    // If httpud is null, the connection is being cancelled, but we may still need to drain the
+    // buffer.
+    if (httpud != NULL)
     {
-        return;
+        // Only check status and fire the error callback ONCE.
+        // httpud->cb is used as a flag to see if we've already processed an error.
+        if (httpud->cb)
+        {
+            int response = playdate->network->http->getResponseStatus(connection);
+            if (response != 0 && response != 200)
+            {
+                if (response == 404)
+                {
+                    httpud->cb(HTTP_NOT_FOUND | httpud->flags, NULL, 0, httpud->ud);
+                }
+                else
+                {
+                    httpud->cb(HTTP_NON_SUCCESS_STATUS | httpud->flags, NULL, 0, httpud->ud);
+                }
+                // Mark the callback as handled so we don't fire it again.
+                httpud->cb = NULL;
+            }
+        }
     }
 
-    int response = playdate->network->http->getResponseStatus(connection);
-    // Check for 404 specifically
-    if (response == 404)
-    {
-        httpud->cb(HTTP_NOT_FOUND | httpud->flags, NULL, 0, httpud->ud);
-        httpud->cb = NULL;  // Clear callback to prevent it from being called again
-        return;
-    }
-    // Handle all other non-success statuses
-    else if (response != 0 && response != 200)
-    {
-        httpud->cb(HTTP_NON_SUCCESS_STATUS | httpud->flags, NULL, 0, httpud->ud);
-        httpud->cb = NULL;  // Clear callback to prevent it from being called again
-        // Don't cleanup here, let CB_RequestComplete handle it.
-        return;
-    }
-
+    // Unconditionally drain the receive buffer.
     size_t available;
     while ((available = playdate->network->http->getBytesAvailable(connection)))
     {
-        httpud->data = realloc(httpud->data, httpud->data_len + available + 1);
-        if (httpud->data == NULL)
+        // If we are in a success case (httpud and its callback are still valid),
+        // read the data into the buffer.
+        if (httpud && httpud->cb)
         {
-            httpud->cb(HTTP_MEM_ERROR | httpud->flags, NULL, 0, httpud->ud);
-            httpud->cb = NULL;
-            return;
-        }
-        int read =
-            playdate->network->http->read(connection, httpud->data + httpud->data_len, available);
+            httpud->data = realloc(httpud->data, httpud->data_len + available + 1);
+            if (httpud->data == NULL)
+            {
+                httpud->cb(HTTP_MEM_ERROR | httpud->flags, NULL, 0, httpud->ud);
+                httpud->cb = NULL;
+                return;
+            }
+            int read = playdate->network->http->read(
+                connection, httpud->data + httpud->data_len, available
+            );
 
-        if (read <= 0)
+            if (read <= 0)
+            {
+                httpud->cb(HTTP_ERROR | httpud->flags, NULL, 0, httpud->ud);
+                httpud->cb = NULL;
+                return;
+            }
+
+            httpud->data_len += read;
+            httpud->data[httpud->data_len] = 0;
+        }
+        else
         {
-            httpud->cb(HTTP_ERROR | httpud->flags, NULL, 0, httpud->ud);
-            httpud->cb = NULL;
-            return;
+            // We are in an error case or are cancelling. Drain the buffer by reading
+            // into a temporary sink and discarding the data.
+            char dummy_buffer[256];
+            playdate->network->http->read(
+                connection, dummy_buffer,
+                (available > sizeof(dummy_buffer)) ? sizeof(dummy_buffer) : available
+            );
         }
-
-        httpud->data_len += read;
-
-        // ensure null-terminator
-        httpud->data[httpud->data_len] = 0;
     }
 }
 
