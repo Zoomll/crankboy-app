@@ -503,6 +503,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
         playdate->system->logToConsole("Failed to open ROM.");
         gameScene->state = PGB_GameSceneStateError;
         gameScene->error = romError;
+        return gameScene;
     }
 
     gameScene->script_available = false;
@@ -1917,7 +1918,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
 
             errorMessages[errorMessagesCount++] = "";
-            errorMessages[errorMessagesCount++] = "Press A or B to return to Library";
+            errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to Library";
 
             playdate->graphics->clear(kColorWhite);
 
