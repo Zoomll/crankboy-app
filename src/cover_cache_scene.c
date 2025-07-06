@@ -108,6 +108,8 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         PGB_App->gameListCacheIsSorted = true;
         cacheScene->current_index = 0;
         cacheScene->state = kCoverCacheStateCaching;
+
+        cacheScene->start_time_ms = playdate->system->getCurrentTimeMilliseconds();
         break;
     }
 
@@ -132,7 +134,6 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                 LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
 
                 if (coverBitmap)
-
                 {
                     int width, height, rowbytes;
                     uint8_t *mask_data, *pixel_data;
@@ -219,9 +220,12 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
     case kCoverCacheStateDone:
     {
+        uint32_t end_time_ms = playdate->system->getCurrentTimeMilliseconds();
+        float duration = (end_time_ms - cacheScene->start_time_ms) / 1000.0f;
+
         playdate->system->logToConsole(
-            "Cover Caching Complete: %d covers cached, total size: %lu bytes.",
-            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes
+            "Cover Caching Complete: %d covers cached, size: %lu bytes, took %.2f seconds.",
+            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes, duration
         );
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
