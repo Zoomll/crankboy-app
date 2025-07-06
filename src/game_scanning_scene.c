@@ -2,6 +2,7 @@
 #include "game_scanning_scene.h"
 
 #include "app.h"
+#include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 #include "library_scene.h"
 
@@ -61,9 +62,6 @@ static void process_one_game(const char* filename)
     if (fetched.detailed_name)
         pgb_free(fetched.detailed_name);
 
-    // We omit un-openable ROMs, as they are likely not in the Data directory (PDX only) for some
-    // reason. Perhaps the user wanted to remove a ROM after earlier installing it with the
-    // copy-from-PDX method.
     if (!fetched.failedToOpenROM)
     {
         array_push(PGB_App->gameNameCache, newName);
@@ -80,13 +78,18 @@ static void checkForPngCallback(const char* filename, void* userdata)
 
 void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     PGB_GameScanningScene* scanScene = object;
 
     switch (scanScene->state)
     {
     case kScanningStateInit:
     {
-        pgb_draw_logo_with_message("Finding Games…");
+        pgb_draw_logo_screen_to_buffer("Finding Games…");
 
         playdate->file->listfiles(
             PGB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
@@ -114,7 +117,7 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                 progress_message, sizeof(progress_message), "Scanning Games… (%d/%d)",
                 scanScene->current_index + 1, scanScene->game_filenames->length
             );
-            pgb_draw_logo_with_message(progress_message);
+            pgb_draw_logo_screen_to_buffer(progress_message);
 
             process_one_game(filename);
 
@@ -129,10 +132,6 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
     case kScanningStateDone:
     {
-        playdate->system->logToConsole(
-            "Finished precaching %d game names.", PGB_App->gameNameCache->length
-        );
-
         bool png_found = false;
         playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, true);
 
@@ -143,8 +142,8 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
-            PGB_present(libraryScene->scene);
+            PGB_CoverCacheScene* cacheScene = PGB_CoverCacheScene_new();
+            PGB_present(cacheScene->scene);
         }
         break;
     }

@@ -68,6 +68,12 @@ typedef struct
     char* rom_path;
 } PGB_GlobalCoverCache;
 
+typedef struct
+{
+    char* rom_path;
+    LCDBitmap* bitmap;
+} PGB_CoverCacheEntry;
+
 typedef struct PGB_Application
 {
     float dt;
@@ -81,11 +87,13 @@ typedef struct PGB_Application
     LCDFont* titleFont;
     LCDFont* subheadFont;
     LCDFont* labelFont;
+    LCDBitmap* logoBitmap;
     LCDBitmapTable* selectorBitmapTable;
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
     PGB_GlobalCoverCache coverArtCache;
     PGB_Array* gameNameCache;
+    PGB_Array* coverCache;
     PGB_Array* gameListCache;
     bool gameListCacheIsSorted;
     struct PDSynth* clickSynth;

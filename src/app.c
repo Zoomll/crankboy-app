@@ -95,7 +95,7 @@ static void copy_file_callback(const char* filename, void* userdata)
             if (msg)
             {
                 printf("%s\n", msg);
-                pgb_draw_logo_with_message(msg);
+                pgb_draw_logo_screen_and_display(msg);
                 free(msg);
             }
 
@@ -267,6 +267,7 @@ void PGB_init(void)
 
     PGB_App->gameNameCache = array_new();
     PGB_App->gameListCache = array_new();
+    PGB_App->coverCache = NULL;
     PGB_App->gameListCacheIsSorted = false;
     PGB_App->scene = NULL;
 
@@ -285,12 +286,13 @@ void PGB_init(void)
     PGB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
+    PGB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
 
     if (check_is_bundle() < 0)
         return;
 
     if (!PGB_App->bundled_rom)
-        pgb_draw_logo_with_message("Initializing…");
+        pgb_draw_logo_screen_and_display("Initializing…");
     preferences_init();
 
     PGB_App->clickSynth = playdate->sound->synth->newSynth();
@@ -580,6 +582,11 @@ void PGB_quit(void)
 
     pgb_clear_global_cover_cache();
 
+    if (PGB_App->logoBitmap)
+    {
+        playdate->graphics->freeBitmap(PGB_App->logoBitmap);
+    }
+
     if (PGB_App->clickSynth)
     {
         playdate->sound->synth->freeSynth(PGB_App->clickSynth);
@@ -605,6 +612,19 @@ void PGB_quit(void)
         }
         array_free(PGB_App->gameListCache);
         PGB_App->gameListCache = NULL;
+    }
+
+    if (PGB_App->coverCache)
+    {
+        for (int i = 0; i < PGB_App->coverCache->length; i++)
+        {
+            PGB_CoverCacheEntry* entry = PGB_App->coverCache->items[i];
+            pgb_free(entry->rom_path);
+            playdate->graphics->freeBitmap(entry->bitmap);
+            pgb_free(entry);
+        }
+        array_free(PGB_App->coverCache);
+        PGB_App->coverCache = NULL;
     }
 
     pgb_free(PGB_App);

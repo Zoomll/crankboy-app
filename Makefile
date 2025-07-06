@@ -30,6 +30,7 @@ VPATH += minigb_apu
 # List C source files here
 SRC += src/pgmusic.c
 SRC += src/info_scene.c
+SRC += src/cover_cache_scene.c
 SRC += src/image_conversion_scene.c
 SRC += src/http.c
 SRC += src/version.c

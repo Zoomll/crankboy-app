@@ -16,6 +16,11 @@
 
 static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     PGB_InfoScene* infoScene = object;
     LCDFont* font = PGB_App->bodyFont;
     float dt = UINT32_AS_FLOAT(u32enc_dt);

@@ -40,8 +40,6 @@ typedef enum
 typedef enum
 {
     kLibraryStateInit,
-    kLibraryStateBuildGameList,
-    kLibraryStateSort,
     kLibraryStateBuildUIList,
     kLibraryStateDone
 } PGB_LibraryState;

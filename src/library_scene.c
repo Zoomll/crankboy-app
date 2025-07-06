@@ -32,6 +32,7 @@ static void PGB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
 static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
+static bool library_was_initialized_once = false;
 
 typedef struct
 {
@@ -477,7 +478,8 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->initialLoadComplete = false;
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
     libraryScene->showCrc = false;
-    libraryScene->isReloading = false;
+    libraryScene->isReloading = library_was_initialized_once;
+    library_was_initialized_once = true;
 
     pgb_clear_global_cover_cache();
 
@@ -543,6 +545,11 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
 
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     PGB_LibraryScene* libraryScene = object;
 
     if (libraryScene->state != kLibraryStateDone)
@@ -551,59 +558,6 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
         case kLibraryStateInit:
         {
-            if (libraryScene->games->length > 0)
-            {
-                libraryScene->isReloading = true;
-                if (PGB_App->gameListCacheIsSorted)
-                {
-                    libraryScene->build_index = 0;
-                    libraryScene->state = kLibraryStateBuildUIList;
-                }
-                else
-                {
-                    libraryScene->state = kLibraryStateSort;
-                }
-            }
-            else
-            {
-                libraryScene->state = kLibraryStateBuildGameList;
-            }
-            return;
-        }
-
-        case kLibraryStateBuildGameList:
-        {
-            if (libraryScene->build_index < PGB_App->gameNameCache->length)
-            {
-                PGB_GameName* cachedName = PGB_App->gameNameCache->items[libraryScene->build_index];
-                PGB_Game* game = PGB_Game_new(cachedName);
-                array_push(libraryScene->games, game);
-
-                libraryScene->build_index++;
-
-                char progress_message[100];
-                int total = PGB_App->gameNameCache->length;
-                int percentage =
-                    (total > 0) ? ((float)libraryScene->build_index / total) * 100 : 100;
-                snprintf(
-                    progress_message, sizeof(progress_message), "Building Games List… %d%%",
-                    percentage
-                );
-                pgb_draw_logo_with_message(progress_message);
-            }
-            else
-            {
-                PGB_App->gameListCacheIsSorted = false;
-                libraryScene->state = kLibraryStateSort;
-            }
-            return;
-        }
-
-        case kLibraryStateSort:
-        {
-            pgb_sort_games_array(libraryScene->games);
-            PGB_App->gameListCacheIsSorted = true;
-
             libraryScene->build_index = 0;
             libraryScene->state = kLibraryStateBuildUIList;
             return;
@@ -633,7 +587,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
                 if (!libraryScene->isReloading)
                 {
-                    pgb_draw_logo_with_message(progress_message);
+                    pgb_draw_logo_screen_to_buffer(progress_message);
                 }
             }
             else
@@ -818,7 +772,36 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
                 PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                if (selectedGame->coverPath != NULL)
+
+                bool foundInCache = false;
+                if (PGB_App->coverCache)
+                {
+                    for (int i = 0; i < PGB_App->coverCache->length; i++)
+                    {
+                        PGB_CoverCacheEntry* entry = PGB_App->coverCache->items[i];
+                        if (strcmp(entry->rom_path, selectedGame->fullpath) == 0)
+                        {
+                            LCDBitmap* copied_bitmap =
+                                playdate->graphics->copyBitmap(entry->bitmap);
+                            PGB_App->coverArtCache.art.bitmap = copied_bitmap;
+
+                            playdate->graphics->getBitmapData(
+                                copied_bitmap, &PGB_App->coverArtCache.art.original_width,
+                                &PGB_App->coverArtCache.art.original_height, NULL, NULL, NULL
+                            );
+                            PGB_App->coverArtCache.art.scaled_width =
+                                PGB_App->coverArtCache.art.original_width;
+                            PGB_App->coverArtCache.art.scaled_height =
+                                PGB_App->coverArtCache.art.original_height;
+                            PGB_App->coverArtCache.art.status = PGB_COVER_ART_SUCCESS;
+                            PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
+                            foundInCache = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!foundInCache && selectedGame->coverPath != NULL)
                 {
                     PGB_App->coverArtCache.art = pgb_load_and_scale_cover_art_from_path(
                         selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT

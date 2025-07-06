@@ -1,6 +1,7 @@
 #include "image_conversion_scene.h"
 
 #include "app.h"
+#include "cover_cache_scene.h"
 #include "library_scene.h"
 #include "pdi.h"
 
@@ -447,6 +448,11 @@ static int process_png(const char* fname)
 
 void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     PGB_ImageConversionScene* convScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
@@ -454,7 +460,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        pgb_draw_logo_with_message("Scanning for new images…");
+        pgb_draw_logo_screen_to_buffer("Scanning for new images…");
 
         playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
 
@@ -523,7 +529,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             if (progress_msg)
             {
-                pgb_draw_logo_with_message(progress_msg);
+                pgb_draw_logo_screen_to_buffer(progress_msg);
                 free(progress_msg);
             }
 
@@ -544,8 +550,8 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
     case kStateDone:
     {
-        PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
-        PGB_present(libraryScene->scene);
+        PGB_CoverCacheScene* cacheScene = PGB_CoverCacheScene_new();
+        PGB_present(cacheScene->scene);
         break;
     }
     }

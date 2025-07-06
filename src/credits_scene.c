@@ -39,6 +39,11 @@ static void PGB_CreditsScene_didSelectBack(void* userdata)
 
 static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     PGB_CreditsScene* creditsScene = object;
     JsonArray* carray = creditsScene->jcred.data.arrayval;
 

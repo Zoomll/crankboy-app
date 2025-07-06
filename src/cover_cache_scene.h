@@ -1,0 +1,24 @@
+#pragma once
+
+#include "scene.h"
+
+#include <stdbool.h>
+
+typedef enum
+{
+    kCoverCacheStateInit,
+    kCoverCacheStateBuildGameList,
+    kCoverCacheStateSort,
+    kCoverCacheStateCaching,
+    kCoverCacheStateDone
+} CoverCachingState;
+
+typedef struct PGB_CoverCacheScene
+{
+    PGB_Scene* scene;
+    int current_index;
+    size_t cache_size_bytes;
+    CoverCachingState state;
+} PGB_CoverCacheScene;
+
+PGB_CoverCacheScene* PGB_CoverCacheScene_new(void);

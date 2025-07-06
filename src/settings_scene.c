@@ -1033,6 +1033,11 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
 
 static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 {
+    if (PGB_App->pendingScene)
+    {
+        return;
+    }
+
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     static const uint8_t black_transparent_dither[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                                                          0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55,

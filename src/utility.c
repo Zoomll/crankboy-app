@@ -613,10 +613,14 @@ void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
     );
 }
 
-void pgb_draw_logo_with_message(const char* message)
+/**
+ * @brief Draws the logo screen to the graphics buffer without updating the display.
+ * Use this inside the main game loop; the app's central update will handle the display call.
+ * @param message The text to display below the logo.
+ */
+void pgb_draw_logo_screen_to_buffer(const char* message)
 {
-    const char* logoPath = "images/logo.pdi";
-    LCDBitmap* logoBitmap = playdate->graphics->loadBitmap(logoPath, NULL);
+    LCDBitmap* logoBitmap = PGB_App->logoBitmap;
 
     playdate->graphics->clear(kColorWhite);
 
@@ -647,8 +651,6 @@ void pgb_draw_logo_with_message(const char* message)
 
         playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
         playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
-
-        playdate->graphics->freeBitmap(logoBitmap);
     }
     else
     {
@@ -659,9 +661,17 @@ void pgb_draw_logo_with_message(const char* message)
             message, strlen(message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2, LCD_ROWS / 2
         );
     }
+}
 
+/**
+ * @brief Draws the logo screen and forces an immediate display update.
+ * Use for instant feedback outside the main game loop (e.g., during initialization or file loads).
+ * @param message The text to display below the logo.
+ */
+void pgb_draw_logo_screen_and_display(const char* message)
+{
+    pgb_draw_logo_screen_to_buffer(message);
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
-
     playdate->graphics->display();
 }
 
