@@ -593,11 +593,6 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         case kLibraryStateSort:
         {
-            if (!libraryScene->isReloading)
-            {
-                pgb_draw_logo_with_message("Sorting…");
-            }
-
             pgb_sort_games_array(libraryScene->games);
             PGB_App->gameListCacheIsSorted = true;
 

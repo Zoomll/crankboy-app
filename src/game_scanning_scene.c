@@ -143,7 +143,6 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            pgb_draw_logo_with_message("Loading Library…");
             PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
             PGB_present(libraryScene->scene);
         }
