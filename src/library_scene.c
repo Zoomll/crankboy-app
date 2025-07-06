@@ -23,11 +23,14 @@
 #include "userstack.h"
 #include "version.h"
 
+#define LAST_SELECTED_PATH "library_last_selected.txt"
+
 static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void PGB_LibraryScene_free(void* object);
 static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene);
 static void PGB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
+static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
 
 typedef struct
@@ -35,6 +38,29 @@ typedef struct
     PGB_LibraryScene* libraryScene;
     PGB_Game* game;
 } CoverDownloadUserdata;
+
+static void* save_last_selected_index(void* userdata)
+{
+    int index = (int)(intptr_t)userdata;
+    const char* path = LAST_SELECTED_PATH;
+    char buffer[12];
+    snprintf(buffer, sizeof(buffer), "%d", index);
+    pgb_write_entire_file(path, buffer, strlen(buffer));
+    return NULL;
+}
+
+static void* load_last_selected_index(void* userdata)
+{
+    const char* path = LAST_SELECTED_PATH;
+    char* content = pgb_read_entire_file(path, NULL, kFileReadData);
+    if (content)
+    {
+        int index = atoi(content);
+        pgb_free(content);
+        return (void*)(intptr_t)index;
+    }
+    return NULL;
+}
 
 static unsigned combined_display_mode(void)
 {
@@ -396,6 +422,13 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 {
     setCrankSoundsEnabled(true);
 
+    if (!has_loaded_initial_index)
+    {
+        last_selected_game_index =
+            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, NULL);
+        has_loaded_initial_index = true;
+    }
+
     PGB_Scene* scene = PGB_Scene_new();
 
     PGB_LibraryScene* libraryScene = pgb_calloc(1, sizeof(PGB_LibraryScene));
@@ -415,6 +448,19 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->games = PGB_App->gameListCache;
     libraryScene->listView = PGB_ListView_new();
+
+    int selected_item = 0;
+    if (preferences_library_remember_selection)
+    {
+        selected_item = last_selected_game_index;
+        // Safety check if games were removed
+        if (selected_item < 0 ||
+            (libraryScene->games->length > 0 && selected_item >= libraryScene->games->length))
+        {
+            selected_item = 0;
+        }
+    }
+
     libraryScene->listView->selectedItem =
         (preferences_library_remember_selection) ? last_selected_game_index : 0;
     libraryScene->tab = PGB_LibrarySceneTabList;
@@ -633,6 +679,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             pgb_play_ui_sound(PGB_UISound_Confirm);
             last_selected_game_index = selectedItem;
+
+            if (preferences_library_remember_selection)
+            {
+                call_with_user_stack_1(save_last_selected_index, (void*)(intptr_t)selectedItem);
+            }
 
             PGB_Game* game = libraryScene->games->items[selectedItem];
             bool launch = true;
