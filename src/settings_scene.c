@@ -272,7 +272,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
             result = (int)(intptr_t)call_with_user_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
                 settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds |
-                    PREFBIT_display_name_mode
+                    PREFBIT_display_name_mode | PREFBIT_display_article | PREFBIT_display_sort |
+                    PREFBIT_library_remember_selection
             );
         }
         else
@@ -713,7 +714,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 4,
         .on_press = NULL
     };
-    
+
     // undock
     entries[++i] = (OptionsMenuEntry){
         .name = "Undock",
@@ -724,7 +725,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .max_value = 3,
         .on_press = NULL
     };
-    
+
     // dock
     entries[++i] = (OptionsMenuEntry){
         .name = "Dock",
@@ -809,7 +810,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         }
     }
     #endif
-    
+
     if (!gameScene)
     {
         entries[++i] = (OptionsMenuEntry){
@@ -830,7 +831,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .max_value = 3,
             .on_press = NULL
         };
-        
+
         // display article
         entries[++i] = (OptionsMenuEntry){
             .name = "Article",
@@ -844,7 +845,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .max_value = 2,
             .on_press = NULL
         };
-        
+
         // sorting
         entries[++i] = (OptionsMenuEntry){
             .name = "Sort",
@@ -854,7 +855,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .max_value = 4,
             .on_press = NULL
         };
-        
+
         // remember selection
         entries[++i] = (OptionsMenuEntry){
             .name = "Remember Last",
