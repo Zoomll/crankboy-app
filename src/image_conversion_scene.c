@@ -462,7 +462,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
         pgb_draw_logo_screen_to_buffer("Scanning for new images…");
 
-        playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, true);
+        playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, false);
 
         convScene->state = kStateDone;
 
@@ -579,11 +579,6 @@ bool filename_has_stbi_extension(const char* fname)
 static void on_list_file(const char* fname, void* ud)
 {
     PGB_ImageConversionScene* convScene = ud;
-
-    if (fname[0] == '.' || strcasecmp(fname, "Thumbs.db") == 0)
-    {
-        return;
-    }
 
     if (filename_has_stbi_extension(fname))
     {
