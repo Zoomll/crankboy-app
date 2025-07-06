@@ -1457,7 +1457,7 @@ static void set_display_and_sort_name(PGB_Game* game)
     }
 }
 
-PGB_Game* PGB_Game_new(PGB_GameName* cachedName)
+PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers)
 {
     PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
 
@@ -1475,7 +1475,8 @@ PGB_Game* PGB_Game_new(PGB_GameName* cachedName)
     char* cleanName_no_ext = string_copy(basename_no_ext);
     pgb_sanitize_string_for_filename(cleanName_no_ext);
 
-    game->coverPath = pgb_find_cover_art_path(basename_no_ext, cleanName_no_ext);
+    game->coverPath =
+        pgb_find_cover_art_path_from_list(available_covers, basename_no_ext, cleanName_no_ext);
 
     pgb_free(basename_no_ext);
     pgb_free(cleanName_no_ext);

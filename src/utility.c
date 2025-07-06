@@ -384,44 +384,27 @@ void pgb_sort_games_array(PGB_Array* games_array)
     }
 }
 
-char* pgb_find_cover_art_path(
-    const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
+char* pgb_find_cover_art_path_from_list(
+    const PGB_Array* available_covers, const char* rom_basename_no_ext,
+    const char* rom_clean_basename_no_ext
 )
 {
-    char* found_path = NULL;
-    FileStat fileStat;
-    char* path_attempt = NULL;
+    for (int i = 0; i < available_covers->length; ++i)
+    {
+        const char* cover_basename = available_covers->items[i];
 
-    playdate->system->formatString(
-        &path_attempt, "%s/%s.pdi", PGB_coversPath, rom_clean_basename_no_ext
-    );
-    if (path_attempt && playdate->file->stat(path_attempt, &fileStat) == 0)
-    {
-        found_path = path_attempt;
-    }
-    else
-    {
-        if (path_attempt)
+        if (strcmp(cover_basename, rom_clean_basename_no_ext) == 0 ||
+            strcmp(cover_basename, rom_basename_no_ext) == 0)
         {
-            pgb_free(path_attempt);
-            path_attempt = NULL;
-        }
-        playdate->system->formatString(
-            &path_attempt, "%s/%s.pdi", PGB_coversPath, rom_basename_no_ext
-        );
-        if (path_attempt && playdate->file->stat(path_attempt, &fileStat) == 0)
-        {
-            found_path = path_attempt;
-        }
-        else
-        {
-            if (path_attempt)
-            {
-                pgb_free(path_attempt);
-            }
+            char* found_path = NULL;
+            playdate->system->formatString(
+                &found_path, "%s/%s.pdi", PGB_coversPath, cover_basename
+            );
+            return found_path;
         }
     }
-    return found_path;
+
+    return NULL;
 }
 
 PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(

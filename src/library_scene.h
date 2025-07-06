@@ -87,5 +87,5 @@ typedef struct PGB_LibraryScene
 
 PGB_LibraryScene* PGB_LibraryScene_new(void);
 
-PGB_Game* PGB_Game_new(PGB_GameName* cachedName);
+PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers);
 void PGB_Game_free(PGB_Game* game);

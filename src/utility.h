@@ -117,8 +117,9 @@ int pgb_strcmp(const char* s1, const char* s2);
 // returns false on failure
 bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
 
-char* pgb_find_cover_art_path(
-    const char* rom_basename_no_ext, const char* rom_clean_basename_no_ext
+char* pgb_find_cover_art_path_from_list(
+    const PGB_Array* available_covers, const char* rom_basename_no_ext,
+    const char* rom_clean_basename_no_ext
 );
 
 PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath);

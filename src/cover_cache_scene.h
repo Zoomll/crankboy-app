@@ -19,6 +19,7 @@ typedef struct PGB_CoverCacheScene
     int current_index;
     size_t cache_size_bytes;
     CoverCachingState state;
+    PGB_Array* available_covers;
 } PGB_CoverCacheScene;
 
 PGB_CoverCacheScene* PGB_CoverCacheScene_new(void);

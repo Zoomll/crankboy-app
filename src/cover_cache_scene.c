@@ -10,6 +10,19 @@
 void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt);
 void PGB_CoverCacheScene_free(void* object);
 
+static void collect_cover_filenames_callback(const char* filename, void* userdata)
+{
+    if (endswithi(filename, ".pdi"))
+    {
+        PGB_Array* covers_array = userdata;
+        char* basename_no_ext = pgb_basename(filename, true);
+        if (basename_no_ext)
+        {
+            array_push(covers_array, basename_no_ext);
+        }
+    }
+}
+
 PGB_CoverCacheScene* PGB_CoverCacheScene_new(void)
 {
     PGB_CoverCacheScene* cacheScene = pgb_calloc(1, sizeof(PGB_CoverCacheScene));
@@ -29,6 +42,8 @@ PGB_CoverCacheScene* PGB_CoverCacheScene_new(void)
         PGB_App->coverCache = array_new();
     }
 
+    cacheScene->available_covers = array_new();
+
     return cacheScene;
 }
 
@@ -46,6 +61,12 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
     {
     case kCoverCacheStateInit:
     {
+        pgb_draw_logo_screen_to_buffer("Finding Covers…");
+
+        playdate->file->listfiles(
+            PGB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
+        );
+
         if (PGB_App->gameNameCache->length > 0)
         {
             cacheScene->state = kCoverCacheStateBuildGameList;
@@ -62,7 +83,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         if (cacheScene->current_index < PGB_App->gameNameCache->length)
         {
             PGB_GameName* cachedName = PGB_App->gameNameCache->items[cacheScene->current_index];
-            PGB_Game* game = PGB_Game_new(cachedName);
+            PGB_Game* game = PGB_Game_new(cachedName, cacheScene->available_covers);
             array_push(PGB_App->gameListCache, game);
 
             char progress_message[100];
@@ -215,6 +236,16 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 void PGB_CoverCacheScene_free(void* object)
 {
     PGB_CoverCacheScene* cacheScene = object;
+
+    if (cacheScene->available_covers)
+    {
+        for (int i = 0; i < cacheScene->available_covers->length; i++)
+        {
+            pgb_free(cacheScene->available_covers->items[i]);
+        }
+        array_free(cacheScene->available_covers);
+    }
+
     PGB_Scene_free(cacheScene->scene);
     pgb_free(cacheScene);
 }
