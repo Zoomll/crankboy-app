@@ -4,7 +4,7 @@
 #include "library_scene.h"
 #include "utility.h"
 
-#define MAX_CACHE_SIZE_BYTES (2048 * 1024)  // 2MB
+#define MAX_CACHE_SIZE_BYTES (4096 * 1024)  // 4MB
 
 void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt);
 void PGB_CoverCacheScene_free(void* object);
