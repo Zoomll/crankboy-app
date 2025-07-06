@@ -8,6 +8,7 @@
 
 #include "library_scene.h"
 
+#include "../lz4/lz4.h"
 #include "../minigb_apu/minigb_apu.h"
 #include "app.h"
 #include "credits_scene.h"
@@ -781,22 +782,81 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         PGB_CoverCacheEntry* entry = PGB_App->coverCache->items[i];
                         if (strcmp(entry->rom_path, selectedGame->fullpath) == 0)
                         {
-                            LCDBitmap* copied_bitmap =
-                                playdate->graphics->copyBitmap(entry->bitmap);
-                            PGB_App->coverArtCache.art.bitmap = copied_bitmap;
+                            char* decompressed_buffer = pgb_malloc(entry->original_size);
+                            if (decompressed_buffer)
+                            {
+                                int decompressed_size = LZ4_decompress_safe(
+                                    entry->compressed_data, decompressed_buffer,
+                                    entry->compressed_size, entry->original_size
+                                );
+                                if (decompressed_size == entry->original_size)
+                                {
+                                    LCDBitmap* new_bitmap = NULL;
+                                    if (entry->has_mask)
+                                    {
+                                        new_bitmap = playdate->graphics->newBitmap(
+                                            entry->width, entry->height, kColorClear
+                                        );
+                                    }
+                                    else
+                                    {
+                                        new_bitmap = playdate->graphics->newBitmap(
+                                            entry->width, entry->height, kColorWhite
+                                        );
+                                    }
 
-                            playdate->graphics->getBitmapData(
-                                copied_bitmap, &PGB_App->coverArtCache.art.original_width,
-                                &PGB_App->coverArtCache.art.original_height, NULL, NULL, NULL
-                            );
-                            PGB_App->coverArtCache.art.scaled_width =
-                                PGB_App->coverArtCache.art.original_width;
-                            PGB_App->coverArtCache.art.scaled_height =
-                                PGB_App->coverArtCache.art.original_height;
-                            PGB_App->coverArtCache.art.status = PGB_COVER_ART_SUCCESS;
-                            PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
-                            foundInCache = true;
-                            break;
+                                    if (new_bitmap)
+                                    {
+                                        int new_rowbytes;
+                                        uint8_t *new_pixel_data, *new_mask_data;
+                                        playdate->graphics->getBitmapData(
+                                            new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data,
+                                            &new_pixel_data
+                                        );
+
+                                        uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
+                                        uint8_t* dst_ptr = new_pixel_data;
+
+                                        for (int y = 0; y < entry->height; ++y)
+                                        {
+                                            memcpy(dst_ptr, src_ptr, entry->rowbytes);
+                                            src_ptr += entry->rowbytes;
+                                            dst_ptr += new_rowbytes;
+                                        }
+
+                                        if (entry->has_mask && new_mask_data)
+                                        {
+                                            dst_ptr = new_mask_data;
+                                            for (int y = 0; y < entry->height; ++y)
+                                            {
+                                                memcpy(dst_ptr, src_ptr, entry->rowbytes);
+                                                src_ptr += entry->rowbytes;
+                                                dst_ptr += new_rowbytes;
+                                            }
+                                        }
+
+                                        PGB_App->coverArtCache.art.bitmap = new_bitmap;
+                                        PGB_App->coverArtCache.art.original_width = entry->width;
+                                        PGB_App->coverArtCache.art.original_height = entry->height;
+                                        PGB_App->coverArtCache.art.scaled_width = entry->width;
+                                        PGB_App->coverArtCache.art.scaled_height = entry->height;
+                                        PGB_App->coverArtCache.art.status = PGB_COVER_ART_SUCCESS;
+                                        PGB_App->coverArtCache.rom_path =
+                                            string_copy(selectedGame->fullpath);
+                                        foundInCache = true;
+                                    }
+                                }
+                                else
+                                {
+                                    playdate->system->logToConsole(
+                                        "LZ4 decompression failed for %s", entry->rom_path
+                                    );
+                                }
+                                pgb_free(decompressed_buffer);
+                            }
+
+                            if (foundInCache)
+                                break;
                         }
                     }
                 }

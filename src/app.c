@@ -620,7 +620,7 @@ void PGB_quit(void)
         {
             PGB_CoverCacheEntry* entry = PGB_App->coverCache->items[i];
             pgb_free(entry->rom_path);
-            playdate->graphics->freeBitmap(entry->bitmap);
+            pgb_free(entry->compressed_data);
             pgb_free(entry);
         }
         array_free(PGB_App->coverCache);

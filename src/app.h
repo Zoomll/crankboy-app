@@ -71,7 +71,13 @@ typedef struct
 typedef struct
 {
     char* rom_path;
-    LCDBitmap* bitmap;
+    void* compressed_data;
+    int compressed_size;
+    int original_size;
+    int width;
+    int height;
+    int rowbytes;
+    bool has_mask;
 } PGB_CoverCacheEntry;
 
 typedef struct PGB_Application

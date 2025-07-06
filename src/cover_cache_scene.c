@@ -1,5 +1,6 @@
 #include "cover_cache_scene.h"
 
+#include "../lz4/lz4hc.h"
 #include "app.h"
 #include "library_scene.h"
 #include "utility.h"
@@ -112,32 +113,80 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                 LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
 
                 if (coverBitmap)
+
                 {
                     int width, height, rowbytes;
-                    uint8_t* mask;
+                    uint8_t *mask_data, *pixel_data;
                     playdate->graphics->getBitmapData(
-                        coverBitmap, &width, &height, &rowbytes, &mask, NULL
+                        coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
                     );
 
-                    size_t bitmap_size = rowbytes * height;
-                    if (mask)
+                    bool has_mask = (mask_data != NULL);
+                    size_t original_size = rowbytes * height;
+                    if (has_mask)
                     {
-                        bitmap_size += rowbytes * height;
+                        original_size *= 2;
                     }
 
-                    if (cacheScene->cache_size_bytes + bitmap_size <= MAX_CACHE_SIZE_BYTES)
+                    int max_dst_size = LZ4_compressBound(original_size);
+                    char* compressed_buffer = pgb_malloc(max_dst_size);
+
+                    if (compressed_buffer)
                     {
-                        PGB_CoverCacheEntry* entry = pgb_malloc(sizeof(PGB_CoverCacheEntry));
-                        entry->rom_path = string_copy(game->fullpath);
-                        entry->bitmap = coverBitmap;
-                        array_push(PGB_App->coverCache, entry);
-                        cacheScene->cache_size_bytes += bitmap_size;
+                        uint8_t* uncompressed_buffer = pgb_malloc(original_size);
+                        if (uncompressed_buffer)
+                        {
+                            memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
+                            if (has_mask)
+                            {
+                                memcpy(
+                                    uncompressed_buffer + (rowbytes * height), mask_data,
+                                    rowbytes * height
+                                );
+                            }
+
+                            int compressed_size = LZ4_compress_HC(
+                                (const char*)uncompressed_buffer, compressed_buffer, original_size,
+                                max_dst_size, LZ4HC_CLEVEL_MAX
+                            );
+
+                            pgb_free(uncompressed_buffer);
+
+                            if (compressed_size > 0 &&
+                                (cacheScene->cache_size_bytes + compressed_size <=
+                                 MAX_CACHE_SIZE_BYTES))
+                            {
+                                PGB_CoverCacheEntry* entry =
+                                    pgb_malloc(sizeof(PGB_CoverCacheEntry));
+
+                                entry->rom_path = string_copy(game->fullpath);
+                                entry->compressed_data = compressed_buffer;
+                                entry->compressed_size = compressed_size;
+                                entry->original_size = original_size;
+                                entry->width = width;
+                                entry->height = height;
+                                entry->rowbytes = rowbytes;
+                                entry->has_mask = has_mask;
+
+                                array_push(PGB_App->coverCache, entry);
+                                cacheScene->cache_size_bytes += compressed_size;
+                            }
+                            else
+                            {
+                                pgb_free(compressed_buffer);
+                                if (compressed_size > 0)
+                                {  // Cache is full
+                                    cacheScene->state = kCoverCacheStateDone;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            pgb_free(compressed_buffer);
+                        }
                     }
-                    else
-                    {
-                        playdate->graphics->freeBitmap(coverBitmap);
-                        cacheScene->state = kCoverCacheStateDone;
-                    }
+
+                    playdate->graphics->freeBitmap(coverBitmap);
                 }
             }
             cacheScene->current_index++;
@@ -151,6 +200,11 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
     case kCoverCacheStateDone:
     {
+        playdate->system->logToConsole(
+            "Cover Caching Complete: %d covers cached, total size: %lu bytes.",
+            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes
+        );
+
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
         PGB_present(libraryScene->scene);
         break;

@@ -26,8 +26,11 @@ COPY_LUA_SCRIPTS := $(shell \
 VPATH += src
 VPATH += peanut_gb
 VPATH += minigb_apu
+VPATH += lz4
 
 # List C source files here
+SRC += lz4/lz4.c
+SRC += lz4/lz4hc.c
 SRC += src/pgmusic.c
 SRC += src/info_scene.c
 SRC += src/cover_cache_scene.c
@@ -65,6 +68,7 @@ UINCDIR += src
 UINCDIR += peanut_gb
 UINCDIR += minigb_apu
 UINCDIR += lcd
+UINCDIR += lz4
 UINCDIR += lua-5.4.7
 
 
