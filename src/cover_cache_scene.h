@@ -20,7 +20,6 @@ typedef struct PGB_CoverCacheScene
     size_t cache_size_bytes;
     CoverCachingState state;
     PGB_Array* available_covers;
-    PGB_Array* games_with_covers;
     uint32_t start_time_ms;
 } PGB_CoverCacheScene;
 
