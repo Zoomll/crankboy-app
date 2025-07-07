@@ -2,6 +2,7 @@
 
 #include "http.h"
 
+#define ERR_NO_NETWORK (-252)
 #define ERR_PERMISSION_ASKED_DENIED (-253)
 #define ERR_PERMISSION_DENIED (-254)
 
