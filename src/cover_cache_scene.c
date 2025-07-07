@@ -43,6 +43,7 @@ PGB_CoverCacheScene* PGB_CoverCacheScene_new(void)
     }
 
     cacheScene->available_covers = array_new();
+    cacheScene->games_with_covers = array_new();
 
     return cacheScene;
 }
@@ -110,7 +111,17 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
         cacheScene->start_time_ms = playdate->system->getCurrentTimeMilliseconds();
 
-        if (cacheScene->available_covers->length > 0)
+        array_clear(cacheScene->games_with_covers);
+        for (int i = 0; i < PGB_App->gameListCache->length; ++i)
+        {
+            PGB_Game* game = PGB_App->gameListCache->items[i];
+            if (game->coverPath)
+            {
+                array_push(cacheScene->games_with_covers, game);
+            }
+        }
+
+        if (cacheScene->games_with_covers->length > 0)
         {
             cacheScene->state = kCoverCacheStateCaching;
         }
@@ -124,100 +135,97 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
     case kCoverCacheStateCaching:
     {
-        if (cacheScene->current_index < PGB_App->gameListCache->length &&
+        if (cacheScene->current_index < cacheScene->games_with_covers->length &&
             cacheScene->cache_size_bytes < MAX_CACHE_SIZE_BYTES)
         {
-            PGB_Game* game = PGB_App->gameListCache->items[cacheScene->current_index];
+            PGB_Game* game = cacheScene->games_with_covers->items[cacheScene->current_index];
 
             char progress_message[100];
-            int total = PGB_App->gameListCache->length;
+            int total = cacheScene->games_with_covers->length;
             int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 100;
             snprintf(
                 progress_message, sizeof(progress_message), "Caching Covers… %d%%", percentage
             );
             pgb_draw_logo_screen_to_buffer(progress_message);
 
-            if (game->coverPath)
+            const char* error = NULL;
+            LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
+
+            if (coverBitmap)
             {
-                const char* error = NULL;
-                LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
+                int width, height, rowbytes;
+                uint8_t *mask_data, *pixel_data;
+                playdate->graphics->getBitmapData(
+                    coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
+                );
 
-                if (coverBitmap)
+                bool has_mask = (mask_data != NULL);
+                size_t original_size = rowbytes * height;
+                if (has_mask)
                 {
-                    int width, height, rowbytes;
-                    uint8_t *mask_data, *pixel_data;
-                    playdate->graphics->getBitmapData(
-                        coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
-                    );
+                    original_size *= 2;
+                }
 
-                    bool has_mask = (mask_data != NULL);
-                    size_t original_size = rowbytes * height;
-                    if (has_mask)
+                int max_dst_size = LZ4_compressBound(original_size);
+                char* compressed_buffer = pgb_malloc(max_dst_size);
+
+                if (compressed_buffer)
+                {
+                    uint8_t* uncompressed_buffer = pgb_malloc(original_size);
+                    if (uncompressed_buffer)
                     {
-                        original_size *= 2;
-                    }
-
-                    int max_dst_size = LZ4_compressBound(original_size);
-                    char* compressed_buffer = pgb_malloc(max_dst_size);
-
-                    if (compressed_buffer)
-                    {
-                        uint8_t* uncompressed_buffer = pgb_malloc(original_size);
-                        if (uncompressed_buffer)
+                        memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
+                        if (has_mask)
                         {
-                            memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
-                            if (has_mask)
-                            {
-                                memcpy(
-                                    uncompressed_buffer + (rowbytes * height), mask_data,
-                                    rowbytes * height
-                                );
-                            }
-
-                            int compressed_size = LZ4_compress_HC(
-                                (const char*)uncompressed_buffer, compressed_buffer, original_size,
-                                max_dst_size, LZ4HC_CLEVEL_MIN
+                            memcpy(
+                                uncompressed_buffer + (rowbytes * height), mask_data,
+                                rowbytes * height
                             );
+                        }
 
-                            pgb_free(uncompressed_buffer);
+                        int compressed_size = LZ4_compress_HC(
+                            (const char*)uncompressed_buffer, compressed_buffer, original_size,
+                            max_dst_size, LZ4HC_CLEVEL_MIN
+                        );
 
-                            if (compressed_size > 0 &&
-                                (cacheScene->cache_size_bytes + compressed_size <=
-                                 MAX_CACHE_SIZE_BYTES))
-                            {
-                                PGB_CoverCacheEntry* entry =
-                                    pgb_malloc(sizeof(PGB_CoverCacheEntry));
+                        pgb_free(uncompressed_buffer);
 
-                                entry->rom_path = string_copy(game->fullpath);
-                                entry->compressed_data = compressed_buffer;
-                                entry->compressed_size = compressed_size;
-                                entry->original_size = original_size;
-                                entry->width = width;
-                                entry->height = height;
-                                entry->rowbytes = rowbytes;
-                                entry->has_mask = has_mask;
+                        if (compressed_size > 0 &&
+                            (cacheScene->cache_size_bytes + compressed_size <=
+                             MAX_CACHE_SIZE_BYTES))
+                        {
+                            PGB_CoverCacheEntry* entry = pgb_malloc(sizeof(PGB_CoverCacheEntry));
 
-                                array_push(PGB_App->coverCache, entry);
-                                cacheScene->cache_size_bytes += compressed_size;
-                            }
-                            else
-                            {
-                                pgb_free(compressed_buffer);
-                                if (compressed_size > 0)
-                                {  // Cache is full
-                                    cacheScene->state = kCoverCacheStateDone;
-                                }
-                            }
+                            entry->rom_path = string_copy(game->fullpath);
+                            entry->compressed_data = compressed_buffer;
+                            entry->compressed_size = compressed_size;
+                            entry->original_size = original_size;
+                            entry->width = width;
+                            entry->height = height;
+                            entry->rowbytes = rowbytes;
+                            entry->has_mask = has_mask;
+
+                            array_push(PGB_App->coverCache, entry);
+                            cacheScene->cache_size_bytes += compressed_size;
                         }
                         else
                         {
                             pgb_free(compressed_buffer);
+                            if (compressed_size > 0)
+                            {  // Cache is full
+                                cacheScene->state = kCoverCacheStateDone;
+                            }
                         }
                     }
-
-                    playdate->graphics->freeBitmap(coverBitmap);
+                    else
+                    {
+                        pgb_free(compressed_buffer);
+                    }
                 }
+
+                playdate->graphics->freeBitmap(coverBitmap);
             }
+
             cacheScene->current_index++;
         }
         else
@@ -255,6 +263,11 @@ void PGB_CoverCacheScene_free(void* object)
             pgb_free(cacheScene->available_covers->items[i]);
         }
         array_free(cacheScene->available_covers);
+    }
+
+    if (cacheScene->games_with_covers)
+    {
+        array_free(cacheScene->games_with_covers);
     }
 
     PGB_Scene_free(cacheScene->scene);
