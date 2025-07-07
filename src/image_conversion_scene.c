@@ -222,6 +222,7 @@ __space bool errdiff_dither(
 }
 
 void* png_to_pdi(
+    const char* context_filename,
     const void* png_data, int png_size, size_t* out_size, int max_width, int max_height
 )
 {
@@ -231,6 +232,7 @@ void* png_to_pdi(
 
     if (!img_data)
     {
+        spoolError("Failed to decode %s -- is this file corrupt or encoded strangely, perhaps?", context_filename);
         return NULL;
     }
 
@@ -271,6 +273,7 @@ void* png_to_pdi(
     if (max_width == 0 || max_height == 0)
     {
         stbi_image_free(img_data);
+        spoolError("Failed to decode %s -- requested dimension 0", context_filename);
         return NULL;
     }
 
@@ -315,6 +318,7 @@ void* png_to_pdi(
     if (!pdi_data)
     {
         stbi_image_free(img_data);
+        spoolError("Failed to allocate memory for PDI for %s", context_filename);
         return NULL;
     }
 
@@ -396,7 +400,7 @@ void* png_to_pdi(
 
     // Clean up
     stbi_image_free(img_data);
-
+    
     if (out_size)
     {
         *out_size = total_size;
@@ -419,7 +423,7 @@ static int process_png(const char* fname)
     if (data)
     {
         size_t pdi_len = 0;
-        void* pdi = png_to_pdi(data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+        void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
         free(data);
 
         if (pdi && pdi_len > 0)

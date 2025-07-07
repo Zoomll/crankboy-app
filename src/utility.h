@@ -248,4 +248,11 @@ bool endswithi(const char* str, const char* suffix);
 
 void setCrankSoundsEnabled(bool enabled);
 
+// queue an error to show the user later
+void spoolError(const char* fmt, ...);
+
+size_t getSpooledErrors(void);
+const char* getSpooledErrorMessage(void);
+void freeSpool(void);
+
 #endif /* utility_h */

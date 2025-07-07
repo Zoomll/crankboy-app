@@ -12,6 +12,7 @@ typedef struct PGB_InfoScene
 
     char* text;
     float scroll;
+    bool canClose;
 } PGB_InfoScene;
 
 PGB_InfoScene* PGB_InfoScene_new(char* text);

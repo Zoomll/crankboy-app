@@ -786,7 +786,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .values = off_on_labels,
         .description =
             BASE_LUA_STRING,
-        .pref_var = &preferences_lua_support,
+        .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
         .on_press = NULL,

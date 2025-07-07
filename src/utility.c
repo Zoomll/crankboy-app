@@ -1106,3 +1106,38 @@ char* common_article_form(const char* input)
 
     return strdup(input);
 }
+
+#define initialSpoolErrorMsg "The following error(s) occurred:"
+
+static size_t spoolC = 0;
+char* spoolText = NULL;
+
+// queue an error to show the user later
+void spoolError(const char* fmt, ...)
+{
+    if (!spoolText) spoolText = strdup(initialSpoolErrorMsg);
+    
+    va_list args;
+    char str[2048];
+    
+    va_start(args, fmt);
+    vsnprintf(str, sizeof(str), fmt, args);
+    va_end(args);
+    
+    spoolC++;
+    spoolText = realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
+    if (!spoolText) return;
+    
+    strcpy(spoolText + strlen(spoolText), "\n\n");
+    strcpy(spoolText + strlen(spoolText), str);
+}
+
+size_t getSpooledErrors(void) { return spoolC; }
+const char* getSpooledErrorMessage(void) { return spoolText; }
+
+void freeSpool(void)
+{
+    free(spoolText);
+    spoolText = NULL;
+    spoolC = 0;
+}

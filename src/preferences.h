@@ -69,6 +69,6 @@ extern void* preferences_bundle_default;
 extern preferences_bitfield_t preferences_bundle_hidden;
 
 // all the preferences that need the game to restart to apply
-#define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_lua_support)
+#define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support)
 
 #endif /* preferences_h */

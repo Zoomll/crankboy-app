@@ -225,7 +225,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
         playdate->system->logToConsole(
             "Cover Caching Complete: %d covers cached, size: %lu bytes, took %.2f seconds.",
-            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes, duration
+            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes, (double)duration
         );
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();

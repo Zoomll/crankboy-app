@@ -23,8 +23,8 @@ PREF(crank_dock_button, PREF_BUTTON_NONE)
 PREF(joypad_interrupts, 0)
 PREF(overclock, 0)
 PREF(bios, true)
-PREF(lua_support, false)
-PREF(lua_has_prompted, false)  // (not a real setting)
+PREF(script_support, !!(PGB_App->bundled_rom))
+PREF(script_has_prompted, false)  // (not a real setting)
 
 // library
 PREF(display_name_mode, 0)  // 0: Short, 1: Detailed, 2: Filename

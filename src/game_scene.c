@@ -509,7 +509,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->script_available = false;
     gameScene->script_info_available = false;
 #ifndef NOLUA
-    ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
+    LuaScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
     if (scriptInfo)
     {
         gameScene->script_available = true;
@@ -517,7 +517,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     }
     script_info_free(scriptInfo);
 
-    if (preferences_lua_support && gameScene->script_available)
+    if (preferences_script_support && gameScene->script_available)
     {
         char name[17];
         gb_get_rom_name(context->gb->gb_rom, name);
@@ -1500,7 +1500,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         context->gb->direct.sram_updated = 0;
 
 #ifndef NOLUA
-        if (preferences_lua_support && context->scene->script)
+        if (preferences_script_support && context->scene->script)
         {
             script_tick(context->scene->script);
         }
@@ -2496,7 +2496,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
 
     struct StateHeader* header = (struct StateHeader*)buff;
     header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
-    header->script = (preferences_lua_support && context->scene->script);
+    header->script = (preferences_script_support && context->scene->script);
 
     // Write the state to the temporary file
     SDFile* file = playdate->file->open(tmp_name, kFileWrite);
@@ -2899,7 +2899,7 @@ static void PGB_GameScene_free(void* object)
     }
 
 #ifndef NOLUA
-    if (preferences_lua_support && gameScene->script)
+    if (preferences_script_support && gameScene->script)
     {
         script_end(gameScene->script);
         gameScene->script = NULL;
@@ -2924,7 +2924,7 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
     PGB_ASSERT(gameScene->context->gb == gb);
 
 #ifndef NOLUA
-    if (preferences_lua_support && gameScene->script)
+    if (preferences_script_support && gameScene->script)
     {
         call_with_user_stack_2(script_on_breakpoint, gameScene->script, breakpoint_number);
     }
@@ -2933,7 +2933,7 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
 
 void show_game_script_info(const char* rompath)
 {
-    ScriptInfo* info = script_get_info_by_rom_path(rompath);
+    LuaScriptInfo* info = script_get_info_by_rom_path(rompath);
     if (!info)
         return;
 

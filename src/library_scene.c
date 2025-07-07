@@ -293,14 +293,14 @@ static void launch_game(void* ud, int option)
 
             load_game_prefs(game->fullpath, false);
 
-            // enable lua script and per-game support
-            preferences_lua_support = 1;
+            // enable script and per-game support
+            preferences_script_support = 1;
             preferences_per_game = 1;
-            preferences_lua_has_prompted = 1;
+            preferences_script_has_prompted = 1;
 
             call_with_user_stack_2(
                 preferences_save_to_disk, settings_path,
-                ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game)
+                ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
             );
 
             preferences_restore_subset(prefs);
@@ -321,13 +321,13 @@ static void launch_game(void* ud, int option)
             load_game_prefs(game->fullpath, false);
 
             // disable lua script and enable per-game support
-            preferences_lua_support = 0;
+            preferences_script_support = 0;
             preferences_per_game = 1;
-            preferences_lua_has_prompted = 1;
+            preferences_script_has_prompted = 1;
 
             call_with_user_stack_2(
                 preferences_save_to_disk, settings_path,
-                ~(PREFBIT_lua_has_prompted | PREFBIT_lua_support | PREFBIT_per_game)
+                ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
             );
 
             preferences_restore_subset(prefs);
@@ -550,6 +550,44 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     {
         return;
     }
+    
+    // display errors to user if needed
+    if (getSpooledErrors() > 0)
+    {
+        const char* spool = getSpooledErrorMessage();
+        if (spool)
+        {
+            PGB_InfoScene* infoScene = PGB_InfoScene_new(
+                NULL
+            );
+            if (!infoScene)
+            {
+                freeSpool();
+                goto out_of_memory_error;
+            }
+            
+            char* spooldup = strdup(spool);
+            if (spooldup)
+            {
+                infoScene->text = spooldup;
+                freeSpool();
+            }
+            else
+            {
+                // this is not safe, but we need to show the error message.
+                // can force user to quit afterward to recover memory.
+                infoScene->text = (char*)spool;
+                infoScene->canClose = false;
+            }
+            PGB_presentModal(infoScene->scene);
+        }
+        else
+        {
+        out_of_memory_error:
+            playdate->system->error("Out of memory -- unable to list errors.");
+        }
+        return;
+    }
 
     PGB_LibraryScene* libraryScene = object;
 
@@ -651,15 +689,15 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             // check if user has already accepted/rejected script prompt for this game before
             void* prefs = preferences_store_subset(-1);
-            preferences_lua_has_prompted = 0;
+            preferences_script_has_prompted = 0;
             load_game_prefs(game->fullpath, false);
-            int has_prompted = preferences_lua_has_prompted;
+            int has_prompted = preferences_script_has_prompted;
             preferences_restore_subset(prefs);
             free(prefs);
 
             if (!has_prompted)
             {
-                ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+                LuaScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
                 if (info && !info->experimental)
                 {
                     const char* options[] = {"Yes", "No", "About", NULL};

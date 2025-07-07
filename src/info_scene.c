@@ -145,7 +145,10 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
 
     if (buttonsDown & (kButtonB | kButtonA))
     {
-        PGB_dismiss(infoScene->scene);
+        if (infoScene->canClose)
+        {
+            PGB_dismiss(infoScene->scene);
+        }
     }
 }
 
@@ -158,12 +161,14 @@ static void PGB_InfoScene_free(void* object)
 PGB_InfoScene* PGB_InfoScene_new(char* text)
 {
     PGB_InfoScene* infoScene = pgb_malloc(sizeof(PGB_InfoScene));
+    if (!infoScene) return NULL;
     memset(infoScene, 0, sizeof(*infoScene));
     playdate->system->getCrankChange();
 
     PGB_Scene* scene = PGB_Scene_new();
     infoScene->scene = scene;
-    infoScene->text = strdup(text);
+    infoScene->text = text ? strdup(text) : NULL;
+    infoScene->canClose = true;
     scene->managedObject = infoScene;
     scene->update = (void*)PGB_InfoScene_update;
     scene->free = (void*)PGB_InfoScene_free;

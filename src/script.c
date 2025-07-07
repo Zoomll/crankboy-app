@@ -488,7 +488,7 @@ static void set_package_path_l(lua_State* L)
     lua_pop(L, 1);
 }
 
-__section__(".rare") void script_info_free(ScriptInfo* info)
+__section__(".rare") void script_info_free(LuaScriptInfo* info)
 {
     if (!info)
         return;
@@ -497,7 +497,7 @@ __section__(".rare") void script_info_free(ScriptInfo* info)
     free(info);
 }
 
-__section__(".rare") ScriptInfo* get_script_info(const char* game_name)
+__section__(".rare") LuaScriptInfo* get_script_info(const char* game_name)
 {
     json_value v;
     int ok = parse_json("scripts.json", &v, kFileRead | kFileReadData);
@@ -547,8 +547,8 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 
         if (name && script_path && strcmp(name, game_name) == 0)
         {
-            ScriptInfo* info = malloc(sizeof(ScriptInfo));
-            memset(info, 0, sizeof(ScriptInfo));
+            LuaScriptInfo* info = malloc(sizeof(LuaScriptInfo));
+            memset(info, 0, sizeof(LuaScriptInfo));
             info->script_path = strdup(script_path);
             info->info = script_info ? strdup(strltrim(script_info)) : NULL;
             info->experimental = jexperimental.type == kJSONTrue;
@@ -572,7 +572,7 @@ lua_State* script_begin(const char* game_name, struct PGB_GameScene* game_scene)
 
     DTCM_VERIFY();
 
-    ScriptInfo* info = get_script_info(game_name);
+    LuaScriptInfo* info = get_script_info(game_name);
 
     if (!info)
     {
@@ -682,7 +682,7 @@ __section__(".rare") void script_on_breakpoint(lua_State* L, int index)
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 
-ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
+LuaScriptInfo* script_get_info_by_rom_path_(const char* game_path)
 {
     // first, open the ROM to read the game name
     size_t len;
@@ -702,19 +702,19 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
     char title[17];
     gb_get_rom_name(buff, title);
 
-    ScriptInfo* info = get_script_info(title);
+    LuaScriptInfo* info = get_script_info(title);
 
     return info;
 }
 
-ScriptInfo* script_get_info_by_rom_path(const char* game_path)
+LuaScriptInfo* script_get_info_by_rom_path(const char* game_path)
 {
-    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
+    return (LuaScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
 }
 
 bool script_exists(const char* game_path)
 {
-    ScriptInfo* info = script_get_info_by_rom_path(game_path);
+    LuaScriptInfo* info = script_get_info_by_rom_path(game_path);
 
     if (!info)
         return false;
