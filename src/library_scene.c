@@ -18,7 +18,6 @@
 #include "info_scene.h"
 #include "jparse.h"
 #include "modal.h"
-#include "pd_api.h"
 #include "preferences.h"
 #include "script.h"
 #include "settings_scene.h"
@@ -194,15 +193,6 @@ cleanup:
 
 static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
 {
-#ifndef TARGET_SIMULATOR
-    WifiStatus status = playdate->network->getStatus();
-    if (status != kWifiConnected)
-    {
-        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "No network connection.");
-        return;
-    }
-#endif
-
     int selectedIndex = libraryScene->listView->selectedItem;
     if (selectedIndex < 0 || selectedIndex >= libraryScene->games->length)
     {
@@ -1022,7 +1012,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
                             libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                         {
-                            char message[64];
+                            char message[32];
 
                             if (libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
                                 libraryScene->showCrc)
