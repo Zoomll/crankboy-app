@@ -183,16 +183,6 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
 
 void check_for_updates(update_result_cb cb, void* ud)
 {
-
-#ifndef TARGET_SIMULATOR
-    WifiStatus status = playdate->network->getStatus();
-    if (status != kWifiConnected)
-    {
-        cb(ERR_NO_NETWORK, "No network connection", ud);
-        return;
-    }
-#endif
-
     switch (read_local_version())
     {
     case -1:
