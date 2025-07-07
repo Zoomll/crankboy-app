@@ -33,6 +33,24 @@ __section__(".rare") static void* user_stack_test(void* p)
     return (void*)0x784;
 }
 
+#if TARGET_PLAYDATE
+typedef const void(*init_routine_t)(void);
+extern init_routine_t __preinit_array_start, __preinit_array_end, __init_array_start, __init_array_end, __fini_array_start, __fini_array_end;
+static PlaydateAPI* pd;
+
+__section__(".rare") 
+static void exec_array(init_routine_t* start, init_routine_t* end)
+{
+    while (start < end)
+    {
+        for (size_t i = 0;i < 58000; ++i) asm volatile("nop");
+        if (*start) (*start)();
+        ++start;
+    }
+}
+#endif
+
+
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 
 __section__(".text.main") DllExport
@@ -49,12 +67,17 @@ __section__(".text.main") DllExport
 
     if (event == kEventInit)
     {
-        init_user_stack();
-        pd_revcheck();
         playdate = pd;
-        playdate->system->logToConsole("Device: %s", pd_rev_description);
-
+        init_user_stack();
         srand(time(NULL));
+        
+#ifdef TARGET_PLAYDATE
+        exec_array(&__preinit_array_start, &__preinit_array_end);
+		exec_array(&__init_array_start, &__init_array_end);
+#endif
+        
+        pd_revcheck();
+        playdate->system->logToConsole("Device: %s", pd_rev_description);
 
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
@@ -71,6 +94,10 @@ __section__(".text.main") DllExport
     }
     else if (event == kEventTerminate)
     {
+#ifdef TARGET_PLAYDATE
+        exec_array(&__fini_array_start, &__fini_array_end);
+#endif
+
         PGB_quit();
     }
 

@@ -509,7 +509,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->script_available = false;
     gameScene->script_info_available = false;
 #ifndef NOLUA
-    LuaScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
+    ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
     if (scriptInfo)
     {
         gameScene->script_available = true;
@@ -1502,7 +1502,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 #ifndef NOLUA
         if (preferences_script_support && context->scene->script)
         {
-            script_tick(context->scene->script);
+            script_tick(context->scene->script, gameScene);
         }
 #endif
 
@@ -2898,13 +2898,11 @@ static void PGB_GameScene_free(void* object)
         pgb_free(context->cart_ram);
     }
 
-#ifndef NOLUA
     if (preferences_script_support && gameScene->script)
     {
-        script_end(gameScene->script);
+        script_end(gameScene->script, gameScene);
         gameScene->script = NULL;
     }
-#endif
 
     pgb_free(context);
     pgb_free(gameScene);
@@ -2923,17 +2921,15 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
     PGB_ASSERT(gameScene->context->gb->direct.priv == context);
     PGB_ASSERT(gameScene->context->gb == gb);
 
-#ifndef NOLUA
     if (preferences_script_support && gameScene->script)
     {
-        call_with_user_stack_2(script_on_breakpoint, gameScene->script, breakpoint_number);
+        call_with_user_stack_2(script_on_breakpoint, gameScene, breakpoint_number);
     }
-#endif
 }
 
 void show_game_script_info(const char* rompath)
 {
-    LuaScriptInfo* info = script_get_info_by_rom_path(rompath);
+    ScriptInfo* info = script_get_info_by_rom_path(rompath);
     if (!info)
         return;
 

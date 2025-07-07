@@ -28,6 +28,9 @@
 
 #define REGISTRY_GAME_SCENE_KEY "PGB_GameScene"
 
+size_t c_script_count = 0;
+const struct CScriptInfo** c_scripts = NULL;
+
 static bool lua_check_args(lua_State* L, int min, int max)
 {
     int argc = lua_gettop(L);
@@ -488,17 +491,23 @@ static void set_package_path_l(lua_State* L)
     lua_pop(L, 1);
 }
 
-__section__(".rare") void script_info_free(LuaScriptInfo* info)
+#endif
+
+__section__(".rare") void script_info_free(ScriptInfo* info)
 {
     if (!info)
         return;
-    if (info->script_path)
-        free(info->script_path);
+    if (info->info)
+        free(info->info);
+    if (info->lua_script_path)
+        free(info->lua_script_path);
     free(info);
 }
 
-__section__(".rare") LuaScriptInfo* get_script_info(const char* game_name)
+__section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 {
+    #ifndef NOLUA
+    // first, check for a lua script
     json_value v;
     int ok = parse_json("scripts.json", &v, kFileRead | kFileReadData);
 
@@ -533,23 +542,23 @@ __section__(".rare") LuaScriptInfo* get_script_info(const char* game_name)
         json_value jinfo = json_get_table_value(item, "info");
 
         const char* name = (jname.type == kJSONString) ? jname.data.stringval : NULL;
-        const char* script_path = (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
+        const char* lua_script_path = (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
         const char* script_info = (jinfo.type == kJSONString) ? jinfo.data.stringval : NULL;
 
-        if (script_path)
+        if (lua_script_path)
         {
 #ifdef TARGET_SIMULATOR
             char fullpath[1024];
-            snprintf(fullpath, sizeof(fullpath), "Source/%s", script_path);
-            script_path = strdup(fullpath);
+            snprintf(fullpath, sizeof(fullpath), "Source/%s", lua_script_path);
+            lua_script_path = strdup(fullpath);
 #endif
         }
 
-        if (name && script_path && strcmp(name, game_name) == 0)
+        if (name && lua_script_path && strcmp(name, game_name) == 0)
         {
-            LuaScriptInfo* info = malloc(sizeof(LuaScriptInfo));
-            memset(info, 0, sizeof(LuaScriptInfo));
-            info->script_path = strdup(script_path);
+            ScriptInfo* info = malloc(sizeof(ScriptInfo));
+            memset(info, 0, sizeof(ScriptInfo));
+            info->lua_script_path = strdup(lua_script_path);
             info->info = script_info ? strdup(strltrim(script_info)) : NULL;
             info->experimental = jexperimental.type == kJSONTrue;
             strncpy(info->rom_name, game_name, 16);
@@ -560,129 +569,235 @@ __section__(".rare") LuaScriptInfo* get_script_info(const char* game_name)
     }
 
     free_json_data(v);
+    #endif
+    
+    // no lua script, so check for c script.
+    // (We prioritize lua scripts to allow a user to replace a C
+    //  script with a Lua script.)
+    for (size_t i = 0; i < c_script_count && c_scripts; ++i)
+    {
+        const struct CScriptInfo* cinfo = c_scripts[i];
+        if (cinfo && !strcmp(cinfo->rom_name, game_name))
+        {
+            ScriptInfo* info = malloc(sizeof(ScriptInfo));
+            memset(info, 0, sizeof(ScriptInfo));
+            info->c_script_info = cinfo;
+            info->info = cinfo->description ? strdup(strltrim(cinfo->description)) : NULL;
+            info->experimental = cinfo->description;
+            strncpy(info->rom_name, game_name, 16);
+            info->rom_name[16] = 0;  // paranoia
+            free_json_data(v);
+            return info;
+        }
+    }
+    
     return NULL;
 }
 
-// TODO: should take rom data instead
-lua_State* script_begin(const char* game_name, struct PGB_GameScene* game_scene)
+// TODO: should take rom data instead (and extract from it the game name)
+ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scene)
 {
     DTCM_VERIFY();
 
-    lua_State* L = NULL;
+    ScriptInfo* info = get_script_info(game_name);
+    
+    if (!info) return NULL;
+    
+    ScriptState* state = malloc(sizeof(ScriptState));
+    memset(state, 0, sizeof(*state));
+    
+    // (exactly one or the other)
+    PGB_ASSERT(!info->lua_script_path ^ !info->c_script_info);
 
-    DTCM_VERIFY();
-
-    LuaScriptInfo* info = get_script_info(game_name);
-
-    if (!info)
+    #ifndef NOLUA
+    if (info->lua_script_path)
     {
-        return NULL;
-    }
+        lua_State* L = NULL;
 
-    playdate->system->logToConsole("Using script %s", info->script_path);
+        playdate->system->logToConsole("Using Lua script %s", info->lua_script_path);
 
-    L = luaL_newstate();
-    open_sandboxed_libs(L);
-    set_package_path_l(L);
+        L = luaL_newstate();
+        state->L = L;
+        open_sandboxed_libs(L);
+        set_package_path_l(L);
 
-    lua_pushlightuserdata(L, (void*)game_scene);
-    lua_setfield(L, LUA_REGISTRYINDEX, REGISTRY_GAME_SCENE_KEY);
+        lua_pushlightuserdata(L, (void*)game_scene);
+        lua_setfield(L, LUA_REGISTRYINDEX, REGISTRY_GAME_SCENE_KEY);
 
-    register_pgb_library(L);
-
-    DTCM_VERIFY();
-
-    if (luaL_dofile(L, info->script_path) != LUA_OK)
-    {
-        const char* err = lua_tostring(L, -1);
-        fprintf(stderr, "Lua error: %s\n", err);
-        lua_close(L);
+        register_pgb_library(L);
 
         DTCM_VERIFY();
+
+        if (luaL_dofile(L, info->lua_script_path) != LUA_OK)
+        {
+            const char* err = lua_tostring(L, -1);
+            fprintf(stderr, "Lua error: %s\n", err);
+            lua_close(L);
+
+            DTCM_VERIFY();
+            script_info_free(info);
+            return NULL;
+        }
+
         script_info_free(info);
-        return NULL;
+        DTCM_VERIFY();
     }
-
-    script_info_free(info);
-    DTCM_VERIFY();
-    return L;
+    #endif
+    
+    if (info->c_script_info)
+    {
+        const struct CScriptInfo* csi = info->c_script_info;
+        state->c = csi;
+        
+        playdate->system->logToConsole("Using C script for %s", info->rom_name);
+        if (csi->on_begin)
+        {
+            state->ud = csi->on_begin(game_scene->context->gb);
+        }
+    }
+    
+    return state;
 }
 
-void script_end(lua_State* L)
+void script_end(ScriptState* state, struct PGB_GameScene* game_scene)
 {
-    if (L)
+    #ifndef NOLUA
+    if (state->L)
     {
-        lua_close(L);
+        lua_close(state->L);
+    }
+    #endif
+    
+    if (state->c)
+    {
+        state->c->on_end(game_scene->context->gb, state->ud);
+    }
+    
+    if (state->cbp) free(state->cbp);
+    
+    free(state);
+}
+
+void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
+{
+    #ifndef NOLUA
+    if (state->L)
+    {
+        lua_State* L = state->L;
+        lua_getglobal(L, "pgb");
+        if (!lua_istable(L, -1))
+        {
+            lua_pop(L, 1);
+            return;
+        }
+
+        lua_getfield(L, -1, "update");
+        if (!lua_isfunction(L, -1))
+        {
+            lua_pop(L, 2);  // pop update and pgb
+            return;
+        }
+
+        lua_remove(L, -2);  // remove pgb, leave update
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK)
+        {
+            const char* err = lua_tostring(L, -1);
+            fprintf(stderr, "script_tick error: %s\n", err);
+            lua_pop(L, 1);
+        }
+    }
+    #endif
+    
+    if (state->c && state->c->on_tick)
+    {
+        state->c->on_tick(game_scene->context->gb, state->ud);
     }
 }
 
-void script_tick(lua_State* L)
+// for C scripts
+__section__(".rare") int c_script_add_hw_breakpoint(
+    struct gb_s* gb,
+    uint16_t addr,
+    CS_OnBreakpoint callback
+)
 {
-    if (!L)
-        return;
-
-    lua_getglobal(L, "pgb");
-    if (!lua_istable(L, -1))
+    // get script from gameboy (rather indirect :/)
+    PGB_GameSceneContext* context = gb->direct.priv;
+    PGB_GameScene* scene = context->scene;
+    ScriptState* state = scene->script;
+    
+    PGB_ASSERT(state);
+    
+    int bp = set_hw_breakpoint(gb, addr);
+    
+    if (bp < 0)
     {
-        lua_pop(L, 1);
-        return;
+        return bp;
     }
-
-    lua_getfield(L, -1, "update");
-    if (!lua_isfunction(L, -1))
+    if (bp >= MAX_BREAKPOINTS) return -101;
+    
+    if (!state->cbp)
     {
-        lua_pop(L, 2);  // pop update and pgb
-        return;
+        state->cbp = realloc(state->cbp, MAX_BREAKPOINTS * sizeof(*state->cbp));
+        if (!state->cbp) return -100;
     }
-
-    lua_remove(L, -2);  // remove pgb, leave update
-    if (lua_pcall(L, 0, 0, 0) != LUA_OK)
-    {
-        const char* err = lua_tostring(L, -1);
-        fprintf(stderr, "script_tick error: %s\n", err);
-        lua_pop(L, 1);
-    }
+    
+    state->cbp[bp] = callback;
+    return bp;
 }
 
-__section__(".rare") void script_on_breakpoint(lua_State* L, int index)
+__section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, int index)
 {
-    if (!L)
-        return;
-
-    // get lua top, store so it can be reset to later
-    int top = lua_gettop(L);
-
-    // Execute function from registry, breakpoint number index
-    lua_getfield(L, LUA_REGISTRYINDEX, "pgb_breakpoints");
-    if (!lua_istable(L, -1))
+    ScriptState* state = gameScene->script;
+    struct gb_s* gb = gameScene->context->gb;
+    
+    #ifndef NOLUA
+    if (state->L)
     {
-        lua_pop(L, 1);
-        return;
-    }
-    lua_pushinteger(L, index);
-    lua_gettable(L, -2);  // get function at index
-    if (!lua_isfunction(L, -1))
-    {
-        printf("Unknown breakpoint %d\n", index);
-        lua_pop(L, 2);  // pop function and table
-        return;
-    }
-    lua_remove(L, -2);  // remove table, leave function
-    // call function, pass index as argument
-    lua_pushinteger(L, index);
-    if (lua_pcall(L, 1, 0, 0) != LUA_OK)
-    {
-        const char* err = lua_tostring(L, -1);
-        fprintf(stderr, "script breakpoint error error: %s\n", err);
-        lua_pop(L, 1);
-    }
+        lua_State* L = state->L;
 
-    lua_settop(L, top);
+        // get lua top, store so it can be reset to later
+        int top = lua_gettop(L);
+
+        // Execute function from registry, breakpoint number index
+        lua_getfield(L, LUA_REGISTRYINDEX, "pgb_breakpoints");
+        if (!lua_istable(L, -1))
+        {
+            lua_pop(L, 1);
+            return;
+        }
+        lua_pushinteger(L, index);
+        lua_gettable(L, -2);  // get function at index
+        if (!lua_isfunction(L, -1))
+        {
+            printf("Unknown breakpoint %d\n", index);
+            lua_pop(L, 2);  // pop function and table
+            return;
+        }
+        lua_remove(L, -2);  // remove table, leave function
+        // call function, pass index as argument
+        lua_pushinteger(L, index);
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK)
+        {
+            const char* err = lua_tostring(L, -1);
+            fprintf(stderr, "script breakpoint error error: %s\n", err);
+            lua_pop(L, 1);
+        }
+
+        lua_settop(L, top);
+    }
+    #endif
+    
+    if (state->c && state->cbp)
+    {
+        CS_OnBreakpoint cb = state->cbp[index];
+        cb(gb, gb->cpu_reg.pc, index, state->ud);
+    }
 }
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 
-LuaScriptInfo* script_get_info_by_rom_path_(const char* game_path)
+ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
 {
     // first, open the ROM to read the game name
     size_t len;
@@ -702,19 +817,19 @@ LuaScriptInfo* script_get_info_by_rom_path_(const char* game_path)
     char title[17];
     gb_get_rom_name(buff, title);
 
-    LuaScriptInfo* info = get_script_info(title);
+    ScriptInfo* info = get_script_info(title);
 
     return info;
 }
 
-LuaScriptInfo* script_get_info_by_rom_path(const char* game_path)
+ScriptInfo* script_get_info_by_rom_path(const char* game_path)
 {
-    return (LuaScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
+    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
 }
 
 bool script_exists(const char* game_path)
 {
-    LuaScriptInfo* info = script_get_info_by_rom_path(game_path);
+    ScriptInfo* info = script_get_info_by_rom_path(game_path);
 
     if (!info)
         return false;
@@ -723,4 +838,15 @@ bool script_exists(const char* game_path)
     return true;
 }
 
-#endif
+void register_c_script(const struct CScriptInfo* info)
+{
+    c_scripts = realloc(c_scripts, sizeof(struct CScriptInfo*) * ++c_script_count);
+    if (c_scripts == NULL)
+    {
+        c_script_count = 0;
+        playdate->system->error("Failed to allocate memory for C script list.");
+        return;
+    }
+    
+    c_scripts[c_script_count-1] = info;
+}

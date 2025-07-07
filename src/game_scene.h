@@ -79,6 +79,8 @@ typedef struct PGB_GameSceneContext
     uint8_t previous_lcd[LCD_HEIGHT * LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
 } PGB_GameSceneContext;
 
+struct ScriptState;
+
 typedef struct PGB_GameScene
 {
     PGB_Scene* scene;
@@ -127,7 +129,7 @@ typedef struct PGB_GameScene
 
     float prev_dt;
 
-    lua_State *script;
+    struct ScriptState* script;
 
     LCDBitmap *menuImage;
     int button_hold_mode; // 0: Select, 1: None, 2: Start
