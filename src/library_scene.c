@@ -132,7 +132,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     size_t new_data_len = data_len - (actual_data_start - data);
 
-    rom_basename_no_ext = pgb_basename(game->names.filename, true);
+    rom_basename_no_ext = pgb_basename(game->names->filename, true);
     if (!rom_basename_no_ext)
     {
         if (stillOnSameGame)
@@ -213,13 +213,13 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
 
     set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, "Searching for missing Cover...");
 
-    if (game->names.name_database == NULL)
+    if (game->names->name_database == NULL)
     {
         set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, "No Cover found.");
         return;
     }
 
-    char* encoded_name = pgb_url_encode_for_github_raw(game->names.name_database);
+    char* encoded_name = pgb_url_encode_for_github_raw(game->names->name_database);
     if (!encoded_name)
     {
         set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
@@ -359,7 +359,7 @@ static void launch_game(void* ud, int option)
     launch_normal:
     {
         PGB_GameScene* gameScene =
-            PGB_GameScene_new(game->fullpath, game->names.name_short_leading_article);
+            PGB_GameScene_new(game->fullpath, game->names->name_short_leading_article);
         if (gameScene)
         {
             PGB_present(gameScene->scene);
@@ -506,7 +506,7 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
     {
         PGB_Game* selectedGameBefore =
             libraryScene->games->items[libraryScene->listView->selectedItem];
-        selectedFilename = string_copy(selectedGameBefore->names.filename);
+        selectedFilename = string_copy(selectedGameBefore->names->filename);
     }
 
     for (int i = 0; i < libraryScene->games->length; i++)
@@ -523,9 +523,8 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
     {
         for (int i = 0; i < libraryScene->games->length; i++)
         {
-            // Corrected line with the required cast
             PGB_Game* currentGame = libraryScene->games->items[i];
-            if (strcmp(currentGame->names.filename, selectedFilename) == 0)
+            if (strcmp(currentGame->names->filename, selectedFilename) == 0)
             {
                 newSelectedIndex = i;
                 break;
@@ -560,22 +559,20 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     {
         return;
     }
-    
+
     // display errors to user if needed
     if (getSpooledErrors() > 0)
     {
         const char* spool = getSpooledErrorMessage();
         if (spool)
         {
-            PGB_InfoScene* infoScene = PGB_InfoScene_new(
-                NULL
-            );
+            PGB_InfoScene* infoScene = PGB_InfoScene_new(NULL);
             if (!infoScene)
             {
                 freeSpool();
                 goto out_of_memory_error;
             }
-            
+
             char* spooldup = strdup(spool);
             if (spooldup)
             {
@@ -742,7 +739,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
             PGB_Game* selectedGame = libraryScene->games->items[selectedItem];
-            bool hasDBMatch = (selectedGame->names.name_database != NULL);
+            bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
             // Only allow download if a cover is missing, a DB match exists,
             // and no download is already in progress.
@@ -1031,11 +1028,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 libraryScene->showCrc)
                             {
                                 PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                                if (selectedGame->names.crc32 != 0)
+                                if (selectedGame->names->crc32 != 0)
                                 {
                                     snprintf(
                                         message, sizeof(message), "%08lX",
-                                        (unsigned long)selectedGame->names.crc32
+                                        (unsigned long)selectedGame->names->crc32
                                     );
                                 }
                                 else
@@ -1069,7 +1066,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         else
                         {
                             PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                            bool hasDBMatch = (selectedGame->names.name_database != NULL);
+                            bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
                             if (hasDBMatch)
                             {
@@ -1172,11 +1169,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 {
                                     PGB_Game* selectedGame =
                                         libraryScene->games->items[selectedIndex];
-                                    if (selectedGame->names.crc32 != 0)
+                                    if (selectedGame->names->crc32 != 0)
                                     {
                                         snprintf(
                                             message1, sizeof(message1), "%08lX",
-                                            (unsigned long)selectedGame->names.crc32
+                                            (unsigned long)selectedGame->names->crc32
                                         );
                                     }
                                     else
@@ -1470,19 +1467,19 @@ static void set_display_and_sort_name(PGB_Game* game)
     switch (preferences_display_name_mode)
     {
     case DISPLAY_NAME_MODE_SHORT:
-        game->displayName = (preferences_display_article) ? game->names.name_short
-                                                          : game->names.name_short_leading_article;
+        game->displayName = (preferences_display_article) ? game->names->name_short
+                                                          : game->names->name_short_leading_article;
         break;
     case DISPLAY_NAME_MODE_DETAILED:
         game->displayName = (preferences_display_article)
-                                ? game->names.name_detailed
-                                : game->names.name_detailed_leading_article;
+                                ? game->names->name_detailed
+                                : game->names->name_detailed_leading_article;
         break;
     case DISPLAY_NAME_MODE_FILENAME:
     default:
         game->displayName = (preferences_display_article)
-                                ? game->names.name_filename
-                                : game->names.name_filename_leading_article;
+                                ? game->names->name_filename
+                                : game->names->name_filename_leading_article;
         break;
     }
 
@@ -1491,16 +1488,16 @@ static void set_display_and_sort_name(PGB_Game* game)
     {
     default:
     case 0:
-        game->sortName = game->names.name_filename;
+        game->sortName = game->names->name_filename;
         break;
     case 1:
-        game->sortName = game->names.name_detailed;
+        game->sortName = game->names->name_detailed;
         break;
     case 2:
-        game->sortName = game->names.name_detailed_leading_article;
+        game->sortName = game->names->name_detailed_leading_article;
         break;
     case 3:
-        game->sortName = game->names.name_filename_leading_article;
+        game->sortName = game->names->name_filename_leading_article;
         break;
     }
 }
@@ -1509,13 +1506,11 @@ PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers)
 {
     PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
 
-    game->names.crc32 = cachedName->crc32;
-
     char* fullpath_str;
     playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, cachedName->filename);
     game->fullpath = fullpath_str;
 
-    copy_game_names(cachedName, &game->names);
+    game->names = cachedName;
 
     set_display_and_sort_name(game);
 
@@ -1536,8 +1531,5 @@ void PGB_Game_free(PGB_Game* game)
 {
     pgb_free(game->fullpath);
     pgb_free(game->coverPath);
-
-    free_game_names(&game->names);
-
     pgb_free(game);
 }

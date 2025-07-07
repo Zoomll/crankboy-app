@@ -60,7 +60,6 @@ typedef struct
 
 // Note: does not free PGB_GameName struct, only its members.
 void free_game_names(const PGB_GameName* gameNames);
-void copy_game_names(const PGB_GameName* src, PGB_GameName* dst);
 
 typedef struct
 {
