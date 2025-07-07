@@ -22,6 +22,7 @@
 #include "script.h"
 #include "settings_scene.h"
 #include "userstack.h"
+#include "utility.h"
 #include "version.h"
 
 #define LAST_SELECTED_PATH "library_last_selected.txt"
