@@ -107,9 +107,18 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         pgb_sort_games_array(PGB_App->gameListCache);
         PGB_App->gameListCacheIsSorted = true;
         cacheScene->current_index = 0;
-        cacheScene->state = kCoverCacheStateCaching;
 
         cacheScene->start_time_ms = playdate->system->getCurrentTimeMilliseconds();
+
+        if (cacheScene->available_covers->length > 0)
+        {
+            cacheScene->state = kCoverCacheStateCaching;
+        }
+        else
+        {
+            cacheScene->state = kCoverCacheStateDone;
+        }
+
         break;
     }
 
