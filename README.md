@@ -102,3 +102,5 @@ After cloning the repository, please enable the clang-format git hook by running
 ```bash
 git config core.hooksPath githooks
 ```
+
+For convenience, you can use the CLI arg `rom=<path/to/rom>` (where path is relative to the game's data directory) to launch a rom in bundled mode directly.

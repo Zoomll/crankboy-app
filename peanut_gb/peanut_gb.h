@@ -645,6 +645,8 @@ struct gb_s
     audio_data audio;
 };
 
+__core unsigned int __gb_step_cpu(struct gb_s* gb);
+
 #ifdef PGB_IMPL
 __section__(".rare") bool gb_detect_interrupt(struct gb_s* gb, unsigned addr)
 {

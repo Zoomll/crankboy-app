@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /*
 
 There are two kinds of scripts. Lua scripts and C scripts.
@@ -14,9 +17,10 @@ at build time, and they must contain a C_SCRIPT { ... } declaration.
 
 struct PGB_GameScene;
 struct gb_s;
+struct lua_State;
 
-// returns user-data
-typedef void* (*CS_OnBegin)(struct gb_s* gb);
+// returns user-data; return value of NULL indicates an error.
+typedef void* (*CS_OnBegin)(struct gb_s* gb, const char* rom_header_name);
 
 typedef void (*CS_OnTick)(struct gb_s* gb, void* userdata);
 
@@ -32,6 +36,7 @@ typedef void (*CS_OnBreakpoint)(
 
 struct CScriptInfo
 {
+    // must match what's in the header
     const char* rom_name;
     const char* description;
     bool experimental;
@@ -39,12 +44,6 @@ struct CScriptInfo
     CS_OnTick on_tick;
     CS_OnEnd on_end;
 };
-
-#define C_SCRIPT \
-    static struct CSCriptInfo _script; \
-    static __atribute__((constructor)) void _init_script() \
-        { register_script(&_script); } \
-    struct CScriptInfo _script
 
 typedef struct ScriptInfo
 {
@@ -57,12 +56,11 @@ typedef struct ScriptInfo
     const struct CScriptInfo* c_script_info;
 } ScriptInfo;
 
-struct lua_State;
 typedef struct ScriptState
 {
     // one of the following will be non-null
     const struct CScriptInfo* c;
-    lua_State* L;
+    struct lua_State* L;
     
     // C script state
     void* ud;
@@ -75,7 +73,7 @@ void script_end(ScriptState* state, struct PGB_GameScene* game_scene);
 void script_tick(ScriptState* state, struct PGB_GameScene* game_scene);
 void script_on_breakpoint(struct PGB_GameScene* game_scene, int index);
 
-void register_c_script(const struct CScriptInfo*);
+void register_c_script(const struct CScriptInfo* info);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.

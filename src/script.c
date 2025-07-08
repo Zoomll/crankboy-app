@@ -31,6 +31,8 @@
 size_t c_script_count = 0;
 const struct CScriptInfo** c_scripts = NULL;
 
+struct gb_s* script_gb;
+
 static bool lua_check_args(lua_State* L, int min, int max)
 {
     int argc = lua_gettop(L);
@@ -246,7 +248,6 @@ __section__(".rare") static int pgb_force_pref(lua_State* L)
     return luaL_error(L, "ERROR: unrecognized pref \"%s\"", preference);
 }
 
-void __gb_step_cpu(struct gb_s* gb);
 static int pgb_step_cpu(lua_State* L)
 {
     // UNTESTED
@@ -571,7 +572,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
     free_json_data(v);
     #endif
     
-    // no lua script, so check for c script.
+    // no lua script, so check for V script.
     // (We prioritize lua scripts to allow a user to replace a C
     //  script with a Lua script.)
     for (size_t i = 0; i < c_script_count && c_scripts; ++i)
@@ -579,14 +580,12 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         const struct CScriptInfo* cinfo = c_scripts[i];
         if (cinfo && !strcmp(cinfo->rom_name, game_name))
         {
-            ScriptInfo* info = malloc(sizeof(ScriptInfo));
-            memset(info, 0, sizeof(ScriptInfo));
+            ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
             info->info = cinfo->description ? strdup(strltrim(cinfo->description)) : NULL;
             info->experimental = cinfo->description;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;  // paranoia
-            free_json_data(v);
             return info;
         }
     }
@@ -600,11 +599,11 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
     DTCM_VERIFY();
 
     ScriptInfo* info = get_script_info(game_name);
+    script_gb = game_scene->context->gb;
     
     if (!info) return NULL;
     
-    ScriptState* state = malloc(sizeof(ScriptState));
-    memset(state, 0, sizeof(*state));
+    ScriptState* state = allocz(ScriptState);
     
     // (exactly one or the other)
     PGB_ASSERT(!info->lua_script_path ^ !info->c_script_info);
@@ -618,6 +617,7 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
 
         L = luaL_newstate();
         state->L = L;
+        game_scene->script = state; // ugly hack, set it early before the script starts
         open_sandboxed_libs(L);
         set_package_path_l(L);
 
@@ -648,11 +648,18 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
     {
         const struct CScriptInfo* csi = info->c_script_info;
         state->c = csi;
+        game_scene->script = state; // ugly hack, set it early before the script starts
         
         playdate->system->logToConsole("Using C script for %s", info->rom_name);
         if (csi->on_begin)
         {
-            state->ud = csi->on_begin(game_scene->context->gb);
+            state->ud = csi->on_begin(game_scene->context->gb, game_name);
+        }
+        else
+        {
+            playdate->system->error("Script returned NULL from on_begin, indicating an error.");
+            free(state);
+            return NULL;
         }
     }
     

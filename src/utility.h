@@ -258,4 +258,12 @@ size_t getSpooledErrors(void);
 const char* getSpooledErrorMessage(void);
 void freeSpool(void);
 
+// malloc and memset to zero
+void* mallocz(size_t size);
+
+#define allocz(Type) ((Type*)mallocz(sizeof(Type)))
+
+// non-negative floating-point modulo
+float nnfmodf(float a, float b);
+
 #endif /* utility_h */

@@ -122,6 +122,17 @@ static void copy_file_callback(const char* filename, void* userdata)
 
 static int check_is_bundle(void)
 {
+    // check for CLI arg    
+    const char* arg = playdate->system->getLaunchArgs(NULL);
+    if (startswith(arg, "rom="))
+    {
+        arg += strlen("rom=");
+        PGB_App->bundled_rom = strdup(arg);
+        return true;
+    }
+    
+    // check for bundle.json
+    
     json_value jbundle;
     if (!parse_json(BUNDLE_FILE, &jbundle, kFileRead | kFileReadData))
         return false;
@@ -287,9 +298,8 @@ void PGB_init(void)
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
     PGB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
-
-    if (check_is_bundle() < 0)
-        return;
+    
+    check_is_bundle();
 
     if (!PGB_App->bundled_rom)
         pgb_draw_logo_screen_and_display("Initializing…");

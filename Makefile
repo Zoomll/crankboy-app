@@ -28,9 +28,11 @@ VPATH += peanut_gb
 VPATH += minigb_apu
 VPATH += lz4
 
+# collect C scripts
+SRC += $(wildcard src/cscripts/*.c)
+
 # List C source files here
-SRC += lz4/lz4.c
-SRC += lz4/lz4hc.c
+SRC += src/scriptutil.c
 SRC += src/pgmusic.c
 SRC += src/info_scene.c
 SRC += src/cover_cache_scene.c
@@ -60,6 +62,8 @@ SRC += main.c
 SRC += pdnewlib.c
 
 SRC += lua-5.4.7/onelua.c
+SRC += lz4/lz4.c
+SRC += lz4/lz4hc.c
 
 ASRC = setup.s
 

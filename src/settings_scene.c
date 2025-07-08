@@ -162,26 +162,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     {
         // some settings cannot be changed
         settingsScene->immutable_settings =
-            preferences_store_subset(PREFBITS_REQUIRES_RESTART | gameScene->prefs_locked_by_script);
-
-        // temporarily load prefs that need restarting a game
-        void* prefs_restart = preferences_store_subset(~(PREFBITS_REQUIRES_RESTART));
-        if (prefs_restart)
-        {
-            if (preferences_per_game)
-            {
-                call_with_user_stack_1(
-                    preferences_read_from_disk, settingsScene->gameScene->settings_filename
-                );
-            }
-            else
-            {
-                call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
-            }
-
-            preferences_restore_subset(prefs_restart);
-            free(prefs_restart);
-        }
+            preferences_store_subset(gameScene->prefs_locked_by_script);
     }
     else
     {
@@ -286,7 +267,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                     PREFBIT_display_name_mode
 
                     // these prefs are locked, so we shouldn't be able to change them
-                    | PREFBITS_REQUIRES_RESTART | settingsScene->gameScene->prefs_locked_by_script
+                    | settingsScene->gameScene->prefs_locked_by_script
             );
 
             if (result)
@@ -777,7 +758,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         .on_press = NULL
     };
 
-    #define BASE_LUA_STRING "Lua scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
+    #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA
     // lua scripts

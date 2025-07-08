@@ -1160,3 +1160,17 @@ void freeSpool(void)
     spoolText = NULL;
     spoolC = 0;
 }
+
+void* mallocz(size_t size)
+{
+    void* v = malloc(size);
+    if (!v) return NULL;
+    
+    memset(v, 0, size);
+    return v;
+}
+
+float nnfmodf(float a, float b) {
+    float mod = fmodf(a, b);
+    return mod >= 0 ? mod : mod + b;
+}

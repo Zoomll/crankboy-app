@@ -72,6 +72,8 @@ __section__(".text.main") DllExport
         srand(time(NULL));
         
 #ifdef TARGET_PLAYDATE
+        // support for attribute((constructor)),
+        // and possibly future support for c++.
         exec_array(&__preinit_array_start, &__preinit_array_end);
 		exec_array(&__init_array_start, &__init_array_end);
 #endif
