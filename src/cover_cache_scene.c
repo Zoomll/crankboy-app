@@ -1,6 +1,6 @@
 #include "cover_cache_scene.h"
 
-#include "../lz4/lz4hc.h"
+#include "../lz4/lz4.h"
 #include "app.h"
 #include "library_scene.h"
 #include "utility.h"
@@ -44,6 +44,8 @@ PGB_CoverCacheScene* PGB_CoverCacheScene_new(void)
 
     cacheScene->available_covers = array_new();
     cacheScene->games_with_covers = array_new();
+
+    cacheScene->lz4_state = pgb_malloc(LZ4_sizeofState());
 
     return cacheScene;
 }
@@ -183,9 +185,9 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                             );
                         }
 
-                        int compressed_size = LZ4_compress_HC(
-                            (const char*)uncompressed_buffer, compressed_buffer, original_size,
-                            max_dst_size, LZ4HC_CLEVEL_MIN
+                        int compressed_size = LZ4_compress_fast_extState(
+                            cacheScene->lz4_state, (const char*)uncompressed_buffer,
+                            compressed_buffer, original_size, max_dst_size, 1
                         );
 
                         pgb_free(uncompressed_buffer);
@@ -242,7 +244,8 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
         playdate->system->logToConsole(
             "Cover Caching Complete: %d covers cached, size: %lu bytes, took %.2f seconds.",
-            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes, (double)duration
+            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes,
+            (double)duration
         );
 
         PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
@@ -268,6 +271,11 @@ void PGB_CoverCacheScene_free(void* object)
     if (cacheScene->games_with_covers)
     {
         array_free(cacheScene->games_with_covers);
+    }
+
+    if (cacheScene->lz4_state)
+    {
+        pgb_free(cacheScene->lz4_state);
     }
 
     PGB_Scene_free(cacheScene->scene);

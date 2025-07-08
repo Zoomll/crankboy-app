@@ -22,6 +22,7 @@ typedef struct PGB_CoverCacheScene
     PGB_Array* available_covers;
     PGB_Array* games_with_covers;
     uint32_t start_time_ms;
+    void* lz4_state;
 } PGB_CoverCacheScene;
 
 PGB_CoverCacheScene* PGB_CoverCacheScene_new(void);
