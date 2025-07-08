@@ -978,17 +978,9 @@ char* pgb_url_encode_for_github_raw(const char* str)
     return encoded;
 }
 
-PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
+PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
 {
-    PGB_FetchedNames names = {NULL, NULL, 0, true};
-
-    uint32_t crc;
-    names.failedToOpenROM = !pgb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
-    names.crc32 = crc;
-    if (names.failedToOpenROM)
-    {
-        return names;
-    }
+    PGB_FetchedNames names = {NULL, NULL, 0, false};
 
     char crc_string_upper[9];
     char crc_string_lower[9];
@@ -1034,6 +1026,25 @@ PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
 
     free_json_data(db_json);
     return names;
+}
+
+PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
+{
+    PGB_FetchedNames names = {NULL, NULL, 0, true};
+
+    uint32_t crc;
+    names.failedToOpenROM = !pgb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
+
+    if (names.failedToOpenROM)
+    {
+        return names;
+    }
+
+    PGB_FetchedNames names_from_db = pgb_get_titles_from_db_by_crc(crc);
+    names_from_db.crc32 = crc;
+    names_from_db.failedToOpenROM = false;
+
+    return names_from_db;
 }
 
 static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",
@@ -1115,25 +1126,33 @@ char* spoolText = NULL;
 // queue an error to show the user later
 void spoolError(const char* fmt, ...)
 {
-    if (!spoolText) spoolText = strdup(initialSpoolErrorMsg);
-    
+    if (!spoolText)
+        spoolText = strdup(initialSpoolErrorMsg);
+
     va_list args;
     char str[2048];
-    
+
     va_start(args, fmt);
     vsnprintf(str, sizeof(str), fmt, args);
     va_end(args);
-    
+
     spoolC++;
     spoolText = realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
-    if (!spoolText) return;
-    
+    if (!spoolText)
+        return;
+
     strcpy(spoolText + strlen(spoolText), "\n\n");
     strcpy(spoolText + strlen(spoolText), str);
 }
 
-size_t getSpooledErrors(void) { return spoolC; }
-const char* getSpooledErrorMessage(void) { return spoolText; }
+size_t getSpooledErrors(void)
+{
+    return spoolC;
+}
+const char* getSpooledErrorMessage(void)
+{
+    return spoolText;
+}
 
 void freeSpool(void)
 {

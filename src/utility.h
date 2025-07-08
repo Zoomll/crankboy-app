@@ -32,6 +32,8 @@ extern PlaydateAPI* playdate;
 #define PGB_MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define PGB_MIN(x, y) (((x) < (y)) ? (x) : (y))
 
+#define CRC_CACHE_FILE "crc_cache.json"
+
 extern const uint8_t PGB_patterns[4][4][4];
 
 extern const char* PGB_savesPath;
@@ -123,6 +125,7 @@ char* pgb_find_cover_art_path_from_list(
 );
 
 PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath);
+PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc);
 char* pgb_url_encode_for_github_raw(const char* str);
 
 char* pgb_game_config_path(const char* rom_filename);
