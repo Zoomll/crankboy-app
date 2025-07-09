@@ -712,7 +712,7 @@ char* aprintf(const char* fmt, ...)
         return NULL;
     }
 
-    char* buffer = (char*)malloc(length * sizeof(char));
+    char* buffer = (char*)pgb_malloc(length * sizeof(char));
     if (buffer == NULL)
     {
         va_end(args2);
@@ -770,7 +770,7 @@ char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
     if (playdate->file->seek(file, 0, SEEK_SET))
         goto fail;
 
-    dat = malloc(size + 1);
+    dat = pgb_malloc(size + 1);
     if (!dat)
         goto fail;
 
@@ -792,7 +792,7 @@ char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
     return dat;
 
 fail_free_dat:
-    free(dat);
+    pgb_free(dat);
 
 fail:
     playdate->file->close(file);
@@ -1111,11 +1111,11 @@ char* common_article_form(const char* input)
 
             result[result_len] = 0;
 
-            return strdup(result);
+            return string_copy(result);
         }
     }
 
-    return strdup(input);
+    return string_copy(input);
 }
 
 #define initialSpoolErrorMsg "The following error(s) occurred:"
@@ -1127,7 +1127,7 @@ char* spoolText = NULL;
 void spoolError(const char* fmt, ...)
 {
     if (!spoolText)
-        spoolText = strdup(initialSpoolErrorMsg);
+        spoolText = string_copy(initialSpoolErrorMsg);
 
     va_list args;
     char str[2048];
@@ -1137,7 +1137,7 @@ void spoolError(const char* fmt, ...)
     va_end(args);
 
     spoolC++;
-    spoolText = realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
+    spoolText = pgb_realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
     if (!spoolText)
         return;
 
@@ -1156,21 +1156,23 @@ const char* getSpooledErrorMessage(void)
 
 void freeSpool(void)
 {
-    free(spoolText);
+    pgb_free(spoolText);
     spoolText = NULL;
     spoolC = 0;
 }
 
 void* mallocz(size_t size)
 {
-    void* v = malloc(size);
-    if (!v) return NULL;
-    
+    void* v = pgb_malloc(size);
+    if (!v)
+        return NULL;
+
     memset(v, 0, size);
     return v;
 }
 
-float nnfmodf(float a, float b) {
+float nnfmodf(float a, float b)
+{
     float mod = fmodf(a, b);
     return mod >= 0 ? mod : mod + b;
 }

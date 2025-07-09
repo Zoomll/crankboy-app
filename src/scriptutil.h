@@ -2,12 +2,12 @@
 
 // convenient import for scripts
 
-#include "peanut_gb/peanut_gb.h"
-#include "utility.h"
-#include "script.h"
-#include "preferences.h"
-#include "game_scene.h"
 #include "app.h"
+#include "game_scene.h"
+#include "peanut_gb/peanut_gb.h"
+#include "preferences.h"
+#include "script.h"
+#include "utility.h"
 
 typedef unsigned romaddr_t;
 typedef u16 addr16_t;
@@ -22,13 +22,17 @@ void ram_poke(addr16_t addr, u8 v);
 
 romaddr_t rom_size(void);
 
-#define force_pref(pref, val) \
-    do { preferences_##pref = val; ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script |= PREFBIT_##pref; } while (0)
+#define force_pref(pref, val)                                                                      \
+    do                                                                                             \
+    {                                                                                              \
+        preferences_##pref = val;                                                                  \
+        ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script |= PREFBIT_##pref; \
+    } while (0)
 
 void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val);
 
 // bank: can be -1, in which case search the whole ROM (still bank-aligned though.)
-void find_code_cave(int bank, romaddr_t *o_max_start, romaddr_t *o_max_size);
+void find_code_cave(int bank, romaddr_t* o_max_start, romaddr_t* o_max_size);
 
 #define script_error(...) playdate->system->error(__VA_ARGS__)
 
@@ -140,15 +144,28 @@ void find_code_cave(int bank, romaddr_t *o_max_start, romaddr_t *o_max_size);
 #define K_BUTTON_UP 0x40
 #define K_BUTTON_DOWN 0x80
 
-#define C_SCRIPT__(x) \
-    static struct CScriptInfo _script_##x; \
-    static __attribute__((constructor)) void _init_script_##x(void) \
-        { register_c_script(&_script_##x); } \
-    static struct CScriptInfo _script_##x =
+struct CScriptNode
+{
+    const struct CScriptInfo* info;
+    struct CScriptNode* next;
+};
+
+extern struct CScriptNode* c_script_list_head;
+
+#define C_SCRIPT__(x)                                                         \
+    static struct CScriptInfo _script_info_##x;                               \
+    static struct CScriptNode _script_node_##x = {.info = &_script_info_##x}; \
+    static __attribute__((constructor)) void _init_script_##x(void)           \
+    {                                                                         \
+        _script_node_##x.next = c_script_list_head;                           \
+        c_script_list_head = &_script_node_##x;                               \
+    }                                                                         \
+    static struct CScriptInfo _script_info_##x =
 #define C_SCRIPT_(x) C_SCRIPT__(x)
 #define C_SCRIPT C_SCRIPT_(__COUNTER__)
 
-static struct ScriptBreakpointDef {
+static struct ScriptBreakpointDef
+{
     CS_OnBreakpoint bp;
     romaddr_t* rom_addrs;
     struct ScriptBreakpointDef* next;
@@ -156,9 +173,9 @@ static struct ScriptBreakpointDef {
 
 /*
     breakpoint usage:
-    
+
     #define USERDATA MyUserdataType* ud
-    
+
     SCRIPT_BREAKPOINT(
         // different addresses for different configurations
         {addr0, addr1, addr2, ...}
@@ -166,71 +183,79 @@ static struct ScriptBreakpointDef {
         // function body; accessible args are
         // gb, addr, bpidx, ud
     }
-    
+
     // in on_begin:
-    
+
     SET_BREAKPOINTS(configuration number);
-    
+
     // alternatively, just directly use `c_script_add_hw_breakpoint(gb, addr, cb)`
 */
 
-#define SCRIPT_BREAKPOINT__(x, ...) \
+#define SCRIPT_BREAKPOINT__(x, ...)                                             \
     static void breakpoint_##x(struct gb_s* gb, u16 addr, int bpidx, USERDATA); \
-    static romaddr_t bp_addrs_##x[] = { __VA_ARGS__ }; \
-    static struct ScriptBreakpointDef script_bp_##x = {\
-        .bp = (CS_OnBreakpoint)breakpoint_##x, .rom_addrs = bp_addrs_##x, \
-    }; \
-    static __attribute__((constructor)) void setup_bp_##x(void) { \
-        script_bp_##x.next = script_breakpoints; \
-        script_breakpoints = &script_bp_##x;\
-    } \
-    static void breakpoint_##x(struct gb_s* gb, u16 addr, int bpidx, USERDATA) \
-        
+    static romaddr_t bp_addrs_##x[] = {__VA_ARGS__};                            \
+    static struct ScriptBreakpointDef script_bp_##x = {                         \
+        .bp = (CS_OnBreakpoint)breakpoint_##x,                                  \
+        .rom_addrs = bp_addrs_##x,                                              \
+    };                                                                          \
+    static __attribute__((constructor)) void setup_bp_##x(void)                 \
+    {                                                                           \
+        script_bp_##x.next = script_breakpoints;                                \
+        script_breakpoints = &script_bp_##x;                                    \
+    }                                                                           \
+    static void breakpoint_##x(struct gb_s* gb, u16 addr, int bpidx, USERDATA)
+
 #define SCRIPT_BREAKPOINT_(x, ...) SCRIPT_BREAKPOINT__(x, __VA_ARGS__)
 #define SCRIPT_BREAKPOINT(...) SCRIPT_BREAKPOINT_(__COUNTER__, __VA_ARGS__)
 
-#define SET_BREAKPOINTS(CONF) \
-    do { \
-    unsigned configuration = CONF;\
-    for (struct ScriptBreakpointDef* def = script_breakpoints; def; def = def->next)\
-    { if (def->rom_addrs[configuration] != (romaddr_t)-1) \
-        c_script_add_hw_breakpoint(script_gb, def->rom_addrs[configuration], (CS_OnBreakpoint)def->bp); \
-    } } while (0)
-    
+#define SET_BREAKPOINTS(CONF)                                                            \
+    do                                                                                   \
+    {                                                                                    \
+        unsigned configuration = CONF;                                                   \
+        for (struct ScriptBreakpointDef* def = script_breakpoints; def; def = def->next) \
+        {                                                                                \
+            if (def->rom_addrs[configuration] != (romaddr_t) - 1)                        \
+                c_script_add_hw_breakpoint(                                              \
+                    script_gb, def->rom_addrs[configuration], (CS_OnBreakpoint)def->bp   \
+                );                                                                       \
+        }                                                                                \
+    } while (0)
+
 // rom address given bank and ram address
 #define BANK_ADDR(bank, addr) ((bank * 0x4000) | (addr % 0x4000))
 
-typedef struct {
+typedef struct
+{
     uint8_t bank;
     uint32_t addr;
     bool unsafe;
-    uint8_t *tprev;
-    uint8_t *tval;
+    uint8_t* tprev;
+    uint8_t* tval;
     size_t length;
     bool applied;
 } CodeReplacement;
 
-CodeReplacement *code_replacement_new(
-    unsigned bank, 
-    uint16_t addr, 
-    const uint8_t *tprev, 
-    const uint8_t *tval, 
-    size_t length, 
+CodeReplacement* code_replacement_new(
+    unsigned bank, uint16_t addr, const uint8_t* tprev, const uint8_t* tval, size_t length,
     bool unsafe
 );
 
 #define STRIP_PARENS(...) __VA_ARGS__
 
-#define code_replacement__(x, bank, addr, tprev, tval, unsafe) \
-    ({ \
-        const u8 _tprev_##x[] = { STRIP_PARENS tprev }; \
-        const u8 _tval_##x[] = { STRIP_PARENS tval }; \
-        code_replacement_new(bank, addr, _tprev_##x, _tval_##x, PEANUT_GB_ARRAYSIZE(_tval_##x), unsafe); \
+#define code_replacement__(x, bank, addr, tprev, tval, unsafe)                        \
+    ({                                                                                \
+        const u8 _tprev_##x[] = {STRIP_PARENS tprev};                                 \
+        const u8 _tval_##x[] = {STRIP_PARENS tval};                                   \
+        code_replacement_new(                                                         \
+            bank, addr, _tprev_##x, _tval_##x, PEANUT_GB_ARRAYSIZE(_tval_##x), unsafe \
+        );                                                                            \
     })
-#define code_replacement_(x, bank, addr, tprev, tval, unsafe) code_replacement__(x, bank, addr, tprev, tval, unsafe)
-#define code_replacement(bank, addr, tprev, tval, unsafe) code_replacement_(__COUNTER__, bank, addr, tprev, tval, unsafe)
+#define code_replacement_(x, bank, addr, tprev, tval, unsafe) \
+    code_replacement__(x, bank, addr, tprev, tval, unsafe)
+#define code_replacement(bank, addr, tprev, tval, unsafe) \
+    code_replacement_(__COUNTER__, bank, addr, tprev, tval, unsafe)
 
-void code_replacement_apply(CodeReplacement *r, bool apply);
+void code_replacement_apply(CodeReplacement* r, bool apply);
 
 void code_replacement_free(CodeReplacement* r);
 

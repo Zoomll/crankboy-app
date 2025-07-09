@@ -27,12 +27,7 @@ typedef void (*CS_OnTick)(struct gb_s* gb, void* userdata);
 // should free userdata
 typedef void (*CS_OnEnd)(struct gb_s* gb, void* userdata);
 
-typedef void (*CS_OnBreakpoint)(
-    struct gb_s* gb,
-    uint16_t addr,
-    int breakpoint_idx,
-    void* userdata
-);
+typedef void (*CS_OnBreakpoint)(struct gb_s* gb, uint16_t addr, int breakpoint_idx, void* userdata);
 
 struct CScriptInfo
 {
@@ -49,8 +44,8 @@ typedef struct ScriptInfo
 {
     char rom_name[17];
     bool experimental;
-    char* info; // human-readable description
-    
+    char* info;  // human-readable description
+
     // one of the following will be non-null
     char* lua_script_path;
     const struct CScriptInfo* c_script_info;
@@ -61,10 +56,10 @@ typedef struct ScriptState
     // one of the following will be non-null
     const struct CScriptInfo* c;
     struct lua_State* L;
-    
+
     // C script state
     void* ud;
-    
+
     CS_OnBreakpoint* cbp;
 } ScriptState;
 
@@ -74,14 +69,11 @@ void script_tick(ScriptState* state, struct PGB_GameScene* game_scene);
 void script_on_breakpoint(struct PGB_GameScene* game_scene, int index);
 
 void register_c_script(const struct CScriptInfo* info);
+void pgb_register_all_scripts(void);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.
-int c_script_add_hw_breakpoint(
-    struct gb_s* gb,
-    uint16_t addr,
-    CS_OnBreakpoint callback
-);
+int c_script_add_hw_breakpoint(struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback);
 
 // script info
 void script_info_free(ScriptInfo* info);

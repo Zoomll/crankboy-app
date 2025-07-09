@@ -1,9 +1,11 @@
 #define lua_State pd_lua_State
 #define lua_CFunction pd_lua_CFunction
-#include "../minigb_apu/minigb_apu.h"
 #include "pd_api.h"
 #undef lua_State
 #undef lua_CFunction
+
+#include "../minigb_apu/minigb_apu.h"
+#include "utility.h"
 
 // clang-format off
 #include <lauxlib.h>
@@ -17,6 +19,7 @@
 #include "game_scene.h"
 #include "jparse.h"
 #include "script.h"
+#include "scriptutil.h"
 #include "userstack.h"
 
 #include <stdbool.h>
@@ -27,6 +30,8 @@
 #ifndef NOLUA
 
 #define REGISTRY_GAME_SCENE_KEY "PGB_GameScene"
+
+struct CScriptNode* c_script_list_head = NULL;
 
 size_t c_script_count = 0;
 const struct CScriptInfo** c_scripts = NULL;
@@ -499,33 +504,29 @@ __section__(".rare") void script_info_free(ScriptInfo* info)
     if (!info)
         return;
     if (info->info)
-        free(info->info);
+        pgb_free(info->info);
     if (info->lua_script_path)
-        free(info->lua_script_path);
-    free(info);
+        pgb_free(info->lua_script_path);
+    pgb_free(info);
 }
 
 __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 {
-    #ifndef NOLUA
+#ifndef NOLUA
     // first, check for a lua script
     json_value v;
-    int ok = parse_json("scripts.json", &v, kFileRead | kFileReadData);
+    if (!parse_json("scripts.json", &v, kFileRead | kFileReadData))
+    {
+        return NULL;
+    }
 
-    if (!ok)
+    if (v.type != kJSONArray)
     {
         free_json_data(v);
         return NULL;
     }
 
-    // confirm that top-level value is an array
     JsonArray* array = v.data.arrayval;
-    if (v.type != kJSONArray || array->n == 0)
-    {
-        free_json_data(v);
-        return NULL;
-    }
-
     for (size_t i = 0; i < array->n; i++)
     {
         json_value item = array->data[i];
@@ -536,43 +537,43 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         if (jenabled.type == kJSONFalse)
             continue;
 
-        json_value jexperimental = json_get_table_value(item, "experimental");
-
         json_value jname = json_get_table_value(item, "name");
         json_value jscript = json_get_table_value(item, "script");
         json_value jinfo = json_get_table_value(item, "info");
 
         const char* name = (jname.type == kJSONString) ? jname.data.stringval : NULL;
-        const char* lua_script_path = (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
-        const char* script_info = (jinfo.type == kJSONString) ? jinfo.data.stringval : NULL;
+        const char* lua_script_path_from_json =
+            (jscript.type == kJSONString) ? jscript.data.stringval : NULL;
 
-        if (lua_script_path)
+        if (name && lua_script_path_from_json && strcmp(name, game_name) == 0)
         {
+            ScriptInfo* info = allocz(ScriptInfo);
+            const char* script_info_str = (jinfo.type == kJSONString) ? jinfo.data.stringval : NULL;
+
 #ifdef TARGET_SIMULATOR
             char fullpath[1024];
-            snprintf(fullpath, sizeof(fullpath), "Source/%s", lua_script_path);
-            lua_script_path = strdup(fullpath);
+            snprintf(fullpath, sizeof(fullpath), "Source/%s", lua_script_path_from_json);
+            info->lua_script_path = string_copy(fullpath);
+#else
+            info->lua_script_path = string_copy(lua_script_path_from_json);
 #endif
-        }
 
-        if (name && lua_script_path && strcmp(name, game_name) == 0)
-        {
-            ScriptInfo* info = malloc(sizeof(ScriptInfo));
-            memset(info, 0, sizeof(ScriptInfo));
-            info->lua_script_path = strdup(lua_script_path);
-            info->info = script_info ? strdup(strltrim(script_info)) : NULL;
+            info->info = script_info_str ? string_copy(strltrim(script_info_str)) : NULL;
+
+            json_value jexperimental = json_get_table_value(item, "experimental");
             info->experimental = jexperimental.type == kJSONTrue;
+
             strncpy(info->rom_name, game_name, 16);
-            info->rom_name[16] = 0;  // paranoia
+            info->rom_name[16] = 0;
+
             free_json_data(v);
             return info;
         }
     }
-
     free_json_data(v);
-    #endif
-    
-    // no lua script, so check for V script.
+#endif
+
+    // no lua script, so check for C script.
     // (We prioritize lua scripts to allow a user to replace a C
     //  script with a Lua script.)
     for (size_t i = 0; i < c_script_count && c_scripts; ++i)
@@ -582,14 +583,14 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         {
             ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
-            info->info = cinfo->description ? strdup(strltrim(cinfo->description)) : NULL;
+            info->info = cinfo->description ? string_copy(strltrim(cinfo->description)) : NULL;
             info->experimental = cinfo->description;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;  // paranoia
             return info;
         }
     }
-    
+
     return NULL;
 }
 
@@ -600,15 +601,16 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
 
     ScriptInfo* info = get_script_info(game_name);
     script_gb = game_scene->context->gb;
-    
-    if (!info) return NULL;
-    
+
+    if (!info)
+        return NULL;
+
     ScriptState* state = allocz(ScriptState);
-    
+
     // (exactly one or the other)
     PGB_ASSERT(!info->lua_script_path ^ !info->c_script_info);
 
-    #ifndef NOLUA
+#ifndef NOLUA
     if (info->lua_script_path)
     {
         lua_State* L = NULL;
@@ -617,7 +619,7 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
 
         L = luaL_newstate();
         state->L = L;
-        game_scene->script = state; // ugly hack, set it early before the script starts
+        game_scene->script = state;  // ugly hack, set it early before the script starts
         open_sandboxed_libs(L);
         set_package_path_l(L);
 
@@ -642,14 +644,14 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
         script_info_free(info);
         DTCM_VERIFY();
     }
-    #endif
-    
+#endif
+
     if (info->c_script_info)
     {
         const struct CScriptInfo* csi = info->c_script_info;
         state->c = csi;
-        game_scene->script = state; // ugly hack, set it early before the script starts
-        
+        game_scene->script = state;  // ugly hack, set it early before the script starts
+
         playdate->system->logToConsole("Using C script for %s", info->rom_name);
         if (csi->on_begin)
         {
@@ -658,36 +660,37 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
         else
         {
             playdate->system->error("Script returned NULL from on_begin, indicating an error.");
-            free(state);
+            pgb_free(state);
             return NULL;
         }
     }
-    
+
     return state;
 }
 
 void script_end(ScriptState* state, struct PGB_GameScene* game_scene)
 {
-    #ifndef NOLUA
+#ifndef NOLUA
     if (state->L)
     {
         lua_close(state->L);
     }
-    #endif
-    
+#endif
+
     if (state->c)
     {
         state->c->on_end(game_scene->context->gb, state->ud);
     }
-    
-    if (state->cbp) free(state->cbp);
-    
-    free(state);
+
+    if (state->cbp)
+        pgb_free(state->cbp);
+
+    pgb_free(state);
 }
 
 void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
 {
-    #ifndef NOLUA
+#ifndef NOLUA
     if (state->L)
     {
         lua_State* L = state->L;
@@ -713,8 +716,8 @@ void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
             lua_pop(L, 1);
         }
     }
-    #endif
-    
+#endif
+
     if (state->c && state->c->on_tick)
     {
         state->c->on_tick(game_scene->context->gb, state->ud);
@@ -723,32 +726,32 @@ void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
 
 // for C scripts
 __section__(".rare") int c_script_add_hw_breakpoint(
-    struct gb_s* gb,
-    uint16_t addr,
-    CS_OnBreakpoint callback
+    struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
 )
 {
     // get script from gameboy (rather indirect :/)
     PGB_GameSceneContext* context = gb->direct.priv;
     PGB_GameScene* scene = context->scene;
     ScriptState* state = scene->script;
-    
+
     PGB_ASSERT(state);
-    
+
     int bp = set_hw_breakpoint(gb, addr);
-    
+
     if (bp < 0)
     {
         return bp;
     }
-    if (bp >= MAX_BREAKPOINTS) return -101;
-    
+    if (bp >= MAX_BREAKPOINTS)
+        return -101;
+
     if (!state->cbp)
     {
-        state->cbp = realloc(state->cbp, MAX_BREAKPOINTS * sizeof(*state->cbp));
-        if (!state->cbp) return -100;
+        state->cbp = pgb_realloc(state->cbp, MAX_BREAKPOINTS * sizeof(*state->cbp));
+        if (!state->cbp)
+            return -100;
     }
-    
+
     state->cbp[bp] = callback;
     return bp;
 }
@@ -757,8 +760,8 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
 {
     ScriptState* state = gameScene->script;
     struct gb_s* gb = gameScene->context->gb;
-    
-    #ifndef NOLUA
+
+#ifndef NOLUA
     if (state->L)
     {
         lua_State* L = state->L;
@@ -793,8 +796,8 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
 
         lua_settop(L, top);
     }
-    #endif
-    
+#endif
+
     if (state->c && state->cbp)
     {
         CS_OnBreakpoint cb = state->cbp[index];
@@ -845,15 +848,23 @@ bool script_exists(const char* game_path)
     return true;
 }
 
+void pgb_register_all_scripts(void)
+{
+    for (struct CScriptNode* node = c_script_list_head; node; node = node->next)
+    {
+        register_c_script(node->info);
+    }
+}
+
 void register_c_script(const struct CScriptInfo* info)
 {
-    c_scripts = realloc(c_scripts, sizeof(struct CScriptInfo*) * ++c_script_count);
+    c_scripts = pgb_realloc(c_scripts, sizeof(struct CScriptInfo*) * ++c_script_count);
     if (c_scripts == NULL)
     {
         c_script_count = 0;
         playdate->system->error("Failed to allocate memory for C script list.");
         return;
     }
-    
-    c_scripts[c_script_count-1] = info;
+
+    c_scripts[c_script_count - 1] = info;
 }

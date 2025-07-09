@@ -18,6 +18,7 @@
 #include "jparse.h"
 #include "library_scene.h"
 #include "preferences.h"
+#include "script.h"
 #include "userstack.h"
 
 PGB_Application* PGB_App;
@@ -79,7 +80,7 @@ static void copy_file_callback(const char* filename, void* userdata)
 
     if (!dst_path)
     {
-        free(full_path);
+        pgb_free(full_path);
         return;
     }
 
@@ -117,22 +118,22 @@ static void copy_file_callback(const char* filename, void* userdata)
         }
     }
 
-    free(full_path);
+    pgb_free(full_path);
 }
 
 static int check_is_bundle(void)
 {
-    // check for CLI arg    
+    // check for CLI arg
     const char* arg = playdate->system->getLaunchArgs(NULL);
     if (startswith(arg, "rom="))
     {
         arg += strlen("rom=");
-        PGB_App->bundled_rom = strdup(arg);
+        PGB_App->bundled_rom = string_copy(arg);
         return true;
     }
-    
+
     // check for bundle.json
-    
+
     json_value jbundle;
     if (!parse_json(BUNDLE_FILE, &jbundle, kFileRead | kFileReadData))
         return false;
@@ -140,7 +141,7 @@ static int check_is_bundle(void)
     json_value jrom = json_get_table_value(jbundle, "rom");
 
     if (jrom.type == kJSONString)
-        PGB_App->bundled_rom = strdup(jrom.data.stringval);
+        PGB_App->bundled_rom = string_copy(jrom.data.stringval);
 
     if (PGB_App->bundled_rom)
     {
@@ -160,7 +161,7 @@ static int check_is_bundle(void)
                 return -1;
             }
 
-            free(pdxinfo);
+            pgb_free(pdxinfo);
         }
 
         // check for default/visible/hidden preferences
@@ -276,6 +277,8 @@ void PGB_init(void)
     PGB_App = pgb_calloc(1, sizeof(PGB_Application));
     memset(PGB_App, 0, sizeof(*PGB_App));
 
+    pgb_register_all_scripts();
+
     PGB_App->gameNameCache = array_new();
     PGB_App->gameListCache = array_new();
     PGB_App->coverCache = NULL;
@@ -298,7 +301,7 @@ void PGB_init(void)
     PGB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     PGB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
     PGB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
-    
+
     check_is_bundle();
 
     if (!PGB_App->bundled_rom)
@@ -358,7 +361,7 @@ void PGB_init(void)
         if (manifest.type != kJSONTable)
         {
             manifest.type = kJSONTable;
-            JsonObject* obj = malloc(sizeof(JsonObject));
+            JsonObject* obj = pgb_malloc(sizeof(JsonObject));
             obj->n = 0;
             manifest.data.tableval = obj;
         }
