@@ -63,7 +63,6 @@ SRC += pdnewlib.c
 
 SRC += lua-5.4.7/onelua.c
 SRC += lz4/lz4.c
-SRC += lz4/lz4hc.c
 
 ASRC = setup.s
 
