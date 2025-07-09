@@ -639,6 +639,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     libraryScene->tab = PGB_LibrarySceneTabEmpty;
                 }
 
+                libraryScene->listView->frame.height = playdate->display->getHeight();
                 PGB_ListView_reload(libraryScene->listView);
                 libraryScene->state = kLibraryStateDone;
             }
