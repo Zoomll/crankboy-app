@@ -479,7 +479,7 @@ __section__(".text.main") void PGB_update(float dt)
     playdate->display->setRefreshRate(60);
 #else
 
-    float refreshRate = 30;
+    float refreshRate = 30.0f;
 
     if (PGB_App->scene)
     {

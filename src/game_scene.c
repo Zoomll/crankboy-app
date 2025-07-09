@@ -1145,7 +1145,7 @@ __section__(".text.tick") __space
                 gameScene->selector.selectPressed = true;
             }
 
-            float adjustedAngle = fminf(360 - angle, gameScene->selector.triggerAngle);
+            float adjustedAngle = fminf(360.0f - angle, gameScene->selector.triggerAngle);
             *progress = 0.5f + adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
         }
         else

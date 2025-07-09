@@ -20,11 +20,11 @@ static int PGB_ListView_scrollInset = 2;
 static int PGB_ListView_scrollIndicatorWidth = 2;
 static int PGB_ListView_scrollIndicatorMinHeight = 40;
 
-static float PGB_ListView_repeatInterval1 = 0.15;
-static float PGB_ListView_repeatInterval2 = 2;
+static float PGB_ListView_repeatInterval1 = 0.15f;
+static float PGB_ListView_repeatInterval2 = 2.0f;
 
-static float PGB_ListView_crankResetMinTime = 2;
-static float PGB_ListView_crankMinChange = 30;
+static float PGB_ListView_crankResetMinTime = 2.0f;
+static float PGB_ListView_crankMinChange = 30.0f;
 
 PGB_ListView* PGB_ListView_new(void)
 {
@@ -91,7 +91,7 @@ void PGB_ListView_invalidateLayout(PGB_ListView* listView)
     }
     listView->scroll.indicatorVisible = indicatorVisible;
 
-    float indicatorHeight = 0;
+    float indicatorHeight = 0.0f;
     if (listView->contentSize > listView->frame.height && listView->frame.height != 0)
     {
         indicatorHeight = PGB_MAX(
@@ -246,15 +246,15 @@ void PGB_ListView_update(PGB_ListView* listView)
         {
             listView->repeatTime += PGB_App->dt;
 
-            float repeatRate = 0.16;
+            float repeatRate = 0.16f;
 
             if (listView->repeatLevel == 2)
             {
-                repeatRate = 0.1;
+                repeatRate = 0.1f;
             }
             else if (listView->repeatLevel == 3)
             {
-                repeatRate = 0.05;
+                repeatRate = 0.05f;
             }
 
             if (listView->repeatTime >= repeatRate)
@@ -294,7 +294,7 @@ void PGB_ListView_update(PGB_ListView* listView)
         listView->scroll.time += PGB_App->dt;
 
         float progress =
-            pgb_easeInOutQuad(fminf(1, listView->scroll.time / listView->scroll.duration));
+            pgb_easeInOutQuad(fminf(1.0f, listView->scroll.time / listView->scroll.duration));
         listView->contentOffset =
             listView->scroll.start + (listView->scroll.end - listView->scroll.start) * progress;
 

@@ -36,7 +36,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     int scrollDir = !!(buttonsDown & kButtonDown) - !!(buttonsDown & kButtonUp);
     infoScene->scroll += scrollDir * dt * SCROLL_RATE;
 
-    float total_text_height = 0;
+    float total_text_height = 0.0f;
     int bullet_indent = playdate->graphics->getTextWidth(font, "- ", 2, kUTF8Encoding, tracking);
     const char* text_ptr = infoScene->text;
 

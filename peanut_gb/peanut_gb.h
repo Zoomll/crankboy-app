@@ -4898,7 +4898,7 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
 
     u8 opcode = FETCH8(gb);
     const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
-    float cycles = 1;  // use fpu register, save space
+    float cycles = 1.0f;  // use fpu register, save space
     unsigned src;
     u8 srcidx;
 
