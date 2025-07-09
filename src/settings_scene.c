@@ -252,9 +252,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         {
             result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
-                settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds |
-                    PREFBIT_display_name_mode | PREFBIT_display_article | PREFBIT_display_sort |
-                    PREFBIT_library_remember_selection
+                settingsScene->gameScene->prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
             );
         }
         else
@@ -263,8 +261,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                 preferences_save_to_disk, PGB_globalPrefsPath,
                 0
                     // never save these to global prefs
-                    | PREFBIT_per_game | PREFBIT_save_state_slot | PREFBIT_ui_sounds |
-                    PREFBIT_display_name_mode
+                    | PREFBIT_per_game | PREFBIT_save_state_slot | PREFBITS_LIBRARY_ONLY
 
                     // these prefs are locked, so we shouldn't be able to change them
                     | settingsScene->gameScene->prefs_locked_by_script
@@ -1262,13 +1259,17 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 {
                     int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
+                    
+                    preferences_bitfield_t prefs_locked_by_script = 0;
+                    if (gameScene) prefs_locked_by_script = gameScene->prefs_locked_by_script;
 
                     const char* game_settings_path = settingsScene->gameScene->settings_filename;
                     if (!preferences_per_game && old_preferences_per_game)
                     {
                         // write per-game prefs to disk
-                        preferences_per_game = 0;
-                        call_with_main_stack_2(preferences_save_to_disk, game_settings_path, 0);
+                        preferences_per_game = 0;  // paranoia: record in game settings that we're
+                                                   // using global settings
+                        call_with_main_stack_2(preferences_save_to_disk, game_settings_path, prefs_locked_by_script);
 
                         preferences_merge_from_disk(PGB_globalPrefsPath);
                         preferences_per_game = 0;
@@ -1276,9 +1277,8 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     else if (preferences_per_game && !old_preferences_per_game)
                     {
                         // write global prefs to disk
-                        call_with_main_stack_2(
-                            preferences_save_to_disk, PGB_globalPrefsPath,
-                            PREFBIT_per_game | PREFBIT_save_state_slot
+                        call_with_main_stack_2(preferences_save_to_disk,
+                            PGB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
                         );
 
                         preferences_merge_from_disk(game_settings_path);
@@ -1333,7 +1333,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         // Check if the title has descenders and apply a different offset.
         // This provides a better visual center for all titles.
-        int vertical_offset = string_has_descenders(gameScene->name_short) ? 0 : 2;
+        int vertical_offset = string_has_descenders(gameScene->name_short) ? 1 : 2;
         int textY = ((header_y - fontHeight) / 2) + vertical_offset;
 
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);

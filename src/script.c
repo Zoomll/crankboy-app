@@ -758,6 +758,8 @@ __section__(".rare") int c_script_add_hw_breakpoint(
 
 __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, int index)
 {
+    unsigned locked = ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script;
+    
     ScriptState* state = gameScene->script;
     struct gb_s* gb = gameScene->context->gb;
 
@@ -802,6 +804,10 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
     {
         CS_OnBreakpoint cb = state->cbp[index];
         cb(gb, gb->cpu_reg.pc, index, state->ud);
+        if (locked != ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script)
+        {
+            printf("breakpoint changed locked!!!\n");
+        }
     }
 }
 

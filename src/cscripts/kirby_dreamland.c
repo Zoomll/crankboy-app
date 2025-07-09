@@ -6,6 +6,7 @@
 #define CRANK_DELTA_SMOOTH_FACTOR 0.9f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
 #define MIN_RATE_CRANK_FLAP 0.3f
+#define MAX_RATE_CRANK_FLAP 45.0f
 #define MIN_HYST_CRANK_BEGIN_FLAP 9.0f
 #define CRANK_MAX_HYST 10.0f
 
@@ -85,6 +86,8 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
+    
+    printf("locked: %x\n", ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script);
 
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
@@ -199,7 +202,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         int fly_max_speed;
         printf("ds=%f\n", (double)data->crank_delta_smooth);
         if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP) {
-            float rate = MAX(0, MIN(data->crank_delta_smooth, 30.0f)) / 30.0f;
+            float rate = MAX(0, MIN(data->crank_delta_smooth, MAX_RATE_CRANK_FLAP)) / MAX_RATE_CRANK_FLAP;
             fly_thrust = -0x20 + 0x70 * rate;
             has_fly_thrust = true;
             fly_max_speed = -0x200*rate;
@@ -211,12 +214,34 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
                 fly_thrust = -0x20;
                 has_fly_thrust = true;
             }
-            printf("%d %d %d rate=%f\n", current_speed, fly_max_speed, fly_thrust, (double)rate);
-            if (has_fly_thrust) {
-                // TODO
+            
+            if (fly_thrust >= 0) {
+                // quadratic thrust scaling
                 fly_thrust = ((float)fly_thrust / 0x50) * ((float)fly_thrust / 0x50) * 0x50;
                 continue_flying = true;
             }
+            
+            // decrease downward thrust greatly
+            if (fly_thrust < 0)
+            {
+                fly_thrust /= 4;
+                
+                if (fly_thrust < 0 && fly_thrust >= -7)
+                {
+                    fly_max_speed = -0x10 * fly_thrust;
+                    if (current_speed > fly_max_speed)
+                    {
+                        // cap out
+                        fly_thrust = 4;
+                        continue_flying = 0;
+                    }
+                }
+            } else if (current_speed < 0 && fly_thrust < 4)
+            {
+                fly_thrust = 4;
+            }
+            
+            printf("spd=%x max=%x t=%d rate=%f\n", current_speed, fly_max_speed, fly_thrust, (double)rate);
         } else {
             has_fly_thrust = false;
         }
