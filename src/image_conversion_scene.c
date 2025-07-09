@@ -244,7 +244,7 @@ void* png_to_pdi(
     if (max_width >= 0 && max_width < width)
     {
         wscale = (float)width / (float)max_width;
-        printf("image width: %d; desired: %d\n", width, max_width);
+        playdate->system->logToConsole("image width: %d; desired: %d\n", width, max_width);
     }
     else
     {
@@ -253,7 +253,7 @@ void* png_to_pdi(
     if (max_height >= 0 && max_height < height)
     {
         hscale = (float)height / (float)max_height;
-        printf("image height: %d; desired: %d\n", height, max_height);
+        playdate->system->logToConsole("image height: %d; desired: %d\n", height, max_height);
     }
     else
     {
@@ -297,7 +297,7 @@ void* png_to_pdi(
 
     size_t stride = ((max_width + 31) / 32) * 4;
 
-    printf("stride: %x\n", (int)stride);
+    playdate->system->logToConsole("stride: %x\n", (int)stride);
 
     struct PDIHeader header;
     memcpy(header.magic, PDI_MAGIC, sizeof(header.magic));
@@ -546,7 +546,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             if (result >= 0)
             {
-                printf("  result: %d\n", (int)result);
+                playdate->system->logToConsole("  result: %d\n", (int)result);
             }
         }
         else

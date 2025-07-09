@@ -95,7 +95,7 @@ static void copy_file_callback(const char* filename, void* userdata)
             char* msg = aprintf("Copying \"%s\" from PDX…", full_path);
             if (msg)
             {
-                printf("%s\n", msg);
+                playdate->system->logToConsole("%s\n", msg);
                 pgb_draw_logo_screen_and_display(msg);
                 pgb_free(msg);
             }
@@ -526,7 +526,7 @@ void PGB_presentModal(PGB_Scene* scene)
 
 void PGB_dismiss(PGB_Scene* sceneToDismiss)
 {
-    printf("Dismiss\n");
+    playdate->system->logToConsole("Dismiss\n");
     PGB_ASSERT(sceneToDismiss == PGB_App->scene);
     PGB_Scene* parent = sceneToDismiss->parentScene;
     if (parent)

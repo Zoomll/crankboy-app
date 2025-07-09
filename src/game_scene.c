@@ -352,7 +352,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
         gb_reset(context->gb);
 
-        printf("Interrupts detected: Joypad=%d\n", context->gb->joypad_interrupt);
+        playdate->system->logToConsole(
+            "Interrupts detected: Joypad=%d\n", context->gb->joypad_interrupt
+        );
 
         if (gb_ret == GB_INIT_NO_ERROR)
         {
@@ -2685,7 +2687,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
         {
             if (playdate->file->seek(file, 0, SEEK_SET))
             {
-                printf(
+                playdate->system->logToConsole(
                     "Failed to seek to start of state file \"%s\": %s", state_name,
                     playdate->file->geterr()
                 );
@@ -2697,7 +2699,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
                 char* buff = pgb_malloc(save_size);
                 if (buff == NULL)
                 {
-                    printf("Failed to allocate save state buffer");
+                    playdate->system->logToConsole("Failed to allocate save state buffer");
                 }
                 else
                 {
@@ -2707,13 +2709,15 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
                         int read = playdate->file->read(file, buffptr, size_remaining);
                         if (read == 0)
                         {
-                            printf("Error, read 0 bytes from save file, \"%s\"\n", state_name);
+                            playdate->system->logToConsole(
+                                "Error, read 0 bytes from save file, \"%s\"\n", state_name
+                            );
                             success = false;
                             break;
                         }
                         if (read < 0)
                         {
-                            printf(
+                            playdate->system->logToConsole(
                                 "Error reading save file \"%s\": %s\n", state_name,
                                 playdate->file->geterr()
                             );
@@ -2812,7 +2816,7 @@ __section__(".rare") static void PGB_GameScene_event(
         }
         break;
     case kEventKeyPressed:
-        printf("Key pressed: %x\n", (unsigned)arg);
+        playdate->system->logToConsole("Key pressed: %x\n", (unsigned)arg);
 
         switch (arg)
         {

@@ -82,7 +82,7 @@ static bool parse_url(const char* url, char** domain, char** path)
 
 static void CB_Header(HTTPConnection* connection, const char* key, const char* value)
 {
-    printf("Header received: \"%s\": \"%s\"\n", key, value);
+    playdate->system->logToConsole("Header received: \"%s\": \"%s\"\n", key, value);
 
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud == NULL)
@@ -100,7 +100,7 @@ static void CB_Header(HTTPConnection* connection, const char* key, const char* v
 
 static void CB_HeadersRead(HTTPConnection* connection)
 {
-    printf("Headers read\n");
+    playdate->system->logToConsole("Headers read\n");
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud == NULL)
         return;
@@ -110,7 +110,7 @@ static void CB_HeadersRead(HTTPConnection* connection)
     // Check for redirect status codes (301, 302, 307, etc.)
     if (status >= 300 && status < 400 && httpud->location)
     {
-        printf("Handling redirect to: %s\n", httpud->location);
+        playdate->system->logToConsole("Handling redirect to: %s\n", httpud->location);
 
         char* new_domain = NULL;
         char* new_path = NULL;
@@ -286,7 +286,7 @@ static void CB_Permission(unsigned flags, void* ud)
             goto release_and_fail;
         }
 
-        printf("HTTP get, no immediate error\n");
+        playdate->system->logToConsole("HTTP get, no immediate error\n");
 
         return;
 
@@ -392,7 +392,7 @@ static void CB_SetEnabled(PDNetErr err)
             switch (result)
             {
             case kAccessAsk:
-                printf("Asked for permission\n");
+                playdate->system->logToConsole("Asked for permission\n");
                 // callback will be invoked.
                 return;
             case kAccessDeny:
@@ -406,7 +406,7 @@ static void CB_SetEnabled(PDNetErr err)
                 return;
             default:
                 pgb_free(cbudhttp);
-                printf("Unrecognized permission result: %d\n", result);
+                playdate->system->logToConsole("Unrecognized permission result: %d\n", result);
                 cb(HTTP_ERROR, ud);
                 break;
             }

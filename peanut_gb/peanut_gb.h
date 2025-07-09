@@ -5796,7 +5796,9 @@ __core void gb_run_frame(struct gb_s* gb)
     {
         total_cycles += __gb_step_cpu(gb);
 #ifdef TRACE_LOG
-        printf("%x:%04x %02x\n", gb->selected_rom_bank, gb->cpu_reg.pc, gb->cpu_reg.a);
+        playdate->system->logToConsole(
+            "%x:%04x %02x\n", gb->selected_rom_bank, gb->cpu_reg.pc, gb->cpu_reg.a
+        );
         f
 #endif
     }

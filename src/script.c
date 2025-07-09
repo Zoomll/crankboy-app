@@ -239,14 +239,14 @@ __section__(".rare") static int pgb_force_pref(lua_State* L)
     int value = luaL_checkinteger(L, 2);
 
     int i = 0;
-#define PREF(x, ...)                                                           \
-    if (strcmp(preference, #x) == 0)                                           \
-    {                                                                          \
-        preferences_##x = value;                                               \
-        gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i); \
-        printf("forced preference %s=%d\n", preference, value);                \
-        return 0;                                                              \
-    }                                                                          \
+#define PREF(x, ...)                                                                    \
+    if (strcmp(preference, #x) == 0)                                                    \
+    {                                                                                   \
+        preferences_##x = value;                                                        \
+        gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i);          \
+        playdate->system->logToConsole("forced preference %s=%d\n", preference, value); \
+        return 0;                                                                       \
+    }                                                                                   \
     i++;
 #include "prefs.x"
 
@@ -780,7 +780,7 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
         lua_gettable(L, -2);  // get function at index
         if (!lua_isfunction(L, -1))
         {
-            printf("Unknown breakpoint %d\n", index);
+            playdate->system->logToConsole("Unknown breakpoint %d\n", index);
             lua_pop(L, 2);  // pop function and table
             return;
         }

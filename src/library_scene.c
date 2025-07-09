@@ -368,7 +368,7 @@ static void launch_game(void* ud, int option)
 
 static void CB_updatecheck(int code, const char* text, void* ud)
 {
-    printf("UPDATE RESULT %d: %s\n", code, text);
+    playdate->system->logToConsole("UPDATE RESULT %d: %s\n", code, text);
 
     char* modal_result = NULL;
 
@@ -410,7 +410,7 @@ __section__(".rare") static void PGB_LibraryScene_event(
     switch (event)
     {
     case kEventKeyPressed:
-        printf("Key pressed: %x\n", (unsigned)arg);
+        playdate->system->logToConsole("Key pressed: %x\n", (unsigned)arg);
 
         switch (arg)
         {
