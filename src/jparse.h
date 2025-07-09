@@ -34,6 +34,8 @@ int parse_json_string(const char* text, json_value* out);
 // returns 0 on success
 int write_json_to_disk(const char* path, json_value out);
 
+int compare_key_pairs(const void* a, const void* b);
+
 json_value json_get_table_value(json_value table, const char* key);
 
 // returns true on success

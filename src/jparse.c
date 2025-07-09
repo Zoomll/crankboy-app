@@ -276,7 +276,7 @@ ret_null:
     return j;
 }
 
-int read_string(const char** text, uint8_t* out, int bufsize)
+__section__(".rare") int read_string(const char** text, uint8_t* out, int bufsize)
 {
     int maxlen = strnlen(*text, bufsize);
     if (maxlen == 0)
@@ -284,6 +284,13 @@ int read_string(const char** text, uint8_t* out, int bufsize)
     memcpy(out, *text, maxlen);
     *text += maxlen;
     return maxlen;
+}
+
+__section__(".rare") int compare_key_pairs(const void* a, const void* b)
+{
+    const TableKeyPair* pair_a = (const TableKeyPair*)a;
+    const TableKeyPair* pair_b = (const TableKeyPair*)b;
+    return strcmp(pair_a->key, pair_b->key);
 }
 
 __section__(".rare") int parse_json_string(const char* text, json_value* out)

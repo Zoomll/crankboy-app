@@ -66,7 +66,24 @@ static void process_one_game(PGB_GameScanningScene* scanScene, const char* filen
     uint32_t crc = 0;
     bool needs_calculation = true;
 
-    json_value cached_entry = json_get_table_value(scanScene->crc_cache, filename);
+    json_value cached_entry = {.type = kJSONNull};
+    if (scanScene->crc_cache.type == kJSONTable)
+    {
+        JsonObject* obj = scanScene->crc_cache.data.tableval;
+
+        TableKeyPair key_to_find;
+        key_to_find.key = (char*)filename;
+
+        TableKeyPair* found_pair = (TableKeyPair*)bsearch(
+            &key_to_find, obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs
+        );
+
+        if (found_pair)
+        {
+            cached_entry = found_pair->value;
+        }
+    }
+
     if (cached_entry.type == kJSONTable)
     {
         json_value cached_crc_val = json_get_table_value(cached_entry, "crc32");
@@ -282,7 +299,18 @@ PGB_GameScanningScene* PGB_GameScanningScene_new(void)
     playdate->system->formatString(&path, "%s", CRC_CACHE_FILE);
     if (path)
     {
-        if (!parse_json(path, &scanScene->crc_cache, kFileReadData))
+        if (parse_json(path, &scanScene->crc_cache, kFileReadData))
+        {
+            if (scanScene->crc_cache.type == kJSONTable)
+            {
+                JsonObject* obj = scanScene->crc_cache.data.tableval;
+                if (obj && obj->n > 1)
+                {
+                    qsort(obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs);
+                }
+            }
+        }
+        else
         {
             scanScene->crc_cache.type = kJSONTable;
             JsonObject* obj = pgb_malloc(sizeof(JsonObject));
