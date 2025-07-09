@@ -68,6 +68,14 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             PGB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
         );
 
+        if (cacheScene->available_covers->length > 0)
+        {
+            qsort(
+                cacheScene->available_covers->items, cacheScene->available_covers->length,
+                sizeof(char*), pgb_compare_strings
+            );
+        }
+
         if (PGB_App->gameNameCache->length > 0)
         {
             cacheScene->state = kCoverCacheStateBuildGameList;

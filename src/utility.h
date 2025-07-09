@@ -93,6 +93,7 @@ int pgb_listfiles(
 int pgb_file_exists(const char* path, FileOptions fopts);
 
 int pgb_compare_games_by_display_name(const void* a, const void* b);
+int pgb_compare_strings(const void* a, const void* b);
 
 void pgb_sanitize_string_for_filename(char* str);
 void pgb_sort_games_array(PGB_Array* games_array);

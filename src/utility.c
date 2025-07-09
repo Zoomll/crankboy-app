@@ -354,6 +354,13 @@ int pgb_compare_games_by_sort_name(const void* a, const void* b)
     return strcasecmp(gameA->sortName, gameB->sortName);
 }
 
+int pgb_compare_strings(const void* a, const void* b)
+{
+    const char* str_a = *(const char**)a;
+    const char* str_b = *(const char**)b;
+    return strcmp(str_a, str_b);
+}
+
 void pgb_sanitize_string_for_filename(char* str)
 {
     if (str == NULL)
