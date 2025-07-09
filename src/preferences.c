@@ -64,28 +64,19 @@ void preferences_init(void)
     preferences_per_game = 0;
 }
 
-void preferences_read_from_disk(const char* filename)
+void preferences_merge_from_disk(const char* filename)
 {
-    preferences_set_defaults();
-
     json_value j;
-    int success = parse_json(filename, &j, kFileReadData);
-
-    if (!success)
+    if (!parse_json(filename, &j, kFileReadData))
     {
-        playdate->system->logToConsole("Failed to load preferences from %s", filename);
         return;
     }
-
-#define KEY(x) if (!strcmp(obj->data[i].key, x))
 
     if (j.type == kJSONTable)
     {
         JsonObject* obj = j.data.tableval;
         for (size_t i = 0; i < obj->n; ++i)
         {
-            json_value pref = obj->data[i].value;
-
 #define PREF(x, ...)                                      \
     if (!strcmp(obj->data[i].key, #x))                    \
     {                                                     \
@@ -95,9 +86,13 @@ void preferences_read_from_disk(const char* filename)
         }
     }
 
-#undef KEY
-
     free_json_data(j);
+}
+
+void preferences_read_from_disk(const char* filename)
+{
+    preferences_set_defaults();
+    preferences_merge_from_disk(filename);
 }
 
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
@@ -107,10 +102,9 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     void* preserved_all = preferences_store_subset(-1);
     void* preserved_to_write = preferences_store_subset(~leave_as_is);
 
-    // temporarily load the fields which are to be left as is
     if (leave_as_is != 0 && preserved_to_write)
     {
-        preferences_read_from_disk(filename);
+        preferences_merge_from_disk(filename);
         preferences_restore_subset(preserved_to_write);
     }
 
@@ -127,15 +121,16 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     j.data.tableval = &data.obj;
     data.obj.n = pref_count;
 
+    TableKeyPair* pairs = (TableKeyPair*)(&data.obj + 1);
+
     int i = 0;
-#define PREF(x, ...)                                      \
-    data.obj.data[i].key = #x;                            \
-    data.obj.data[i].value.type = kJSONInteger;           \
-    data.obj.data[i].value.data.intval = preferences_##x; \
+#define PREF(x, ...)                              \
+    pairs[i].key = #x;                            \
+    pairs[i].value.type = kJSONInteger;           \
+    pairs[i].value.data.intval = preferences_##x; \
     ++i;
 #include "prefs.x"
 
-    // restore caller's preferences
     if (preserved_all)
     {
         preferences_restore_subset(preserved_all);

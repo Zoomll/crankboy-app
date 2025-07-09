@@ -250,7 +250,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
     {
         if (preferences_per_game)
         {
-            result = (int)(intptr_t)call_with_user_stack_2(
+            result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
                 settingsScene->gameScene->prefs_locked_by_script | PREFBIT_ui_sounds |
                     PREFBIT_display_name_mode | PREFBIT_display_article | PREFBIT_display_sort |
@@ -259,7 +259,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         }
         else
         {
-            result = (int)(intptr_t)call_with_user_stack_2(
+            result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, PGB_globalPrefsPath,
                 0
                     // never save these to global prefs
@@ -274,7 +274,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
             {
                 // also save that preferences are global in the per-game script,
                 // and also the save slot
-                result = (int)(intptr_t)call_with_user_stack_2(
+                result = (int)(intptr_t)call_with_main_stack_2(
                     preferences_save_to_disk, settingsScene->gameScene->settings_filename,
                     ~(PREFBIT_per_game | PREFBIT_save_state_slot)
                 );
@@ -285,7 +285,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
     {
         // Not in a game, just save the global file
         result =
-            (int)(intptr_t)call_with_user_stack_2(preferences_save_to_disk, PGB_globalPrefsPath, 0);
+            (int)(intptr_t)call_with_main_stack_2(preferences_save_to_disk, PGB_globalPrefsPath, 0);
     }
 
     if (!result)
@@ -1257,34 +1257,31 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 // setting value has changed
                 pgb_play_ui_sound(PGB_UISound_Confirm);
 
-                // special behaviour if we've switched between per-game and global settings
+                // special behavior if we've switched between per-game and global settings
                 if (cursor_entry->pref_var == &preferences_per_game)
                 {
                     int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
 
-                    // TODO: check for error and if an error occurs display a modal
                     const char* game_settings_path = settingsScene->gameScene->settings_filename;
                     if (!preferences_per_game && old_preferences_per_game)
                     {
                         // write per-game prefs to disk
-                        preferences_per_game = 0;  // paranoia: record in game settings that we're
-                                                   // using global settings
-                        preferences_save_to_disk(game_settings_path, 0);
+                        preferences_per_game = 0;
+                        call_with_main_stack_2(preferences_save_to_disk, game_settings_path, 0);
 
-                        // try reading global prefs
-                        preferences_read_from_disk(PGB_globalPrefsPath);
+                        preferences_merge_from_disk(PGB_globalPrefsPath);
                         preferences_per_game = 0;
                     }
                     else if (preferences_per_game && !old_preferences_per_game)
                     {
                         // write global prefs to disk
-                        preferences_save_to_disk(
-                            PGB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot
+                        call_with_main_stack_2(
+                            preferences_save_to_disk, PGB_globalPrefsPath,
+                            PREFBIT_per_game | PREFBIT_save_state_slot
                         );
 
-                        // try reading per-game prefs
-                        preferences_read_from_disk(game_settings_path);
+                        preferences_merge_from_disk(game_settings_path);
                         preferences_per_game = 1;
                     }
 
@@ -1296,7 +1293,6 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
                     preferences_ui_sounds = global_ui_sounds;
 
-                    // After any scope change, always rebuild the menu to update locked states.
                     PGB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
                 }
