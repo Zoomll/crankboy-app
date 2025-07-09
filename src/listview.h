@@ -46,9 +46,7 @@ typedef enum
 {
     PGB_ListViewDirectionNone,
     PGB_ListViewDirectionUp,
-    PGB_ListViewDirectionDown,
-    PGB_ListViewDirectionLeft,
-    PGB_ListViewDirectionRight
+    PGB_ListViewDirectionDown
 } PGB_ListViewDirection;
 
 typedef struct

@@ -163,24 +163,6 @@ void PGB_ListView_update(PGB_ListView* listView)
             PGB_ListView_selectItem(listView, prevIndex, true);
         }
     }
-    else if (pushed & kButtonRight)
-    {
-        if (listView->items->length > 0)
-        {
-            int numItems = listView->items->length;
-            int nextIndex = (listView->selectedItem + 5) % numItems;
-            PGB_ListView_selectItem(listView, nextIndex, true);
-        }
-    }
-    else if (pushed & kButtonLeft)
-    {
-        if (listView->items->length > 0)
-        {
-            int numItems = listView->items->length;
-            int prevIndex = (listView->selectedItem - 5 % numItems + numItems) % numItems;
-            PGB_ListView_selectItem(listView, prevIndex, true);
-        }
-    }
 
     listView->crankChange += PGB_App->crankChange;
 
@@ -237,14 +219,6 @@ void PGB_ListView_update(PGB_ListView* listView)
     {
         listView->direction = PGB_ListViewDirectionDown;
     }
-    else if (pressed & kButtonLeft)
-    {
-        listView->direction = PGB_ListViewDirectionLeft;
-    }
-    else if (pressed & kButtonRight)
-    {
-        listView->direction = PGB_ListViewDirectionRight;
-    }
 
     if (listView->direction == PGB_ListViewDirectionNone || listView->direction != old_direction)
     {
@@ -287,37 +261,27 @@ void PGB_ListView_update(PGB_ListView* listView)
             {
                 listView->repeatTime = fmodf(listView->repeatTime, repeatRate);
 
-                if (listView->items->length > 0)
+                if (listView->direction == PGB_ListViewDirectionUp)
                 {
-                    int numItems = listView->items->length;
-
-                    if (listView->direction == PGB_ListViewDirectionUp)
+                    if (listView->items->length > 0)
                     {
                         int prevIndex = listView->selectedItem - 1;
                         if (prevIndex < 0)
                         {
-                            prevIndex = numItems - 1;
+                            prevIndex = listView->items->length - 1;
                         }
                         PGB_ListView_selectItem(listView, prevIndex, true);
                     }
-                    else if (listView->direction == PGB_ListViewDirectionDown)
+                }
+                else if (listView->direction == PGB_ListViewDirectionDown)
+                {
+                    if (listView->items->length > 0)
                     {
                         int nextIndex = listView->selectedItem + 1;
-                        if (nextIndex >= numItems)
+                        if (nextIndex >= listView->items->length)
                         {
                             nextIndex = 0;
                         }
-                        PGB_ListView_selectItem(listView, nextIndex, true);
-                    }
-                    else if (listView->direction == PGB_ListViewDirectionLeft)
-                    {
-                        int prevIndex =
-                            (listView->selectedItem - 5 % numItems + numItems) % numItems;
-                        PGB_ListView_selectItem(listView, prevIndex, true);
-                    }
-                    else if (listView->direction == PGB_ListViewDirectionRight)
-                    {
-                        int nextIndex = (listView->selectedItem + 5) % numItems;
                         PGB_ListView_selectItem(listView, nextIndex, true);
                     }
                 }
