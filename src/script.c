@@ -89,6 +89,8 @@ static int pgb_rom_poke(lua_State* L)
 int set_hw_breakpoint(struct gb_s* gb, uint32_t rom_addr);
 static int pgb_rom_set_breakpoint(lua_State* L)
 {
+    
+    
     // returns: breakpoint index, or null on failure
     if (!lua_check_args(L, 2, 2))
     {
@@ -670,6 +672,8 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
 
 void script_end(ScriptState* state, struct PGB_GameScene* game_scene)
 {
+    script_gb = game_scene->context->gb;
+    
 #ifndef NOLUA
     if (state->L)
     {
@@ -690,6 +694,8 @@ void script_end(ScriptState* state, struct PGB_GameScene* game_scene)
 
 void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
 {
+    script_gb = game_scene->context->gb;
+    
 #ifndef NOLUA
     if (state->L)
     {
@@ -758,7 +764,7 @@ __section__(".rare") int c_script_add_hw_breakpoint(
 
 __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, int index)
 {
-    unsigned locked = ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script;
+    script_gb = gameScene->context->gb;
     
     ScriptState* state = gameScene->script;
     struct gb_s* gb = gameScene->context->gb;
@@ -804,10 +810,6 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
     {
         CS_OnBreakpoint cb = state->cbp[index];
         cb(gb, gb->cpu_reg.pc, index, state->ud);
-        if (locked != ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script)
-        {
-            printf("breakpoint changed locked!!!\n");
-        }
     }
 }
 

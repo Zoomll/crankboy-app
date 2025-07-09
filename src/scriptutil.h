@@ -38,6 +38,10 @@ void find_code_cave(int bank, romaddr_t* o_max_start, romaddr_t* o_max_size);
 
 #define $A (script_gb->cpu_reg.a)
 #define $F (script_gb->cpu_reg.f)
+#define $Fc (script_gb->cpu_reg.f_bits.c)
+#define $Fh (script_gb->cpu_reg.f_bits.h)
+#define $Fn (script_gb->cpu_reg.f_bits.n)
+#define $Fz (script_gb->cpu_reg.f_bits.z)
 #define $AF (script_gb->cpu_reg.af)
 #define $B (script_gb->cpu_reg.b)
 #define $C (script_gb->cpu_reg.c)
@@ -141,6 +145,12 @@ void find_code_cave(int bank, romaddr_t* o_max_start, romaddr_t* o_max_size);
 #define IO_PD_CRANK_hi 0xFF59
 
 // TODO
+#define K_BUTTON_A 0x01
+#define K_BUTTON_B 0x02
+#define K_BUTTON_SELECT 0x04
+#define K_BUTTON_START 0x08
+#define K_BUTTON_RIGHT 0x10
+#define K_BUTTON_LEFT 0x20
 #define K_BUTTON_UP 0x40
 #define K_BUTTON_DOWN 0x80
 

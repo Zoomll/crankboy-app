@@ -3,12 +3,18 @@
 #define DESCRIPTION "(Experimental)\n\n- Use the crank to flap!\n" \
         "- Start/Select buttons are no longer required anywhere."
 
-#define CRANK_DELTA_SMOOTH_FACTOR 0.9f
+#define CRANK_DELTA_SMOOTH_FACTOR 0.8f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
+#define MIN_RATE_CRANK_SUCK 2.3f
 #define MIN_RATE_CRANK_FLAP 0.3f
 #define MAX_RATE_CRANK_FLAP 45.0f
 #define MIN_HYST_CRANK_BEGIN_FLAP 9.0f
+#define MIN_HYST_CRANK_BEGIN_SUCK 9.0f
 #define CRANK_MAX_HYST 10.0f
+
+// -- ram addr --
+// y speed - d078
+// input - ff8b
 
 // custom data for script.
 typedef struct ScriptData
@@ -17,6 +23,7 @@ typedef struct ScriptData
     float crank_delta;
     float crank_delta_smooth;
     float crank_hyst;
+    bool suck;
 
     CodeReplacement* patch_no_door;
     CodeReplacement* patch_start_flying;
@@ -57,6 +64,20 @@ SCRIPT_BREAKPOINT(
     $A = 0x8;
 }
 
+// suck via crank
+SCRIPT_BREAKPOINT(
+    BANK_ADDR(1, 0x437F)
+) {
+    if (data->suck) $A |= K_BUTTON_B;
+}
+
+// continue to suck via crank
+SCRIPT_BREAKPOINT(
+    BANK_ADDR(1, 0x479C)
+) {
+    if (data->suck) $A |= K_BUTTON_B;
+}
+
 // Start flying via crank
 SCRIPT_BREAKPOINT(
     BANK_ADDR(1, 0x4494)
@@ -73,19 +94,19 @@ SCRIPT_BREAKPOINT(
     }
 }
 
+static void force_prefs(void)
+{
+    // we're replacing the crank functionality entirely
+    force_pref(crank_mode, CRANK_MODE_OFF);
+    force_pref(crank_dock_button, PREF_BUTTON_NONE);
+    force_pref(crank_undock_button, PREF_BUTTON_NONE);
+}
+
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
 
     ScriptData* data = allocz(ScriptData);
-
-    // enable xram
-    ram_poke(IO_PD_FEATURE_SET, 2);
-
-    // we're replacing the crank functionality entirely
-    force_pref(crank_mode, CRANK_MODE_OFF);
-    force_pref(crank_dock_button, PREF_BUTTON_NONE);
-    force_pref(crank_undock_button, PREF_BUTTON_NONE);
     
     printf("locked: %x\n", ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script);
 
@@ -159,6 +180,10 @@ static void on_end(struct gb_s* gb, ScriptData* data)
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
+    // FIXME: why do we have to do this every frame?
+    // It's supposed to only need to be done once.
+    force_prefs();
+    
     bool start_flying_via_crank = false;
     bool continue_flying = false;
 
@@ -186,11 +211,28 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         data->crank_delta = 0;
         data->crank_hyst = new_crank_angle;
     }
+    
+    // crank to suck
+    if (data->crank_angle >= 0 && data->crank_hyst >= 0) {
+        if (data->suck || circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta <= -MIN_HYST_CRANK_BEGIN_SUCK) {
+            data->suck = false;
+            if (data->crank_delta_smooth < -MIN_RATE_CRANK_SUCK)
+            {
+                data->suck = true;
+            }
+        }
+        else
+        {
+            data->suck = false;
+        }
+    } else {
+        data->suck = false;
+    }
 
     // crank to flap
     int fly_thrust;
     bool has_fly_thrust = false;
-    if (($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN)) == 0) {
+    if (($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0) {
         if (data->crank_angle >= 0 && data->crank_hyst >= 0) {
             if (circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta >= MIN_HYST_CRANK_BEGIN_FLAP) {
                 if (data->crank_delta > MIN_RATE_CRANK_BEGIN_FLAP) {
@@ -200,7 +242,9 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         }
 
         int fly_max_speed;
-        printf("ds=%f\n", (double)data->crank_delta_smooth);
+        
+        // rather arbitrary control logic, best I could do.
+        // feel free to disrespect.
         if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP) {
             float rate = MAX(0, MIN(data->crank_delta_smooth, MAX_RATE_CRANK_FLAP)) / MAX_RATE_CRANK_FLAP;
             fly_thrust = -0x20 + 0x70 * rate;
@@ -240,8 +284,6 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
             {
                 fly_thrust = 4;
             }
-            
-            printf("spd=%x max=%x t=%d rate=%f\n", current_speed, fly_max_speed, fly_thrust, (double)rate);
         } else {
             has_fly_thrust = false;
         }
@@ -275,6 +317,8 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         code_replacement_apply(data->patch_fly_accel_down, true);
         code_replacement_apply(data->patch_fly_accel_up, true);
     } else {
+        data->patch_fly_accel_down->applied = true;
+        data->patch_fly_accel_up->applied = true;
         code_replacement_apply(data->patch_fly_accel_down, false);
         code_replacement_apply(data->patch_fly_accel_up, false);
     }
@@ -286,7 +330,6 @@ C_SCRIPT
 {
     .rom_name = "KIRBY DREAM LAND",
     .description = DESCRIPTION,
-    .experimental = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_end = (CS_OnEnd)on_end,

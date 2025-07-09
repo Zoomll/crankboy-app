@@ -8,7 +8,7 @@ def create_split_game_json_256():
     """
     Downloads and processes game DAT files, then splits the final data
     into 256 separate JSON files (00-FF) based on the first two characters
-    of the ROM CRC. Files are saved in the 'Source/roms/' directory.
+    of the ROM CRC. Files are saved in the 'Source/db/' directory.
     """
 
     headers = {
@@ -75,7 +75,7 @@ def create_split_game_json_256():
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 
-    output_dir = os.path.join("Source", "roms")
+    output_dir = os.path.join("Source", "db")
 
     hex_chars = "0123456789ABCDEF"
     prefixes = [f"{i}{j}" for i in hex_chars for j in hex_chars]

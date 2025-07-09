@@ -973,7 +973,7 @@ PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
     snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", (unsigned long)crc);
 
     char db_filename[32];
-    snprintf(db_filename, sizeof(db_filename), "roms/%.2s.json", crc_string_lower);
+    snprintf(db_filename, sizeof(db_filename), "db/%.2s.json", crc_string_lower);
 
     char* json_string = pgb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
     if (!json_string)

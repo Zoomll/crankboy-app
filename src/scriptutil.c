@@ -163,6 +163,8 @@ void code_replacement_apply(CodeReplacement* r, bool apply)
     {
         return;
     }
+    
+    r->applied = target_state;
 
     const uint8_t* target = target_state ? r->tval : r->tprev;
 
@@ -173,7 +175,6 @@ void code_replacement_apply(CodeReplacement* r, bool apply)
         {
             printf("PC=%x during patch-apply!\n", $PC);
             __gb_step_cpu(GB);
-            return;
         }
     }
 
@@ -181,8 +182,6 @@ void code_replacement_apply(CodeReplacement* r, bool apply)
     {
         rom_poke(r->addr + i, target[i]);
     }
-
-    r->applied = target_state;
 }
 
 void code_replacement_free(CodeReplacement* r)

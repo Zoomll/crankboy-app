@@ -21,7 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple Save State slots per game (note: not currently available if game has its own cartridge data)
 - You can download cover art for your library from within CrankBoy.
 - Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
-- ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) -- you can add native crank controls to a game if you have the technical know-how.
+- ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing a just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "Bundle Mode," below
 
 ## Installing
@@ -47,7 +47,7 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 
 ### Installing ROMs (PDX)
 
-- Add your ROMs (`.gb` or `.gbc`) to the PDX zip file. On some operating systems like Linux Mint, this is as simple as dragging the ROM into the zip file, but on others (such as Mac) you may need to extract the PDX zip, copy the roms into the extracted directory, then re-zip the directory.
+- Add your ROMs (`.gb` or `.gbc`) to the PDX zip file. On some operating systems like Linux Mint, this is as simple as dragging the ROM into the zip file, but on others (such as Mac) you may need to extract the PDX zip, copy the ROMs into the extracted directory, then re-zip the directory.
 - Cover art can be added this way as well (see above for accepted formats)
 - Install the PDX onto your Playdate as normal. Then, on first launch, the ROMs will be copied automatically from the PDX to the data directory.
 
@@ -87,7 +87,7 @@ The value for each preference under `"default"` must be a non-negative integer, 
 
 As an alternative to marking preferences as hidden, you can instead whitelist preferences that you wish to be exposed to the user by using `"visible"` instead of `"hidden"`. If you wish for the preferences menu to be hidden *entirely*, simply use `"visible": []`. A list of preferences and their names can be found [here](./src/prefs.x).
 
-Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`. It's also strongly recommended that you add a [Lua script](./lua-docs.md) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy.
+Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`. It's also strongly recommended that you add a [Lua script](./lua-docs.md) and/or [C script](src/cscripts/kirby_dreamland.c) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy. (Or just write the script in C instead.)
 
 ## Contributions
 

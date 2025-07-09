@@ -839,7 +839,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .name = "Remember Last",
             .values = off_on_labels,
             .description = "When opening the library,\n"
-                "Initial selection will\nbe the last game played.\n",
+                "initial selection will\nbe the last game played.\n",
             .pref_var = &preferences_library_remember_selection,
             .max_value = 2,
             .on_press = NULL
