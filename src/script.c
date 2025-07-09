@@ -633,7 +633,7 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
         if (luaL_dofile(L, info->lua_script_path) != LUA_OK)
         {
             const char* err = lua_tostring(L, -1);
-            fprintf(stderr, "Lua error: %s\n", err);
+            playdate->system->logToConsole("Lua error: %s", err);
             lua_close(L);
 
             DTCM_VERIFY();
@@ -712,7 +712,7 @@ void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
         if (lua_pcall(L, 0, 0, 0) != LUA_OK)
         {
             const char* err = lua_tostring(L, -1);
-            fprintf(stderr, "script_tick error: %s\n", err);
+            playdate->system->logToConsole("script_tick error: %s", err);
             lua_pop(L, 1);
         }
     }
@@ -790,7 +790,7 @@ __section__(".rare") void script_on_breakpoint(struct PGB_GameScene* gameScene, 
         if (lua_pcall(L, 1, 0, 0) != LUA_OK)
         {
             const char* err = lua_tostring(L, -1);
-            fprintf(stderr, "script breakpoint error error: %s\n", err);
+            playdate->system->logToConsole("script breakpoint error: %s", err);
             lua_pop(L, 1);
         }
 
