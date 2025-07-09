@@ -197,6 +197,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         }
 
         int fly_max_speed;
+        printf("ds=%f\n", (double)data->crank_delta_smooth);
         if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP) {
             float rate = MAX(0, MIN(data->crank_delta_smooth, 30.0f)) / 30.0f;
             fly_thrust = -0x20 + 0x70 * rate;
@@ -213,7 +214,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
             printf("%d %d %d rate=%f\n", current_speed, fly_max_speed, fly_thrust, (double)rate);
             if (has_fly_thrust) {
                 // TODO
-                fly_thrust = (fly_thrust / 0x50) * (fly_thrust / 0x50) * 0x50;
+                fly_thrust = ((float)fly_thrust / 0x50) * ((float)fly_thrust / 0x50) * 0x50;
                 continue_flying = true;
             }
         } else {
@@ -230,9 +231,9 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
 
     if (continue_flying) {
         u8 buttons = K_BUTTON_UP | $JOYPAD;
-        if (buttons != data->patch_continue_flying->tval[2]) {
+        if (buttons != data->patch_continue_flying->tval[1]) {
             data->patch_continue_flying->applied = false;
-            data->patch_continue_flying->tval[2] = buttons;
+            data->patch_continue_flying->tval[1] = buttons;
         }
         code_replacement_apply(data->patch_continue_flying, true);
     }
@@ -242,9 +243,9 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     }
 
     if (has_fly_thrust) {
-        data->patch_fly_accel_down->tval[2] = MAX(-fly_thrust, 0);
+        data->patch_fly_accel_down->tval[1] = MAX(-fly_thrust, 0);
         data->patch_fly_accel_down->applied = false;
-        data->patch_fly_accel_up->tval[2] = MAX(fly_thrust, 0);
+        data->patch_fly_accel_up->tval[1] = MAX(fly_thrust, 0);
         data->patch_fly_accel_up->applied = false;
         code_replacement_apply(data->patch_fly_accel_down, true);
         code_replacement_apply(data->patch_fly_accel_up, true);

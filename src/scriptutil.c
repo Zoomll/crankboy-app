@@ -171,6 +171,7 @@ void code_replacement_apply(CodeReplacement* r, bool apply)
         // ensure PC out of target range
         while ($PC >= r->addr && $PC < r->addr + r->length)
         {
+            printf("PC=%x during patch-apply!\n", $PC);
             __gb_step_cpu(GB);
             return;
         }

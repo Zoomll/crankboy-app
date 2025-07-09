@@ -5469,6 +5469,7 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
     }
     else
     {
+        const u16 pc = gb->cpu_reg.pc;
         static u8 _wram[2][WRAM_SIZE];
         static u8 _vram[2][VRAM_SIZE];
         static u8 _cart_ram[2][0x20000];
@@ -5565,7 +5566,7 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
         if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in gb struct on opcode %x", opcode);
+            playdate->system->error("difference in gb struct on opcode %x, pc=%x", opcode, pc);
             goto printregs;
         }
 
