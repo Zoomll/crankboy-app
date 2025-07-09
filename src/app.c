@@ -97,11 +97,11 @@ static void copy_file_callback(const char* filename, void* userdata)
             {
                 printf("%s\n", msg);
                 pgb_draw_logo_screen_and_display(msg);
-                free(msg);
+                pgb_free(msg);
             }
 
             bool success = pgb_write_entire_file(dst_path, dat, size);
-            free(dat);
+            pgb_free(dat);
 
             // mark file as transferred
             if (success)

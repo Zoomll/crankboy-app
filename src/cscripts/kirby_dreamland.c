@@ -16,7 +16,7 @@ typedef struct ScriptData
     float crank_delta;
     float crank_delta_smooth;
     float crank_hyst;
-    
+
     CodeReplacement* patch_no_door;
     CodeReplacement* patch_start_flying;
     CodeReplacement* patch_continue_flying;
@@ -71,21 +71,21 @@ SCRIPT_BREAKPOINT(
         }
     }
 }
-        
+
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
-    
+
     ScriptData* data = allocz(ScriptData);
-    
+
     // enable xram
     ram_poke(IO_PD_FEATURE_SET, 2);
-    
+
     // we're replacing the crank functionality entirely
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
-    
+
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
     poke_verify(0, 0x22D, 0x5F, 0xAF);
@@ -100,10 +100,10 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     poke_verify(6, 0x4096, 0xE6, 0xFE);
     poke_verify(6, 0x4097, 0x08, 0x01);
     poke_verify(6, 0x4098, 0x28, 0x20);
-    
+
     unsigned cave_1_addr, cave_1_size;
     find_code_cave(1, &cave_1_addr, &cave_1_size);
-    
+
     if (cave_1_size < 40)
     {
         script_error("Failed to find bank 1 code cave.");
@@ -113,33 +113,33 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     // margins
     cave_1_addr += 4;
     cave_1_size -= 8;
-    
+
     #define PLACEHOLDER 0x00
-    
+
     data->patch_no_door = code_replacement(
         0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true
     );
-    
+
     data->patch_start_flying = code_replacement(
         1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true
     );
-    
+
     data->patch_continue_flying = code_replacement(
         1, 0x467C, (0xF0, 0x8B), (0x3E, K_BUTTON_UP), true
     );
-    
+
     data->patch_fly_accel_down = code_replacement(
         0, 0x3C5, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true
     );
-    
+
     data->patch_fly_accel_up = code_replacement(
         0, 0x3F8, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true
     );
-    
+
     SET_BREAKPOINTS(
         !!strcmp(header_name, "KIRBY DREAM LAND")
     );
-    
+
     return data;
 }
 
@@ -150,18 +150,18 @@ static void on_end(struct gb_s* gb, ScriptData* data)
     code_replacement_free(data->patch_continue_flying);
     code_replacement_free(data->patch_fly_accel_down);
     code_replacement_free(data->patch_fly_accel_up);
-    
-    free(data);
+
+    pgb_free(data);
 }
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
     bool start_flying_via_crank = false;
     bool continue_flying = false;
-    
+
     float new_crank_angle = playdate->system->getCrankAngle();
     if (playdate->system->isCrankDocked()) new_crank_angle = -1;
-    
+
     if (new_crank_angle >= 0 && data->crank_angle >= 0)
     {
         data->crank_delta = circle_difference(data->crank_angle, new_crank_angle);
@@ -174,7 +174,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
             else if (cd < -CRANK_MAX_HYST)
                 data->crank_hyst = nnfmodf(new_crank_angle + CRANK_MAX_HYST, 360.0f);
         }
-        
+
         data->crank_delta_smooth = data->crank_delta_smooth * CRANK_DELTA_SMOOTH_FACTOR
             + (1 - CRANK_DELTA_SMOOTH_FACTOR)* data->crank_delta;
     }
@@ -183,7 +183,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         data->crank_delta = 0;
         data->crank_hyst = new_crank_angle;
     }
-    
+
     // crank to flap
     int fly_thrust;
     bool has_fly_thrust = false;
@@ -195,7 +195,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
                 }
             }
         }
-        
+
         int fly_max_speed;
         if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP) {
             float rate = MAX(0, MIN(data->crank_delta_smooth, 30.0f)) / 30.0f;
@@ -219,15 +219,15 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         } else {
             has_fly_thrust = false;
         }
-        
+
         if (has_fly_thrust) {
             // TODO
         }
     }
-    
+
     code_replacement_apply(data->patch_start_flying, start_flying_via_crank);
     code_replacement_apply(data->patch_no_door, start_flying_via_crank);
-    
+
     if (continue_flying) {
         u8 buttons = K_BUTTON_UP | $JOYPAD;
         if (buttons != data->patch_continue_flying->tval[2]) {
@@ -240,7 +240,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     {
         code_replacement_apply(data->patch_continue_flying, false);
     }
-    
+
     if (has_fly_thrust) {
         data->patch_fly_accel_down->tval[2] = MAX(-fly_thrust, 0);
         data->patch_fly_accel_down->applied = false;
@@ -252,10 +252,10 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         code_replacement_apply(data->patch_fly_accel_down, false);
         code_replacement_apply(data->patch_fly_accel_up, false);
     }
-    
+
     data->crank_angle = new_crank_angle;
 }
-    
+
 C_SCRIPT
 {
     .rom_name = "KIRBY DREAM LAND",

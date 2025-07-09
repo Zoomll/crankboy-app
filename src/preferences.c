@@ -115,7 +115,7 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     }
 
     if (preserved_to_write)
-        free(preserved_to_write);
+        pgb_free(preserved_to_write);
 
     union
     {
@@ -139,7 +139,7 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     if (preserved_all)
     {
         preferences_restore_subset(preserved_all);
-        free(preserved_all);
+        pgb_free(preserved_all);
     }
 
     int error = write_json_to_disk(filename, j);
@@ -210,7 +210,7 @@ void* preferences_store_subset(preferences_bitfield_t subset)
     ++i;
 #include "prefs.x"
 
-    void* data = malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
+    void* data = pgb_malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
     if (!data)
         return NULL;
 

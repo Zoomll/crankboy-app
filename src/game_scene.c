@@ -270,7 +270,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
         if (stored_save_slot)
         {
             preferences_restore_subset(stored_save_slot);
-            free(stored_save_slot);
+            pgb_free(stored_save_slot);
         }
     }
     else
@@ -416,8 +416,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
                 }
 
                 // Now, free the scene and context.
-                free(gameScene);
-                free(context);
+                pgb_free(gameScene);
+                pgb_free(context);
                 return NULL;
             }
             }
@@ -752,8 +752,8 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
 
     // Generate .tmp and .bak filenames
     size_t len = strlen(save_filename);
-    char* tmp_filename = malloc(len + 2);
-    char* bak_filename = malloc(len + 2);
+    char* tmp_filename = pgb_malloc(len + 2);
+    char* bak_filename = pgb_malloc(len + 2);
 
     if (!tmp_filename || !bak_filename)
     {
@@ -849,9 +849,9 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
 
 cleanup:
     if (tmp_filename)
-        free(tmp_filename);
+        pgb_free(tmp_filename);
     if (bak_filename)
-        free(bak_filename);
+        pgb_free(bak_filename);
 }
 
 static void gb_save_to_disk_(struct gb_s* gb)
@@ -2276,7 +2276,7 @@ static void PGB_GameScene_menu(void* object)
                     {
                         char* human_time = en_human_time(current_time - final_timestamp);
                         snprintf(line2, sizeof(line2), "%s ago", human_time);
-                        free(human_time);
+                        pgb_free(human_time);
                     }
 
                     int font_height = playdate->graphics->getFontHeight(PGB_App->labelFont);
@@ -2419,7 +2419,7 @@ __section__(".rare") static unsigned get_save_state_timestamp_(
 
     SDFile* file = playdate->file->open(path, kFileReadData);
 
-    free(path);
+    pgb_free(path);
 
     if (!file)
     {
@@ -2485,7 +2485,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
         goto cleanup;
     }
 
-    char* buff = malloc(save_size);
+    char* buff = pgb_malloc(save_size);
     if (!buff)
     {
         playdate->system->logToConsole("Failed to allocate buffer for save state");
@@ -2542,17 +2542,17 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
         }
     }
 
-    free(buff);
+    pgb_free(buff);
 
 cleanup:
     if (path_prefix)
-        free(path_prefix);
+        pgb_free(path_prefix);
     if (state_name)
-        free(state_name);
+        pgb_free(state_name);
     if (tmp_name)
-        free(tmp_name);
+        pgb_free(tmp_name);
     if (bak_name)
-        free(bak_name);
+        pgb_free(bak_name);
 
     // we check playtime nonzero so that LCD has been updated at least once
     uint8_t* lcd = context->gb->lcd;
@@ -2612,7 +2612,7 @@ cleanup:
     }
 
     if (thumb_name)
-        free(thumb_name);
+        pgb_free(thumb_name);
 
     gameScene->isCurrentlySaving = false;
     return success;
@@ -2636,7 +2636,7 @@ __section__(".rare") bool load_state_thumbnail_(
 
     SDFile* file = playdate->file->open(path, kFileReadData);
 
-    free(path);
+    pgb_free(path);
 
     if (!file)
     {
@@ -2694,7 +2694,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
             {
                 success = true;
                 int size_remaining = save_size;
-                char* buff = malloc(save_size);
+                char* buff = pgb_malloc(save_size);
                 if (buff == NULL)
                 {
                     printf("Failed to allocate save state buffer");
@@ -2751,7 +2751,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
                         }
                     }
 
-                    free(buff);
+                    pgb_free(buff);
                 }
             }
         }
@@ -2763,7 +2763,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
         playdate->file->close(file);
     }
 
-    free(state_name);
+    pgb_free(state_name);
     return success;
 }
 
@@ -2946,7 +2946,7 @@ void show_game_script_info(const char* rompath)
 
     PGB_InfoScene* infoScene = PGB_InfoScene_new(text);
 
-    free(text);
+    pgb_free(text);
 
     PGB_presentModal(infoScene->scene);
 }

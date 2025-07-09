@@ -261,7 +261,7 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     if (settings_path)
     {
         call_with_main_stack_1(preferences_read_from_disk, settings_path);
-        free(settings_path);
+        pgb_free(settings_path);
 
         if (!preferences_per_game && onlyIfPerGameEnabled)
         {
@@ -277,7 +277,7 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     {
         preferences_restore_subset(stored);
     }
-    free(stored);
+    pgb_free(stored);
 }
 
 static void launch_game(void* ud, int option)
@@ -306,8 +306,8 @@ static void launch_game(void* ud, int option)
 
             preferences_restore_subset(prefs);
             if (prefs)
-                free(prefs);
-            free(settings_path);
+                pgb_free(prefs);
+            pgb_free(settings_path);
         }
     }
         goto launch_normal;
@@ -333,8 +333,8 @@ static void launch_game(void* ud, int option)
 
             preferences_restore_subset(prefs);
             if (prefs)
-                free(prefs);
-            free(settings_path);
+                pgb_free(prefs);
+            pgb_free(settings_path);
         }
     }
         goto launch_normal;
@@ -390,7 +390,7 @@ static void CB_updatecheck(int code, const char* text, void* ud)
     if (modal_result)
     {
         PGB_Modal* modal = PGB_Modal_new(modal_result, NULL, NULL, NULL);
-        free(modal_result);
+        pgb_free(modal_result);
 
         modal->width = 300;
         modal->height = 180;
@@ -564,7 +564,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 goto out_of_memory_error;
             }
 
-            char* spooldup = strdup(spool);
+            char* spooldup = string_copy(spool);
             if (spooldup)
             {
                 infoScene->text = spooldup;
@@ -691,7 +691,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             load_game_prefs(game->fullpath, false);
             int has_prompted = preferences_script_has_prompted;
             preferences_restore_subset(prefs);
-            free(prefs);
+            pgb_free(prefs);
 
             if (!has_prompted)
             {

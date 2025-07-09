@@ -7,8 +7,8 @@
 // converts png to pdi. Returns NULL on failure.
 // if either max_width or max_height non-zero, scales down image if it exceeds that size
 void* png_to_pdi(
-    const char* context_fname,
-    const void* png_data, int png_size, size_t* out_size, int max_width, int max_height
+    const char* context_fname, const void* png_data, int png_size, size_t* out_size, int max_width,
+    int max_height
 );
 
 /* Converts PNG cover art into PDI, then launches LibraryScene */

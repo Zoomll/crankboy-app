@@ -906,7 +906,7 @@ static void process_file(const char* path, void* ud)
     char* fullpath = aprintf("%s/%s", lud->path, path);
 
     SDFile* file = playdate->file->open(fullpath, lud->opts);
-    free(fullpath);
+    pgb_free(fullpath);
     if (!file)
         return;
     playdate->file->close(file);

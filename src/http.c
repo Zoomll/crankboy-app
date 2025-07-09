@@ -39,14 +39,14 @@ static void http_cleanup(HTTPConnection* connection)
         }
 
         if (httpud->data)
-            free(httpud->data);
+            pgb_free(httpud->data);
         if (httpud->location)
-            free(httpud->location);
+            pgb_free(httpud->location);
         if (httpud->contentType)
-            free(httpud->contentType);
-        free(httpud->domain);
-        free(httpud->path);
-        free(httpud);
+            pgb_free(httpud->contentType);
+        pgb_free(httpud->domain);
+        pgb_free(httpud->path);
+        pgb_free(httpud);
     }
 
     playdate->network->http->release(connection);
@@ -71,11 +71,11 @@ static bool parse_url(const char* url, char** domain, char** path)
     }
 
     size_t domain_len = path_start - domain_start;
-    *domain = malloc(domain_len + 1);
+    *domain = pgb_malloc(domain_len + 1);
     strncpy(*domain, domain_start, domain_len);
     (*domain)[domain_len] = '\0';
 
-    *path = strdup(path_start);
+    *path = string_copy(path_start);
 
     return true;
 }
@@ -132,8 +132,8 @@ static void CB_HeadersRead(HTTPConnection* connection)
                 httpud->out_connection_handle  // Pass the original handle pointer along
             );
 
-            free(new_domain);
-            free(new_path);
+            pgb_free(new_domain);
+            pgb_free(new_path);
         }
 
         http_cleanup(connection);
@@ -185,7 +185,7 @@ static void readAllData(HTTPConnection* connection)
         // read the data into the buffer.
         if (httpud && httpud->cb)
         {
-            httpud->data = realloc(httpud->data, httpud->data_len + available + 1);
+            httpud->data = pgb_realloc(httpud->data, httpud->data_len + available + 1);
             if (httpud->data == NULL)
             {
                 httpud->cb(HTTP_MEM_ERROR | httpud->flags, NULL, 0, httpud->ud);
@@ -301,12 +301,12 @@ static void CB_Permission(unsigned flags, void* ud)
         httpud->cb(flags, NULL, 0, httpud->ud);
         httpud->cb = NULL;
         if (httpud->data)
-            free(httpud->data);
+            pgb_free(httpud->data);
         if (httpud->contentType)
-            free(httpud->contentType);
-        free(httpud->domain);
-        free(httpud->path);
-        free(httpud);
+            pgb_free(httpud->contentType);
+        pgb_free(httpud->domain);
+        pgb_free(httpud->path);
+        pgb_free(httpud);
     }
 }
 
@@ -315,7 +315,7 @@ void http_get(
     void* ud, HTTPConnection** out_connection_handle
 )
 {
-    struct HTTPUD* httpud = malloc(sizeof(struct HTTPUD));
+    struct HTTPUD* httpud = pgb_malloc(sizeof(struct HTTPUD));
     if (!httpud)
     {
         cb(HTTP_MEM_ERROR, NULL, 0, ud);
@@ -332,8 +332,8 @@ void http_get(
     httpud->cb = cb;
     httpud->ud = ud;
     httpud->timeout = timeout;
-    httpud->domain = strdup(domain);
-    httpud->path = strdup(path);
+    httpud->domain = string_copy(domain);
+    httpud->path = string_copy(path);
     httpud->location = NULL;
     httpud->out_connection_handle = out_connection_handle;
 
@@ -350,7 +350,7 @@ static void CB_AccessReply(bool result, void* cbud)
 {
     enable_cb_t cb = ((struct CB_UserData_EnableHTTP*)cbud)->cb;
     void* ud = ((struct CB_UserData_EnableHTTP*)cbud)->ud;
-    free(cbud);
+    pgb_free(cbud);
 
     permission = result;
     cb(HTTP_ENABLE_ASKED | (result ? 0 : HTTP_ENABLE_DENIED), ud);
@@ -374,7 +374,8 @@ static void CB_SetEnabled(PDNetErr err)
         }
         else
         {
-            struct CB_UserData_EnableHTTP* cbudhttp = malloc(sizeof(struct CB_UserData_EnableHTTP));
+            struct CB_UserData_EnableHTTP* cbudhttp =
+                pgb_malloc(sizeof(struct CB_UserData_EnableHTTP));
             cbudhttp->cb = cb;
             cbudhttp->ud = ud;
 
@@ -395,16 +396,16 @@ static void CB_SetEnabled(PDNetErr err)
                 // callback will be invoked.
                 return;
             case kAccessDeny:
-                free(cbudhttp);
+                pgb_free(cbudhttp);
                 cb(HTTP_ENABLE_DENIED, ud);
                 return;
             case kAccessAllow:
                 permission = true;
-                free(cbudhttp);
+                pgb_free(cbudhttp);
                 cb(0, ud);
                 return;
             default:
-                free(cbudhttp);
+                pgb_free(cbudhttp);
                 printf("Unrecognized permission result: %d\n", result);
                 cb(HTTP_ERROR, ud);
                 break;
@@ -412,8 +413,8 @@ static void CB_SetEnabled(PDNetErr err)
         }
     }
 
-    free(_domain);
-    free(_reason);
+    pgb_free(_domain);
+    pgb_free(_reason);
 }
 
 void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* ud)
@@ -426,8 +427,8 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
 
     _ud = ud;
     _cb = cb;
-    _domain = strdup(domain);
-    _reason = strdup(reason);
+    _domain = string_copy(domain);
+    _reason = string_copy(reason);
 
     playdate->network->setEnabled(true, CB_SetEnabled);
 }

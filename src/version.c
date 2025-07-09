@@ -35,11 +35,11 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     json_value jvinfo;
 
     if (oinfo->name)
-        free(oinfo->name);
+        pgb_free(oinfo->name);
     if (oinfo->domain)
-        free(oinfo->domain);
+        pgb_free(oinfo->domain);
     if (oinfo->path)
-        free(oinfo->path);
+        pgb_free(oinfo->path);
 
     int jparse_result = (ispath) ? parse_json(VERSION_INFO_FILE, &jvinfo, kFileRead | kFileReadData)
                                  : parse_json_string(text, &jvinfo);
@@ -60,9 +60,9 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
         return -2;
     }
 
-    oinfo->name = strdup(jname.data.stringval);
-    oinfo->path = strdup(jpath.data.stringval);
-    oinfo->domain = strdup(jdomain.data.stringval);
+    oinfo->name = string_copy(jname.data.stringval);
+    oinfo->path = string_copy(jpath.data.stringval);
+    oinfo->domain = string_copy(jdomain.data.stringval);
 
     free_json_data(jvinfo);
 
@@ -73,7 +73,7 @@ static int read_local_version(void)
 {
     if (!localVersionInfo)
     {
-        localVersionInfo = malloc(sizeof(struct VersionInfo));
+        localVersionInfo = pgb_malloc(sizeof(struct VersionInfo));
         if (!localVersionInfo)
         {
             return -1;
@@ -83,7 +83,7 @@ static int read_local_version(void)
         int result;
         if ((result = read_version_info("version.json", true, localVersionInfo)))
         {
-            free(localVersionInfo);
+            pgb_free(localVersionInfo);
             localVersionInfo = NULL;
             return -2;
         }
@@ -153,8 +153,8 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
                         strlen(jname.data.stringval)
                     );
                     if (ignore_version)
-                        free(ignore_version);
-                    ignore_version = strdup(jname.data.stringval);
+                        pgb_free(ignore_version);
+                    ignore_version = string_copy(jname.data.stringval);
 
                     if (strcmp(jname.data.stringval, localVersionInfo->name))
                     {
@@ -178,7 +178,7 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
         }
         free_json_data(jv);
     }
-    free(ud);
+    pgb_free(ud);
 }
 
 void check_for_updates(update_result_cb cb, void* ud)
@@ -195,7 +195,7 @@ void check_for_updates(update_result_cb cb, void* ud)
         break;
     }
 
-    struct CB_UserData* cbud = malloc(sizeof(struct CB_UserData));
+    struct CB_UserData* cbud = pgb_malloc(sizeof(struct CB_UserData));
     if (!cbud)
     {
         cb(ERRMEM, STR_ERRMEM, ud);

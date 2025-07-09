@@ -155,19 +155,21 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
 static void PGB_InfoScene_free(void* object)
 {
     PGB_InfoScene* infoScene = object;
-    free(infoScene->text);
+    pgb_free(infoScene->text);
+    pgb_free(infoScene);
 }
 
 PGB_InfoScene* PGB_InfoScene_new(char* text)
 {
     PGB_InfoScene* infoScene = pgb_malloc(sizeof(PGB_InfoScene));
-    if (!infoScene) return NULL;
+    if (!infoScene)
+        return NULL;
     memset(infoScene, 0, sizeof(*infoScene));
     playdate->system->getCrankChange();
 
     PGB_Scene* scene = PGB_Scene_new();
     infoScene->scene = scene;
-    infoScene->text = text ? strdup(text) : NULL;
+    infoScene->text = text ? string_copy(text) : NULL;
     infoScene->canClose = true;
     scene->managedObject = infoScene;
     scene->update = (void*)PGB_InfoScene_update;

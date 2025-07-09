@@ -33,7 +33,7 @@ __section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos,
     if (value.type == kJSONString)
     {
         // we need to own the string
-        value.data.stringval = strdup(value.data.stringval);
+        value.data.stringval = string_copy(value.data.stringval);
     }
 
     array->data[pos] = value;
@@ -57,10 +57,10 @@ __section__(".rare") void SI_didDecodeTableValue(
     if (value.type == kJSONString)
     {
         // we need to own the string
-        value.data.stringval = strdup(value.data.stringval);
+        value.data.stringval = string_copy(value.data.stringval);
     }
 
-    obj->data[n - 1].key = strdup(key);
+    obj->data[n - 1].key = string_copy(key);
     obj->data[n - 1].value = value;
     obj->n = n;
     decoder->userdata = obj;
@@ -83,21 +83,21 @@ __section__(".rare") void free_json_data(json_value v)
         {
             free_json_data(array->data[i]);
         }
-        free(array);
+        pgb_free(array);
     }
     else if (v.type == kJSONTable)
     {
         JsonObject* obj = (JsonObject*)v.data.tableval;
         for (size_t i = 0; i < obj->n; i++)
         {
-            free(obj->data[i].key);
+            pgb_free(obj->data[i].key);
             free_json_data(obj->data[i].value);
         }
-        free(obj);
+        pgb_free(obj);
     }
     else if (v.type == kJSONString)
     {
-        free(v.data.stringval);
+        pgb_free(v.data.stringval);
     }
 }
 
@@ -126,14 +126,17 @@ bool json_set_table_value(json_value* table, const char* key, json_value value)
         }
     }
 
-    char* key2 = strdup(key);
+    char* key2 = string_copy(key);
     if (!key2)
         return false;
 
     // add new key
-    obj = realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
+    obj = pgb_realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
     if (!obj)
+    {
+        pgb_free(key2);
         return false;
+    }
 
     obj->data[obj->n].value = value;
     obj->data[obj->n++].key = key2;

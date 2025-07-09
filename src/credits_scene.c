@@ -294,7 +294,7 @@ static void PGB_CreditsScene_free(void* object)
     free_json_data(creditsScene->jcred);
     if (creditsScene->logo)
         playdate->graphics->freeBitmap(creditsScene->logo);
-    free(creditsScene);
+    pgb_free(creditsScene);
 }
 
 PGB_CreditsScene* PGB_CreditsScene_new(void)
@@ -312,7 +312,7 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     PGB_Scene* scene = PGB_Scene_new();
     if (!scene)
     {
-        free(creditsScene);
+        pgb_free(creditsScene);
         return NULL;
     }
 
@@ -329,13 +329,13 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     if (!result || j.type != kJSONArray)
     {
         free_json_data(j);
-        free(creditsScene);
-        free(scene);
+        pgb_free(creditsScene);
+        pgb_free(scene);
         return NULL;
     }
     creditsScene->jcred = j;
 
-    creditsScene->y_advance_by_item = malloc(sizeof(int) * ((JsonArray*)j.data.tableval)->n);
+    creditsScene->y_advance_by_item = pgb_malloc(sizeof(int) * ((JsonArray*)j.data.tableval)->n);
     if (creditsScene->y_advance_by_item)
     {
         for (size_t i = 0; i < ((JsonArray*)j.data.tableval)->n; ++i)

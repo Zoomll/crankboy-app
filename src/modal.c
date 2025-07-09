@@ -167,10 +167,10 @@ void PGB_Modal_free(PGB_Modal* modal)
     for (size_t i = 0; i < MODAL_MAX_OPTIONS; ++i)
     {
         if (modal->options[i])
-            free(modal->options[i]);
+            pgb_free(modal->options[i]);
     }
     if (modal->text)
-        free(modal->text);
+        pgb_free(modal->text);
     PGB_Scene_free(modal->scene);
     pgb_free(modal);
 }
@@ -189,12 +189,12 @@ PGB_Modal* PGB_Modal_new(
     if (options)
         for (size_t i = 0; options[i] && i < MODAL_MAX_OPTIONS; ++i)
         {
-            modal->options[i] = strdup(options[i]);
+            modal->options[i] = string_copy(options[i]);
             modal->options_count++;
         }
 
     if (text)
-        modal->text = strdup(text);
+        modal->text = string_copy(text);
 
     PGB_Scene* scene = PGB_Scene_new();
     modal->scene = scene;

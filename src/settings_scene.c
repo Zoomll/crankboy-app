@@ -239,7 +239,7 @@ static void settings_confirm_load_state(void* userdata, int option)
     {
         settings_load_state(data->gameScene, data->settingsScene);
     }
-    free(data);
+    pgb_free(data);
 }
 
 static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
@@ -358,7 +358,7 @@ static void confirm_save_state(PGB_SettingsScene* settingsScene, int option)
         playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());
         const char* options[] = {"OK", NULL};
         PGB_presentModal(PGB_Modal_new(msg, options, NULL, NULL)->scene);
-        free(msg);
+        pgb_free(msg);
     }
     else
     {
@@ -390,14 +390,14 @@ static void settings_action_save_state(OptionsMenuEntry* e, PGB_SettingsScene* s
         char* human_time = en_human_time(now - timestamp);
         char* msg;
         playdate->system->formatString(&msg, "Overwrite state which is %s old?", human_time);
-        free(human_time);
+        pgb_free(human_time);
 
         const char* options[] = {"Cancel", "Yes", NULL};
         PGB_presentModal(
             PGB_Modal_new(msg, options, (PGB_ModalCallback)confirm_save_state, settingsScene)->scene
         );
 
-        free(msg);
+        pgb_free(msg);
     }
     else
     {
@@ -414,7 +414,7 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
     if (gameScene->playtime >= 60 * 120)
     {
         const char* confirm_options[] = {"No", "Yes", NULL};
-        LoadStateUserdata* data = malloc(sizeof(LoadStateUserdata));
+        LoadStateUserdata* data = pgb_malloc(sizeof(LoadStateUserdata));
         data->gameScene = gameScene;
         data->settingsScene = settingsScene;
         unsigned timestamp = get_save_state_timestamp(gameScene, slot);
@@ -423,19 +423,19 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
         char* text;
         if (timestamp == 0 || timestamp > now)
         {
-            text = strdup("Really load state?");
+            text = string_copy("Really load state?");
         }
         else
         {
             char* human_time = en_human_time(now - timestamp);
             playdate->system->formatString(&text, "Really load state from %s ago?", human_time);
-            free(human_time);
+            pgb_free(human_time);
         }
 
         PGB_presentModal(
             PGB_Modal_new(text, confirm_options, (void*)settings_confirm_load_state, data)->scene
         );
-        free(text);
+        pgb_free(text);
     }
     else
     {
@@ -446,7 +446,7 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 {
     int max_entries = 30;  // we can overshoot, it's ok
-    OptionsMenuEntry* entries = malloc(sizeof(OptionsMenuEntry) * max_entries);
+    OptionsMenuEntry* entries = pgb_malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
     memset(entries, 0, sizeof(OptionsMenuEntry) * max_entries);
@@ -991,7 +991,7 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
 {
     if (settingsScene->entries)
     {
-        free(settingsScene->entries);
+        pgb_free(settingsScene->entries);
     }
 
     settingsScene->entries = getOptionsEntries(settingsScene->gameScene);
@@ -1291,7 +1291,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     if (stored_save_slot)
                     {
                         preferences_restore_subset(stored_save_slot);
-                        free(stored_save_slot);
+                        pgb_free(stored_save_slot);
                     }
 
                     preferences_ui_sounds = global_ui_sounds;
@@ -1651,11 +1651,11 @@ static void PGB_SettingsScene_free(void* object)
     if (settingsScene->immutable_settings)
     {
         preferences_restore_subset(settingsScene->immutable_settings);
-        free(settingsScene->immutable_settings);
+        pgb_free(settingsScene->immutable_settings);
     }
 
     if (settingsScene->entries)
-        free(settingsScene->entries);
+        pgb_free(settingsScene->entries);
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);

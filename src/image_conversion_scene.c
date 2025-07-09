@@ -4,6 +4,7 @@
 #include "cover_cache_scene.h"
 #include "library_scene.h"
 #include "pdi.h"
+#include "utility.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
@@ -147,7 +148,7 @@ __space bool errdiff_dither(
 
     int error_row = 0;
 
-    fw_t* error = malloc(sizeof(fw_t) * err_stride);
+    fw_t* error = pgb_malloc(sizeof(fw_t) * err_stride);
     if (!error)
         return false;
     memset(error, 0, sizeof(fw_t) * err_stride);
@@ -217,13 +218,13 @@ __space bool errdiff_dither(
         memset(&error[err_row_idx[0] * out_width], 0, err_stride);
     }
 
-    free(error);
+    pgb_free(error);
     return true;
 }
 
 void* png_to_pdi(
-    const char* context_filename,
-    const void* png_data, int png_size, size_t* out_size, int max_width, int max_height
+    const char* context_filename, const void* png_data, int png_size, size_t* out_size,
+    int max_width, int max_height
 )
 {
     int width, height, channels;
@@ -232,7 +233,10 @@ void* png_to_pdi(
 
     if (!img_data)
     {
-        spoolError("Failed to decode %s -- is this file corrupt or encoded strangely, perhaps?", context_filename);
+        spoolError(
+            "Failed to decode %s -- is this file corrupt or encoded strangely, perhaps?",
+            context_filename
+        );
         return NULL;
     }
 
@@ -314,7 +318,7 @@ void* png_to_pdi(
     size_t opaque_size = has_transparency ? stride * max_height : 0;
     size_t total_size = sizeof(header) + sizeof(cell) + white_size + opaque_size;
 
-    void* pdi_data = malloc(total_size);
+    void* pdi_data = pgb_malloc(total_size);
     if (!pdi_data)
     {
         stbi_image_free(img_data);
@@ -400,7 +404,7 @@ void* png_to_pdi(
 
     // Clean up
     stbi_image_free(img_data);
-    
+
     if (out_size)
     {
         *out_size = total_size;
@@ -424,13 +428,13 @@ static int process_png(const char* fname)
     {
         size_t pdi_len = 0;
         void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
-        free(data);
+        pgb_free(data);
 
         if (pdi && pdi_len > 0)
         {
             char* basename = pgb_basename(fname, true);
             char* pdi_name = aprintf("%s/%s.pdi", PGB_coversPath, basename);
-            free(basename);
+            pgb_free(basename);
 
             if (pgb_write_entire_file(pdi_name, pdi, pdi_len))
             {
@@ -438,12 +442,12 @@ static int process_png(const char* fname)
                 success = true;
             }
 
-            free(pdi_name);
+            pgb_free(pdi_name);
         }
 
         if (pdi)
         {
-            free(pdi);
+            pgb_free(pdi);
         }
     }
 
@@ -479,10 +483,10 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 if (pgb_file_exists(fpath, kFileReadData))
                 {
                     convScene->state = kStatePrompt;
-                    free(fpath);
+                    pgb_free(fpath);
                     break;
                 }
-                free(fpath);
+                pgb_free(fpath);
             }
         }
         break;
@@ -534,11 +538,11 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             if (progress_msg)
             {
                 pgb_draw_logo_screen_to_buffer(progress_msg);
-                free(progress_msg);
+                pgb_free(progress_msg);
             }
 
             int result = process_png(full_fname);
-            free(full_fname);
+            pgb_free(full_fname);
 
             if (result >= 0)
             {
@@ -566,10 +570,10 @@ void PGB_ImageConversionScene_free(void* object)
     PGB_ImageConversionScene* convScene = object;
     for (int i = 0; i < convScene->files_count; ++i)
     {
-        free(convScene->files[i]);
+        pgb_free(convScene->files[i]);
     }
-    free(convScene->files);
-    free(convScene);
+    pgb_free(convScene->files);
+    pgb_free(convScene);
 }
 
 bool filename_has_stbi_extension(const char* fname)
@@ -586,7 +590,8 @@ static void on_list_file(const char* fname, void* ud)
 
     if (filename_has_stbi_extension(fname))
     {
-        char** new_files = realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
+        char** new_files =
+            pgb_realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
 
         if (new_files == NULL)
         {
@@ -595,7 +600,7 @@ static void on_list_file(const char* fname, void* ud)
         }
 
         convScene->files = new_files;
-        convScene->files[convScene->files_count] = strdup(fname);
+        convScene->files[convScene->files_count] = string_copy(fname);
 
         if (convScene->files[convScene->files_count] == NULL)
         {

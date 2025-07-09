@@ -127,10 +127,10 @@ static void process_one_game(PGB_GameScanningScene* scanScene, const char* filen
     pgb_free(fullpath);
 
     newName->name_database = (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
-    newName->name_short =
-        (fetched.short_name) ? strdup(fetched.short_name) : strdup(newName->name_filename);
-    newName->name_detailed =
-        (fetched.detailed_name) ? strdup(fetched.detailed_name) : strdup(newName->name_filename);
+    newName->name_short = (fetched.short_name) ? string_copy(fetched.short_name)
+                                               : string_copy(newName->name_filename);
+    newName->name_detailed = (fetched.detailed_name) ? string_copy(fetched.detailed_name)
+                                                     : string_copy(newName->name_filename);
 
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
@@ -222,7 +222,7 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             if (path)
             {
                 write_json_to_disk(path, scanScene->crc_cache);
-                free(path);
+                pgb_free(path);
             }
         }
 
@@ -258,7 +258,7 @@ void PGB_GameScanningScene_free(void* object)
     }
 
     free_json_data(scanScene->crc_cache);
-    free(scanScene);
+    pgb_free(scanScene);
 }
 
 PGB_GameScanningScene* PGB_GameScanningScene_new(void)
@@ -287,7 +287,7 @@ PGB_GameScanningScene* PGB_GameScanningScene_new(void)
             obj->n = 0;
             scanScene->crc_cache.data.tableval = obj;
         }
-        free(path);
+        pgb_free(path);
     }
 
     return scanScene;
