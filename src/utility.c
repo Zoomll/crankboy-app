@@ -700,35 +700,14 @@ void setCrankSoundsEnabled(bool enabled)
 
 char* aprintf(const char* fmt, ...)
 {
-    if (fmt == NULL)
-    {
-        return NULL;
-    }
+    va_list args;
+    va_start(args, fmt);
 
-    va_list args1, args2;
-    va_start(args1, fmt);
-    va_copy(args2, args1);
+    char* out;
+    playdate->system->vaFormatString(&out, fmt, args);
 
-    int length = vsnprintf(NULL, 0, fmt, args1) + 1;
-    va_end(args1);
-
-    if (length <= 0)
-    {
-        va_end(args2);
-        return NULL;
-    }
-
-    char* buffer = (char*)pgb_malloc(length * sizeof(char));
-    if (buffer == NULL)
-    {
-        va_end(args2);
-        return NULL;
-    }
-
-    vsnprintf(buffer, length, fmt, args2);
-    va_end(args2);
-
-    return buffer;
+    va_end(args);
+    return out;
 }
 
 void pgb_play_ui_sound(PGB_UISound sound)
