@@ -533,6 +533,7 @@ static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
         PGB_ListItem_free(item);
     }
     array_clear(items);
+    array_reserve(items, libraryScene->games->length);
 
     for (int i = 0; i < libraryScene->games->length; i++)
     {
@@ -1428,13 +1429,6 @@ static void PGB_LibraryScene_free(void* object)
     PGB_LibraryScene* libraryScene = object;
 
     PGB_Scene_free(libraryScene->scene);
-
-    PGB_Array* items = libraryScene->listView->items;
-    for (int i = 0; i < items->length; i++)
-    {
-        PGB_ListItem* item = items->items[i];
-        PGB_ListItem_free(item);
-    }
 
     PGB_ListView_free(libraryScene->listView);
 

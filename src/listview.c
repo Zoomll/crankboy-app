@@ -624,8 +624,18 @@ static void PGB_ListView_selectItem(PGB_ListView* listView, unsigned int index, 
 
 void PGB_ListView_free(PGB_ListView* listView)
 {
+    if (!listView)
+        return;
 
-    array_free(listView->items);
+    if (listView->items)
+    {
+        for (int i = 0; i < listView->items->length; i++)
+        {
+            PGB_ListItem_free(listView->items->items[i]);
+        }
+        array_free(listView->items);
+    }
+
     pgb_free(listView);
 }
 

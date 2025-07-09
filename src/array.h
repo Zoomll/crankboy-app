@@ -15,10 +15,13 @@
 typedef struct
 {
     unsigned int length;
+    unsigned int capacity;
     void** items;
 } PGB_Array;
 
 PGB_Array* array_new(void);
+
+void array_reserve(PGB_Array* array, unsigned int capacity);
 
 void array_push(PGB_Array* array, void* item);
 void array_clear(PGB_Array* array);

@@ -81,6 +81,11 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
     case kCoverCacheStateBuildGameList:
     {
+        if (cacheScene->current_index == 0)
+        {
+            array_reserve(PGB_App->gameListCache, PGB_App->gameNameCache->length);
+        }
+
         if (cacheScene->current_index < PGB_App->gameNameCache->length)
         {
             PGB_GameName* cachedName = PGB_App->gameNameCache->items[cacheScene->current_index];
@@ -114,6 +119,8 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         cacheScene->start_time_ms = playdate->system->getCurrentTimeMilliseconds();
 
         array_clear(cacheScene->games_with_covers);
+        array_reserve(cacheScene->games_with_covers, PGB_App->gameListCache->length);
+
         for (int i = 0; i < PGB_App->gameListCache->length; ++i)
         {
             PGB_Game* game = PGB_App->gameListCache->items[i];

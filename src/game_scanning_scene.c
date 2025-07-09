@@ -178,6 +178,8 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             PGB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
         );
 
+        array_reserve(PGB_App->gameNameCache, scanScene->game_filenames->length);
+
         if (scanScene->game_filenames->length == 0)
         {
             scanScene->state = kScanningStateDone;
