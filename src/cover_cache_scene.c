@@ -176,9 +176,9 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                 }
 
                 int max_dst_size = LZ4_compressBound(original_size);
-                char* compressed_buffer = pgb_malloc(max_dst_size);
+                char* temp_compressed_buffer = pgb_malloc(max_dst_size);
 
-                if (compressed_buffer)
+                if (temp_compressed_buffer)
                 {
                     uint8_t* uncompressed_buffer = pgb_malloc(original_size);
                     if (uncompressed_buffer)
@@ -194,7 +194,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
                         int compressed_size = LZ4_compress_fast_extState(
                             cacheScene->lz4_state, (const char*)uncompressed_buffer,
-                            compressed_buffer, original_size, max_dst_size, 1
+                            temp_compressed_buffer, original_size, max_dst_size, 1
                         );
 
                         pgb_free(uncompressed_buffer);
@@ -203,32 +203,38 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                             (cacheScene->cache_size_bytes + compressed_size <=
                              MAX_CACHE_SIZE_BYTES))
                         {
-                            PGB_CoverCacheEntry* entry = pgb_malloc(sizeof(PGB_CoverCacheEntry));
+                            char* final_buffer = pgb_malloc(compressed_size);
+                            if (final_buffer)
+                            {
+                                memcpy(final_buffer, temp_compressed_buffer, compressed_size);
 
-                            entry->rom_path = string_copy(game->fullpath);
-                            entry->compressed_data = compressed_buffer;
-                            entry->compressed_size = compressed_size;
-                            entry->original_size = original_size;
-                            entry->width = width;
-                            entry->height = height;
-                            entry->rowbytes = rowbytes;
-                            entry->has_mask = has_mask;
+                                PGB_CoverCacheEntry* entry =
+                                    pgb_malloc(sizeof(PGB_CoverCacheEntry));
+                                entry->rom_path = string_copy(game->fullpath);
+                                entry->compressed_data = final_buffer;
+                                entry->compressed_size = compressed_size;
+                                entry->original_size = original_size;
+                                entry->width = width;
+                                entry->height = height;
+                                entry->rowbytes = rowbytes;
+                                entry->has_mask = has_mask;
 
-                            array_push(PGB_App->coverCache, entry);
-                            cacheScene->cache_size_bytes += compressed_size;
-                        }
-                        else
-                        {
-                            pgb_free(compressed_buffer);
-                            if (compressed_size > 0)
-                            {  // Cache is full
-                                cacheScene->state = kCoverCacheStateDone;
+                                array_push(PGB_App->coverCache, entry);
+                                cacheScene->cache_size_bytes += compressed_size;
                             }
+                        }
+
+                        pgb_free(temp_compressed_buffer);
+
+                        if (compressed_size > 0 &&
+                            (cacheScene->cache_size_bytes >= MAX_CACHE_SIZE_BYTES))
+                        {
+                            cacheScene->state = kCoverCacheStateDone;
                         }
                     }
                     else
                     {
-                        pgb_free(compressed_buffer);
+                        pgb_free(temp_compressed_buffer);
                     }
                 }
 
