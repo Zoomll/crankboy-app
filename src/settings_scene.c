@@ -319,6 +319,7 @@ static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
+static const char* dither_mode_labels[] = {"Accurate", "Fast"};
 static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
                                               "Grid (L)",  "Staggered (D)", "Grid (D)"};
 static const char* overclock_labels[] = {"Off", "x2", "x4"};
@@ -627,6 +628,21 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
         };
     }
     #endif
+
+    // dither mode
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Dither mode",
+        .values = dither_mode_labels,
+        .description =
+            "Dithering method\n \n"
+            "Accurate:\nCalculates dither on the\nfly for each pixel. More\n"
+            "accurate but slightly\nslower.\n \n"
+            "Fast:\nUses a pre-calculated\nlookup table. Very fast,\n"
+            "but might show some\npatterning artifacts.",
+        .pref_var = &preferences_dither_mode,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     // dither
     entries[++i] = (OptionsMenuEntry){

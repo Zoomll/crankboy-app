@@ -999,7 +999,7 @@ static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
-__core_section("fb") void update_fb_dirty_lines(
+__core_section("fb") void update_fb_dirty_lines_lut(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
     const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdateRows,
     unsigned scale_line_offset
@@ -1049,6 +1049,94 @@ __core_section("fb") void update_fb_dirty_lines(
             }
         }
 
+        markUpdateRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
+    }
+}
+
+__core_section("fb") void update_fb_dirty_lines_dynamic(
+    uint8_t* restrict framebuffer, uint8_t* restrict lcd,
+    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdateRows,
+    unsigned scale_line_offset
+)
+{
+    framebuffer += (PGB_LCD_X / 8);
+    int scale_index = scale_line_offset;
+    unsigned fb_y_playdate_current_bottom =
+        PGB_LCD_Y + PGB_LCD_HEIGHT;  // Bottom of drawable area on Playdate
+
+    uint32_t dither_lut = PGB_dither_lut_c0[preferences_dither_pattern] |
+                          ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
+
+    for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)  // y_gb is Game Boy line index from top, 143 down to 0
+    {
+        int row_height_on_playdate = 2;
+        if (scale_index++ == 2)
+        {
+            scale_index = 0;
+            row_height_on_playdate = 1;
+
+            // swap dither pattern on each half-row;
+            // yields smoother results
+            dither_lut = (dither_lut >> 16) | (dither_lut << 16);
+        }
+
+        // Calculate the Playdate Y position for the *top* of the current GB
+        // line's representation
+        unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
+
+        if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
+        {
+            // If line not changed, just update the bottom for the next line
+            fb_y_playdate_current_bottom -= row_height_on_playdate;
+            continue;  // Skip drawing
+        }
+
+        // Line has changed, draw it
+        fb_y_playdate_current_bottom -=
+            row_height_on_playdate;  // Update bottom for this drawn line
+
+        uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
+        uint8_t* restrict pd_fb_line_top_ptr =
+            &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
+
+        for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
+        {
+            uint8_t orgpixels = gb_line_data[x_packed_gb];
+            uint8_t pixels_temp_c0 = orgpixels;
+            unsigned p = 0;
+
+#pragma GCC unroll 4
+            for (int i = 0; i < 4; ++i)
+            {  // Unpack 4 GB pixels from the byte
+                p <<= 2;
+                unsigned c0h = dither_lut >> ((pixels_temp_c0 & 3) * 4);
+                unsigned c0 = (c0h >> ((i * 2) % 4)) & 3;
+                p |= c0;
+                pixels_temp_c0 >>= 2;
+            }
+
+            u8* restrict pd_fb_target_byte0 = pd_fb_line_top_ptr + x_packed_gb;
+            *pd_fb_target_byte0 = p & 0xFF;
+
+            if (row_height_on_playdate == 2)
+            {
+                uint8_t pixels_temp_c1 = orgpixels;  // Reset for second dither pattern
+                u8* restrict pd_fb_target_byte1 =
+                    pd_fb_target_byte0 + PLAYDATE_ROW_STRIDE;  // Next Playdate row
+                p = 0;  // Reset p for the second row calculation
+
+#pragma GCC unroll 4
+                for (int i = 0; i < 4; ++i)
+                {
+                    p <<= 2;
+                    unsigned c1h = dither_lut >> ((pixels_temp_c1 & 3) * 4 + 16);
+                    unsigned c1 = (c1h >> ((i * 2) % 4)) & 3;
+                    p |= c1;
+                    pixels_temp_c1 >>= 2;
+                }
+                *pd_fb_target_byte1 = p & 0xFF;
+            }
+        }
         markUpdateRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
     }
 }
@@ -1710,10 +1798,20 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             float startTime = playdate->system->getElapsedTime();
 
-            ITCM_CORE_FN(update_fb_dirty_lines)(
-                playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scale_line_index
-            );
+            if (preferences_dither_mode == DITHER_MODE_ACCURATE)
+            {
+                ITCM_CORE_FN(update_fb_dirty_lines_dynamic)(
+                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                    playdate->graphics->markUpdatedRows, scale_line_index
+                );
+            }
+            else
+            {
+                ITCM_CORE_FN(update_fb_dirty_lines_lut)(
+                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                    playdate->graphics->markUpdatedRows, scale_line_index
+                );
+            }
 
             float endTime = playdate->system->getElapsedTime();
             float totalRenderTime = endTime - startTime;
@@ -1744,10 +1842,20 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 }
             }
 
-            ITCM_CORE_FN(update_fb_dirty_lines)(
-                playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scale_line_index
-            );
+            if (preferences_dither_mode == DITHER_MODE_ACCURATE)
+            {
+                ITCM_CORE_FN(update_fb_dirty_lines_dynamic)(
+                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                    playdate->graphics->markUpdatedRows, scale_line_index
+                );
+            }
+            else
+            {
+                ITCM_CORE_FN(update_fb_dirty_lines_lut)(
+                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                    playdate->graphics->markUpdatedRows, scale_line_index
+                );
+            }
 
             ITCM_CORE_FN(gb_fast_memcpy_64)(
                 context->previous_lcd, current_lcd, LCD_WIDTH_PACKED * LCD_HEIGHT
