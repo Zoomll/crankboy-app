@@ -260,7 +260,7 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     char* settings_path = pgb_game_config_path(game_path);
     if (settings_path)
     {
-        call_with_main_stack_1(preferences_read_from_disk, settings_path);
+        call_with_main_stack_1(preferences_merge_from_disk, settings_path);
         pgb_free(settings_path);
 
         if (!preferences_per_game && onlyIfPerGameEnabled)
