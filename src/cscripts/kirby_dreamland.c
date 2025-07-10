@@ -1,7 +1,8 @@
 #include "scriptutil.h"
 
-#define DESCRIPTION "(Experimental)\n\n- Use the crank to flap!\n" \
-        "- Start/Select buttons are no longer required anywhere."
+#define DESCRIPTION                                \
+    "(Experimental)\n\n- Use the crank to flap!\n" \
+    "- Start/Select buttons are no longer required anywhere."
 
 #define CRANK_DELTA_SMOOTH_FACTOR 0.8f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
@@ -42,46 +43,45 @@ static float circle_difference(float a, float b)
 {
     float diff = b - a;
     diff = fmodf(diff + 180.0f, 360.0f);
-    if (diff < 0.0f) {
+    if (diff < 0.0f)
+    {
         diff += 360.0f;
     }
     return diff - 180.0f;
 }
 
 // can also start the game with 'start'
-SCRIPT_BREAKPOINT(
-    BANK_ADDR(6, 0x4096)
-) {
-    if ($A == 0x8) {
+SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x4096))
+{
+    if ($A == 0x8)
+    {
         $A = 1;
     }
 }
 
 // force immediate unpause
-SCRIPT_BREAKPOINT(
-    BANK_ADDR(6, 0x460E)
-) {
+SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x460E))
+{
     $A = 0x8;
 }
 
 // suck via crank
-SCRIPT_BREAKPOINT(
-    BANK_ADDR(1, 0x437F)
-) {
-    if (data->suck) $A |= K_BUTTON_B;
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x437F))
+{
+    if (data->suck)
+        $A |= K_BUTTON_B;
 }
 
 // continue to suck via crank
-SCRIPT_BREAKPOINT(
-    BANK_ADDR(1, 0x479C)
-) {
-    if (data->suck) $A |= K_BUTTON_B;
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x479C))
+{
+    if (data->suck)
+        $A |= K_BUTTON_B;
 }
 
 // Start flying via crank
-SCRIPT_BREAKPOINT(
-    BANK_ADDR(1, 0x4494)
-) {
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4494))
+{
     if (data->crank_angle >= 0 && data->crank_hyst >= 0)
     {
         if (circle_difference(data->crank_hyst, data->crank_angle) >= MIN_HYST_CRANK_BEGIN_FLAP)
@@ -107,8 +107,11 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     printf("Hello from C!\n");
 
     ScriptData* data = allocz(ScriptData);
-    
-    printf("locked: %x\n", ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script);
+
+    printf(
+        "locked: %llx\n",
+        (unsigned long long)((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script
+    );
 
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
@@ -138,31 +141,22 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     cave_1_addr += 4;
     cave_1_size -= 8;
 
-    #define PLACEHOLDER 0x00
+#define PLACEHOLDER 0x00
 
-    data->patch_no_door = code_replacement(
-        0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true
-    );
+    data->patch_no_door = code_replacement(0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true);
 
-    data->patch_start_flying = code_replacement(
-        1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true
-    );
+    data->patch_start_flying = code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
 
-    data->patch_continue_flying = code_replacement(
-        1, 0x467C, (0xF0, 0x8B), (0x3E, K_BUTTON_UP), true
-    );
+    data->patch_continue_flying =
+        code_replacement(1, 0x467C, (0xF0, 0x8B), (0x3E, K_BUTTON_UP), true);
 
-    data->patch_fly_accel_down = code_replacement(
-        0, 0x3C5, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true
-    );
+    data->patch_fly_accel_down =
+        code_replacement(0, 0x3C5, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true);
 
-    data->patch_fly_accel_up = code_replacement(
-        0, 0x3F8, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true
-    );
+    data->patch_fly_accel_up =
+        code_replacement(0, 0x3F8, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true);
 
-    SET_BREAKPOINTS(
-        !!strcmp(header_name, "KIRBY DREAM LAND")
-    );
+    SET_BREAKPOINTS(!!strcmp(header_name, "KIRBY DREAM LAND"));
 
     return data;
 }
@@ -183,19 +177,21 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     // FIXME: why do we have to do this every frame?
     // It's supposed to only need to be done once.
     force_prefs();
-    
+
     bool start_flying_via_crank = false;
     bool continue_flying = false;
 
     float new_crank_angle = playdate->system->getCrankAngle();
-    if (playdate->system->isCrankDocked()) new_crank_angle = -1;
+    if (playdate->system->isCrankDocked())
+        new_crank_angle = -1;
 
     if (new_crank_angle >= 0 && data->crank_angle >= 0)
     {
         data->crank_delta = circle_difference(data->crank_angle, new_crank_angle);
         if (data->crank_hyst < 0)
             data->crank_hyst = new_crank_angle;
-        else {
+        else
+        {
             float cd = circle_difference(data->crank_hyst, new_crank_angle);
             if (cd > CRANK_MAX_HYST)
                 data->crank_hyst = nnfmodf(new_crank_angle - CRANK_MAX_HYST, 360.0f);
@@ -203,18 +199,22 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
                 data->crank_hyst = nnfmodf(new_crank_angle + CRANK_MAX_HYST, 360.0f);
         }
 
-        data->crank_delta_smooth = data->crank_delta_smooth * CRANK_DELTA_SMOOTH_FACTOR
-            + (1 - CRANK_DELTA_SMOOTH_FACTOR)* data->crank_delta;
+        data->crank_delta_smooth = data->crank_delta_smooth * CRANK_DELTA_SMOOTH_FACTOR +
+                                   (1 - CRANK_DELTA_SMOOTH_FACTOR) * data->crank_delta;
     }
     else
     {
         data->crank_delta = 0;
         data->crank_hyst = new_crank_angle;
     }
-    
+
     // crank to suck
-    if (data->crank_angle >= 0 && data->crank_hyst >= 0) {
-        if (data->suck || circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta <= -MIN_HYST_CRANK_BEGIN_SUCK) {
+    if (data->crank_angle >= 0 && data->crank_hyst >= 0)
+    {
+        if (data->suck ||
+            circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta <=
+                -MIN_HYST_CRANK_BEGIN_SUCK)
+        {
             data->suck = false;
             if (data->crank_delta_smooth < -MIN_RATE_CRANK_SUCK)
             {
@@ -225,51 +225,63 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         {
             data->suck = false;
         }
-    } else {
+    }
+    else
+    {
         data->suck = false;
     }
 
     // crank to flap
     int fly_thrust;
     bool has_fly_thrust = false;
-    if (($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0) {
-        if (data->crank_angle >= 0 && data->crank_hyst >= 0) {
-            if (circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta >= MIN_HYST_CRANK_BEGIN_FLAP) {
-                if (data->crank_delta > MIN_RATE_CRANK_BEGIN_FLAP) {
+    if (($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0)
+    {
+        if (data->crank_angle >= 0 && data->crank_hyst >= 0)
+        {
+            if (circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta >=
+                MIN_HYST_CRANK_BEGIN_FLAP)
+            {
+                if (data->crank_delta > MIN_RATE_CRANK_BEGIN_FLAP)
+                {
                     start_flying_via_crank = true;
                 }
             }
         }
 
         int fly_max_speed;
-        
+
         // rather arbitrary control logic, best I could do.
         // feel free to disrespect.
-        if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP) {
-            float rate = MAX(0, MIN(data->crank_delta_smooth, MAX_RATE_CRANK_FLAP)) / MAX_RATE_CRANK_FLAP;
+        if (data->crank_delta_smooth > MIN_RATE_CRANK_FLAP)
+        {
+            float rate =
+                MAX(0, MIN(data->crank_delta_smooth, MAX_RATE_CRANK_FLAP)) / MAX_RATE_CRANK_FLAP;
             fly_thrust = -0x20 + 0x70 * rate;
             has_fly_thrust = true;
-            fly_max_speed = -0x200*rate;
+            fly_max_speed = -0x200 * rate;
             int current_speed = (ram_peek(0xD078) << 8) | ram_peek(0xD079);
-            if (current_speed >= 0x8000) {
+            if (current_speed >= 0x8000)
+            {
                 current_speed = current_speed - 0x10000;
             }
-            if (current_speed < fly_max_speed) {
+            if (current_speed < fly_max_speed)
+            {
                 fly_thrust = -0x20;
                 has_fly_thrust = true;
             }
-            
-            if (fly_thrust >= 0) {
+
+            if (fly_thrust >= 0)
+            {
                 // quadratic thrust scaling
                 fly_thrust = ((float)fly_thrust / 0x50) * ((float)fly_thrust / 0x50) * 0x50;
                 continue_flying = true;
             }
-            
+
             // decrease downward thrust greatly
             if (fly_thrust < 0)
             {
                 fly_thrust /= 4;
-                
+
                 if (fly_thrust < 0 && fly_thrust >= -7)
                 {
                     fly_max_speed = -0x10 * fly_thrust;
@@ -280,15 +292,19 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
                         continue_flying = 0;
                     }
                 }
-            } else if (current_speed < 0 && fly_thrust < 4)
+            }
+            else if (current_speed < 0 && fly_thrust < 4)
             {
                 fly_thrust = 4;
             }
-        } else {
+        }
+        else
+        {
             has_fly_thrust = false;
         }
 
-        if (has_fly_thrust) {
+        if (has_fly_thrust)
+        {
             // TODO
         }
     }
@@ -296,9 +312,11 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     code_replacement_apply(data->patch_start_flying, start_flying_via_crank);
     code_replacement_apply(data->patch_no_door, start_flying_via_crank);
 
-    if (continue_flying) {
+    if (continue_flying)
+    {
         u8 buttons = K_BUTTON_UP | $JOYPAD;
-        if (buttons != data->patch_continue_flying->tval[1]) {
+        if (buttons != data->patch_continue_flying->tval[1])
+        {
             data->patch_continue_flying->applied = false;
             data->patch_continue_flying->tval[1] = buttons;
         }
@@ -309,14 +327,17 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         code_replacement_apply(data->patch_continue_flying, false);
     }
 
-    if (has_fly_thrust) {
+    if (has_fly_thrust)
+    {
         data->patch_fly_accel_down->tval[1] = MAX(-fly_thrust, 0);
         data->patch_fly_accel_down->applied = false;
         data->patch_fly_accel_up->tval[1] = MAX(fly_thrust, 0);
         data->patch_fly_accel_up->applied = false;
         code_replacement_apply(data->patch_fly_accel_down, true);
         code_replacement_apply(data->patch_fly_accel_up, true);
-    } else {
+    }
+    else
+    {
         data->patch_fly_accel_down->applied = true;
         data->patch_fly_accel_up->applied = true;
         code_replacement_apply(data->patch_fly_accel_down, false);
@@ -326,8 +347,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     data->crank_angle = new_crank_angle;
 }
 
-C_SCRIPT
-{
+C_SCRIPT{
     .rom_name = "KIRBY DREAM LAND",
     .description = DESCRIPTION,
     .on_begin = (CS_OnBegin)on_begin,
@@ -335,8 +355,7 @@ C_SCRIPT
     .on_end = (CS_OnEnd)on_end,
 };
 
-C_SCRIPT
-{
+C_SCRIPT{
     .rom_name = "HOSHI NO KIRBY",
     .description = DESCRIPTION,
     .experimental = true,
