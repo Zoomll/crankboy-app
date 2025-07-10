@@ -525,15 +525,6 @@ int _link(char* oldpath, char* newpath)
     return -1;
 }
 
-#else
-
-int eventHandler_pdnewlib(PlaydateAPI* p, PDSystemEvent e, uint32_t a)
-{
-    return 0;
-}
-
-#endif
-
 void pdnewlib_quit(void)
 {
     if (iobuffs[0].v)
@@ -547,3 +538,12 @@ void pdnewlib_quit(void)
         iobuffs[1].v = NULL;
     }
 }
+
+#else
+
+int eventHandler_pdnewlib(PlaydateAPI* p, PDSystemEvent e, uint32_t a)
+{
+    return 0;
+}
+
+#endif

@@ -17,9 +17,11 @@
 #include "info_scene.h"
 #include "jparse.h"
 #include "library_scene.h"
+#include "pdnewlib.h"
 #include "preferences.h"
 #include "script.h"
 #include "userstack.h"
+#include "version.h"
 
 PGB_Application* PGB_App;
 
@@ -632,6 +634,10 @@ void PGB_quit(void)
 
     script_quit();
     version_quit();
+
+#ifdef TARGET_PLAYDATE
     pdnewlib_quit();
+#endif
+
     pgb_free(PGB_App);
 }
