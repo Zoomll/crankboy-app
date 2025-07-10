@@ -33,26 +33,33 @@ __dtcm_ctrl void* dtcm_alloc(size_t size)
     return playdate->system->realloc(NULL, size);
 }
 
-__dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t offset)
+__dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
 {
-    offset %= 32;
-#if defined(DTCM_ALLOC)
+#ifdef DTCM_ALLOC
     if (is_dtcm_init)
     {
-        *(uint32_t*)dtcm_mempool = 0;  // remove canary
-        while ((uintptr_t)dtcm_mempool % 32 != offset)
+        alignment %= 32;
+        while ((uintptr_t)dtcm_mempool % 32 != alignment)
             dtcm_mempool = (void*)(dtcm_mempool + 1);
         void* tmp = dtcm_mempool;
         dtcm_mempool = (void*)(size + (uintptr_t)dtcm_mempool);
-        // high canary
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
         return tmp;
     }
 #endif
-    uintptr_t u = (uintptr_t)dtcm_alloc(size + 32);
 
-    // smallest integer n >= u, s.t. n % 32 == offset
-    return (void*)(u + ((offset - (u % 32) + 32) % 32));
+    void* original_ptr = pgb_malloc(size + alignment - 1 + sizeof(void*));
+    if (!original_ptr)
+    {
+        return NULL;
+    }
+
+    void* aligned_ptr =
+        (void*)(((uintptr_t)original_ptr + sizeof(void*) + alignment - 1) & ~(alignment - 1));
+
+    ((void**)aligned_ptr)[-1] = original_ptr;
+
+    return aligned_ptr;
 }
 
 __dtcm_ctrl void dtcm_init(void)
@@ -165,4 +172,22 @@ void dtcm_restore(struct dtcm_store_t* buff)
     pgb_free(buff);
     playdate->system->logToConsole("Restore complete.");
 #endif
+}
+
+void dtcm_free(void* ptr)
+{
+    if (!ptr)
+    {
+        return;
+    }
+
+#ifdef DTCM_ALLOC
+    uintptr_t p = (uintptr_t)ptr;
+    if (p >= (uintptr_t)dtcm_mempool_start && p < (uintptr_t)dtcm_mempool)
+    {
+        return;
+    }
+#endif
+    void* original_ptr = ((void**)ptr)[-1];
+    pgb_free(original_ptr);
 }

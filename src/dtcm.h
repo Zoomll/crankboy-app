@@ -16,6 +16,7 @@ bool dtcm_verify(const char* context);
 
 void* dtcm_alloc(size_t size);
 void* dtcm_alloc_aligned(size_t size, size_t offset);
+void dtcm_free(void* ptr);
 
 struct dtcm_store_t;
 
