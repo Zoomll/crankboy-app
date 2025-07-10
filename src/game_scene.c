@@ -998,7 +998,7 @@ __core_section("fb") void update_fb_dirty_lines(
         uint8_t* restrict pd_fb_line_top_ptr =
             &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
 
-        for (int x_packed_gb = LCD_WIDTH_PACKED; x_packed_gb-- > 0;)
+        for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
         {
             uint8_t orgpixels = gb_line_data[x_packed_gb];
             uint8_t pixels_temp_c0 = orgpixels;
@@ -1024,8 +1024,7 @@ __core_section("fb") void update_fb_dirty_lines(
                     pd_fb_target_byte0 + PLAYDATE_ROW_STRIDE;  // Next Playdate row
                 p = 0;  // Reset p for the second row calculation
 
-// FIXME: why does this pragma cause a crash if unroll 4??
-#pragma GCC unroll 2
+#pragma GCC unroll 4
                 for (int i = 0; i < 4; ++i)
                 {
                     p <<= 2;
