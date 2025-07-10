@@ -380,6 +380,7 @@ void PGB_init(void)
         }
 
         write_json_to_disk(COPIED_FILES, manifest);
+        free_json_data(manifest);
 
         PGB_GameScanningScene* scanningScene = PGB_GameScanningScene_new();
         PGB_present(scanningScene->scene);
@@ -626,5 +627,11 @@ void PGB_quit(void)
         PGB_App->coverCache = NULL;
     }
 
+    pgb_free(PGB_App->bundled_rom);
+    pgb_free(PGB_App->bootRomData);
+
+    script_quit();
+    version_quit();
+    pdnewlib_quit();
     pgb_free(PGB_App);
 }

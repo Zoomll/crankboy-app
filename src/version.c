@@ -264,3 +264,20 @@ void possibly_check_for_updates(update_result_cb cb, void* ud)
         }
     }
 }
+
+void version_quit(void)
+{
+    if (localVersionInfo)
+    {
+        pgb_free(localVersionInfo->name);
+        pgb_free(localVersionInfo->domain);
+        pgb_free(localVersionInfo->path);
+        pgb_free(localVersionInfo);
+        localVersionInfo = NULL;
+    }
+    if (ignore_version)
+    {
+        pgb_free(ignore_version);
+        ignore_version = NULL;
+    }
+}

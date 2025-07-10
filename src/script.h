@@ -67,6 +67,7 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
 void script_end(ScriptState* state, struct PGB_GameScene* game_scene);
 void script_tick(ScriptState* state, struct PGB_GameScene* game_scene);
 void script_on_breakpoint(struct PGB_GameScene* game_scene, int index);
+void script_quit(void);
 
 void register_c_script(const struct CScriptInfo* info);
 void pgb_register_all_scripts(void);

@@ -37,6 +37,9 @@ extern const uint16_t PGB_dither_lut_c1[];
 
 static void update_thumbnail(PGB_SettingsScene* settingsScene);
 
+static char* itcm_base_desc = NULL;
+static char* itcm_restart_desc = NULL;
+
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
 #define HOLD_TIME_MARGIN 0.15f
 #define HOLD_TIME 1.09f
@@ -261,7 +264,8 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                 preferences_save_to_disk, PGB_globalPrefsPath,
                 0
                     // never save these to global prefs
-                    | PREFBIT_per_game | PREFBIT_save_state_slot | PREFBITS_LIBRARY_ONLY
+                    | PREFBIT_per_game | PREFBIT_save_state_slot |
+                    PREFBITS_LIBRARY_ONLY
 
                     // these prefs are locked, so we shouldn't be able to change them
                     | settingsScene->gameScene->prefs_locked_by_script
@@ -891,7 +895,6 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
-        static char* itcm_base_desc = NULL;
         if (itcm_base_desc == NULL) {
             playdate->system->formatString(&itcm_base_desc, "Unstable, but greatly\nimproves performance.\n \n"
                 "Runs emulator core\ndirectly from the stack.\n \n"
@@ -900,7 +903,6 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             );
         }
 
-        static char* itcm_restart_desc = NULL;
         if (itcm_restart_desc == NULL) {
             playdate->system->formatString(&itcm_restart_desc, "%s\n \nYou need to restart the\ngame for these changes to\napply.", itcm_base_desc);
         }
@@ -1259,9 +1261,10 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 {
                     int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
-                    
+
                     preferences_bitfield_t prefs_locked_by_script = 0;
-                    if (gameScene) prefs_locked_by_script = gameScene->prefs_locked_by_script;
+                    if (gameScene)
+                        prefs_locked_by_script = gameScene->prefs_locked_by_script;
 
                     const char* game_settings_path = settingsScene->gameScene->settings_filename;
                     if (!preferences_per_game && old_preferences_per_game)
@@ -1269,7 +1272,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                         // write per-game prefs to disk
                         preferences_per_game = 0;  // paranoia: record in game settings that we're
                                                    // using global settings
-                        call_with_main_stack_2(preferences_save_to_disk, game_settings_path, prefs_locked_by_script);
+                        call_with_main_stack_2(
+                            preferences_save_to_disk, game_settings_path, prefs_locked_by_script
+                        );
 
                         preferences_merge_from_disk(PGB_globalPrefsPath);
                         preferences_per_game = 0;
@@ -1277,8 +1282,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     else if (preferences_per_game && !old_preferences_per_game)
                     {
                         // write global prefs to disk
-                        call_with_main_stack_2(preferences_save_to_disk,
-                            PGB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
+                        call_with_main_stack_2(
+                            preferences_save_to_disk, PGB_globalPrefsPath,
+                            PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
                         );
 
                         preferences_merge_from_disk(game_settings_path);
@@ -1652,6 +1658,17 @@ static void PGB_SettingsScene_free(void* object)
 
     if (settingsScene->entries)
         pgb_free(settingsScene->entries);
+
+    if (itcm_base_desc)
+    {
+        pgb_free(itcm_base_desc);
+        itcm_base_desc = NULL;
+    }
+    if (itcm_restart_desc)
+    {
+        pgb_free(itcm_restart_desc);
+        itcm_restart_desc = NULL;
+    }
 
     PGB_Scene_free(settingsScene->scene);
     pgb_free(settingsScene);

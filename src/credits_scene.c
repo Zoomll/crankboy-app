@@ -294,6 +294,7 @@ static void PGB_CreditsScene_free(void* object)
     free_json_data(creditsScene->jcred);
     if (creditsScene->logo)
         playdate->graphics->freeBitmap(creditsScene->logo);
+    pgb_free(creditsScene->y_advance_by_item);
     pgb_free(creditsScene);
 }
 
@@ -329,6 +330,10 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     if (!result || j.type != kJSONArray)
     {
         free_json_data(j);
+        if (creditsScene->logo)
+        {
+            playdate->graphics->freeBitmap(creditsScene->logo);
+        }
         pgb_free(creditsScene);
         pgb_free(scene);
         return NULL;

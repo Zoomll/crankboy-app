@@ -156,6 +156,7 @@ static void PGB_InfoScene_free(void* object)
 {
     PGB_InfoScene* infoScene = object;
     pgb_free(infoScene->text);
+    PGB_Scene_free(infoScene->scene);
     pgb_free(infoScene);
 }
 
@@ -174,6 +175,5 @@ PGB_InfoScene* PGB_InfoScene_new(char* text)
     scene->managedObject = infoScene;
     scene->update = (void*)PGB_InfoScene_update;
     scene->free = (void*)PGB_InfoScene_free;
-
     return infoScene;
 }

@@ -533,3 +533,17 @@ int eventHandler_pdnewlib(PlaydateAPI* p, PDSystemEvent e, uint32_t a)
 }
 
 #endif
+
+void pdnewlib_quit(void)
+{
+    if (iobuffs[0].v)
+    {
+        free(iobuffs[0].v);
+        iobuffs[0].v = NULL;
+    }
+    if (iobuffs[1].v)
+    {
+        free(iobuffs[1].v);
+        iobuffs[1].v = NULL;
+    }
+}
