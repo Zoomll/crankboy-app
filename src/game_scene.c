@@ -83,6 +83,9 @@ static void gb_save_to_disk(struct gb_s* gb);
 static const char* startButtonText = "start";
 static const char* selectButtonText = "select";
 
+static uint8_t PGB_dither_lut_row0[256];
+static uint8_t PGB_dither_lut_row1[256];
+
 const uint16_t PGB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
@@ -108,6 +111,46 @@ const uint16_t PGB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1010 << 4) | (0b0100 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1010 << 4) | (0b0000 << 8) | (0b0000 << 12),
 };
+
+__section__(".rare") static void generate_dither_luts(void)
+{
+    uint32_t dither_lut = PGB_dither_lut_c0[preferences_dither_pattern] |
+                          ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
+
+    // Loop through all 256 possible values of a 4-pixel Game Boy byte.
+    for (int orgpixels_int = 0; orgpixels_int < 256; ++orgpixels_int)
+    {
+        uint8_t orgpixels = (uint8_t)orgpixels_int;
+
+        // --- Calculate dithered pattern for the first (top) row of pixels ---
+        uint8_t pixels_temp_c0 = orgpixels;
+        unsigned p0 = 0;
+#pragma GCC unroll 4
+        for (int i = 0; i < 4; ++i)
+        {
+            p0 <<= 2;
+            unsigned c0h = dither_lut >> ((pixels_temp_c0 & 3) * 4);
+            unsigned c0 = (c0h >> ((i * 2) % 4)) & 3;
+            p0 |= c0;
+            pixels_temp_c0 >>= 2;
+        }
+        PGB_dither_lut_row0[orgpixels_int] = p0;
+
+        // --- Calculate dithered pattern for the second (bottom) row of pixels ---
+        uint8_t pixels_temp_c1 = orgpixels;
+        unsigned p1 = 0;
+#pragma GCC unroll 4
+        for (int i = 0; i < 4; ++i)
+        {
+            p1 <<= 2;
+            unsigned c1h = dither_lut >> (((pixels_temp_c1 & 3) * 4) + 16);
+            unsigned c1 = (c1h >> ((i * 2) % 4)) & 3;
+            p1 |= c1;
+            pixels_temp_c1 >>= 2;
+        }
+        PGB_dither_lut_row1[orgpixels_int] = p1;
+    }
+}
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
@@ -135,7 +178,7 @@ void* core_itcm_reloc = NULL;
 
 __section__(".rare") void itcm_core_init()
 {
-    // ITCM seems to crash Rev B, so we leave this is an option
+    // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
     if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
@@ -280,6 +323,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     }
 
     PGB_GameScene_generateBitmask();
+
+    generate_dither_luts();
 
     PGB_GameScene_selector_init(gameScene);
 
@@ -543,6 +588,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 void PGB_GameScene_apply_settings(PGB_GameScene* gameScene, bool audio_settings_changed)
 {
     PGB_GameSceneContext* context = gameScene->context;
+
+    generate_dither_luts();
 
     // Reset the audio system to ensure its state is consistent with the new settings.
     if (audio_settings_changed)
@@ -960,39 +1007,28 @@ __core_section("fb") void update_fb_dirty_lines(
 {
     framebuffer += (PGB_LCD_X / 8);
     int scale_index = scale_line_offset;
-    unsigned fb_y_playdate_current_bottom =
-        PGB_LCD_Y + PGB_LCD_HEIGHT;  // Bottom of drawable area on Playdate
+    unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
 
-    uint32_t dither_lut = PGB_dither_lut_c0[preferences_dither_pattern] |
-                          ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
-
-    for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)  // y_gb is Game Boy line index from top, 143 down to 0
+    for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
     {
         int row_height_on_playdate = 2;
         if (scale_index++ == 2)
         {
             scale_index = 0;
             row_height_on_playdate = 1;
-
-            // swap dither pattern on each half-row;
-            // yields smoother results
-            dither_lut = (dither_lut >> 16) | (dither_lut << 16);
         }
 
-        // Calculate the Playdate Y position for the *top* of the current GB
-        // line's representation
         unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
 
         if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
         {
-            // If line not changed, just update the bottom for the next line
-            fb_y_playdate_current_bottom -= row_height_on_playdate;
-            continue;  // Skip drawing
+            // Line has not changed, just update the position for the next line and skip drawing.
+            fb_y_playdate_current_bottom = current_line_pd_top_y;
+            continue;
         }
 
-        // Line has changed, draw it
-        fb_y_playdate_current_bottom -=
-            row_height_on_playdate;  // Update bottom for this drawn line
+        // Line has changed, draw it.
+        fb_y_playdate_current_bottom = current_line_pd_top_y;
 
         uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
         uint8_t* restrict pd_fb_line_top_ptr =
@@ -1001,41 +1037,18 @@ __core_section("fb") void update_fb_dirty_lines(
         for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
         {
             uint8_t orgpixels = gb_line_data[x_packed_gb];
-            uint8_t pixels_temp_c0 = orgpixels;
-            unsigned p = 0;
 
-#pragma GCC unroll 4
-            for (int i = 0; i < 4; ++i)
-            {  // Unpack 4 GB pixels from the byte
-                p <<= 2;
-                unsigned c0h = dither_lut >> ((pixels_temp_c0 & 3) * 4);
-                unsigned c0 = (c0h >> ((i * 2) % 4)) & 3;
-                p |= c0;
-                pixels_temp_c0 >>= 2;
-            }
-
-            u8* restrict pd_fb_target_byte0 = pd_fb_line_top_ptr + x_packed_gb;
-            *pd_fb_target_byte0 = p & 0xFF;
+            // Get the pre-calculated dithered byte for the top row.
+            pd_fb_line_top_ptr[x_packed_gb] = PGB_dither_lut_row0[orgpixels];
 
             if (row_height_on_playdate == 2)
             {
-                uint8_t pixels_temp_c1 = orgpixels;  // Reset for second dither pattern
-                u8* restrict pd_fb_target_byte1 =
-                    pd_fb_target_byte0 + PLAYDATE_ROW_STRIDE;  // Next Playdate row
-                p = 0;  // Reset p for the second row calculation
-
-#pragma GCC unroll 4
-                for (int i = 0; i < 4; ++i)
-                {
-                    p <<= 2;
-                    unsigned c1h = dither_lut >> ((pixels_temp_c1 & 3) * 4 + 16);
-                    unsigned c1 = (c1h >> ((i * 2) % 4)) & 3;
-                    p |= c1;
-                    pixels_temp_c1 >>= 2;
-                }
-                *pd_fb_target_byte1 = p & 0xFF;
+                uint8_t* restrict pd_fb_line_bottom_ptr = pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
+                // Get the pre-calculated dithered byte for the bottom row.
+                pd_fb_line_bottom_ptr[x_packed_gb] = PGB_dither_lut_row1[orgpixels];
             }
         }
+
         markUpdateRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
     }
 }
