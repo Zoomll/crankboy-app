@@ -418,8 +418,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
                 }
 
                 // Now, free the scene and context.
-                pgb_free(gameScene);
-                pgb_free(context);
+                PGB_GameScene_free(gameScene);
                 return NULL;
             }
             }
@@ -2467,6 +2466,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
     char* tmp_name = NULL;
     char* bak_name = NULL;
     char* thumb_name = NULL;
+    char* buff = NULL;
 
     playdate->system->formatString(
         &path_prefix, "%s/%s.%u", PGB_statesPath, gameScene->base_filename, slot
@@ -2487,7 +2487,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
         goto cleanup;
     }
 
-    char* buff = pgb_malloc(save_size);
+    buff = pgb_malloc(save_size);
     if (!buff)
     {
         playdate->system->logToConsole("Failed to allocate buffer for save state");
@@ -2543,18 +2543,6 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
             }
         }
     }
-
-    pgb_free(buff);
-
-cleanup:
-    if (path_prefix)
-        pgb_free(path_prefix);
-    if (state_name)
-        pgb_free(state_name);
-    if (tmp_name)
-        pgb_free(tmp_name);
-    if (bak_name)
-        pgb_free(bak_name);
 
     // we check playtime nonzero so that LCD has been updated at least once
     uint8_t* lcd = context->gb->lcd;
@@ -2613,8 +2601,19 @@ cleanup:
         playdate->file->close(file);
     }
 
+cleanup:
+    if (path_prefix)
+        pgb_free(path_prefix);
+    if (state_name)
+        pgb_free(state_name);
+    if (tmp_name)
+        pgb_free(tmp_name);
+    if (bak_name)
+        pgb_free(bak_name);
     if (thumb_name)
         pgb_free(thumb_name);
+    if (buff)
+        pgb_free(buff);
 
     gameScene->isCurrentlySaving = false;
     return success;
