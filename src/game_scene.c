@@ -1801,7 +1801,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 );
             }
 
-            if (preferences_crank_mode == CRANK_MODE_TURBO_CCW ||
+            if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
                 preferences_crank_mode == CRANK_MODE_TURBO_CCW)
             {
                 // Draw the Turbo indicator on the right panel
