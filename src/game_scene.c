@@ -1009,6 +1009,9 @@ __core_section("fb") void update_fb_dirty_lines(
     int scale_index = scale_line_offset;
     unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
 
+    uint8_t* restrict dither_lut0_ptr = PGB_dither_lut_row0;
+    uint8_t* restrict dither_lut1_ptr = PGB_dither_lut_row1;
+
     for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
     {
         int row_height_on_playdate = 2;
@@ -1016,6 +1019,10 @@ __core_section("fb") void update_fb_dirty_lines(
         {
             scale_index = 0;
             row_height_on_playdate = 1;
+
+            uint8_t* restrict temp_ptr = dither_lut0_ptr;
+            dither_lut0_ptr = dither_lut1_ptr;
+            dither_lut1_ptr = temp_ptr;
         }
 
         unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
@@ -1039,13 +1046,13 @@ __core_section("fb") void update_fb_dirty_lines(
             uint8_t orgpixels = gb_line_data[x_packed_gb];
 
             // Get the pre-calculated dithered byte for the top row.
-            pd_fb_line_top_ptr[x_packed_gb] = PGB_dither_lut_row0[orgpixels];
+            pd_fb_line_top_ptr[x_packed_gb] = dither_lut0_ptr[orgpixels];
 
             if (row_height_on_playdate == 2)
             {
                 uint8_t* restrict pd_fb_line_bottom_ptr = pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
                 // Get the pre-calculated dithered byte for the bottom row.
-                pd_fb_line_bottom_ptr[x_packed_gb] = PGB_dither_lut_row1[orgpixels];
+                pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut1_ptr[orgpixels];
             }
         }
 
