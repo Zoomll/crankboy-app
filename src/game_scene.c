@@ -1073,7 +1073,7 @@ static __section__(".text.tick") void display_fps(void)
     float fps;
     if (PGB_App->avg_dt <= 1.0f / 98.5f)
     {
-        fps = 99.9;
+        fps = 99.9f;
     }
     else
     {
@@ -1093,7 +1093,19 @@ static __section__(".text.tick") void display_fps(void)
         return;
 
     char buff[5];
-    snprintf(buff, sizeof(buff), "%04.1f", (double)fps);
+
+    int fps_multiplied = (int)(fps * 10.0f);
+
+    if (fps_multiplied > 999)
+    {
+        fps_multiplied = 999;
+    }
+
+    buff[0] = (fps_multiplied / 100) + '0';
+    buff[1] = ((fps_multiplied / 10) % 10) + '0';
+    buff[2] = '.';
+    buff[3] = (fps_multiplied % 10) + '0';
+    buff[4] = '\0';
 
     uint32_t digits4 = *(uint32_t*)&buff[0];
     if (digits4 == last_fps_digits)
