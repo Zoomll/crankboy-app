@@ -13,9 +13,6 @@
 
 #include <stdio.h>
 
-#define DITHER_MODE_ACCURATE 0
-#define DITHER_MODE_FAST 1
-
 #define DYNAMIC_RATE_OFF 0
 #define DYNAMIC_RATE_ON 1
 #define DYNAMIC_RATE_AUTO 2
@@ -75,8 +72,6 @@ extern preferences_bitfield_t preferences_bundle_hidden;
 
 // all the preferences that need the game to restart to apply
 #define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support)
-#define PREFBITS_LIBRARY_ONLY                                                  \
-    (PREFBIT_ui_sounds | PREFBIT_display_name_mode | PREFBIT_display_article | \
-     PREFBIT_display_sort | PREFBIT_library_remember_selection)
+#define PREFBITS_LIBRARY_ONLY (PREFBIT_ui_sounds | PREFBIT_display_name_mode | PREFBIT_display_article | PREFBIT_display_sort | PREFBIT_library_remember_selection)
 
 #endif /* preferences_h */
