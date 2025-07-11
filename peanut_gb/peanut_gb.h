@@ -1127,8 +1127,28 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
         switch (addr & 0xFF)
         {
         /* IO Registers */
-        case 0x00:
-            return 0xC0 | gb->gb_reg.P1;
+        case 0x00:  // P1 / JOYP
+        {
+            // Start with high bits, which are always 1
+            uint8_t result = 0xC0;
+            // Add the selection bits from the register
+            result |= (gb->gb_reg.P1 & 0x30);
+
+            // Read the actual joypad state based on selection
+            if ((gb->gb_reg.P1 & 0x10) == 0)  // Direction keys selected
+            {
+                result |= (gb->direct.joypad >> 4);
+            }
+            else if ((gb->gb_reg.P1 & 0x20) == 0)  // Button keys selected
+            {
+                result |= (gb->direct.joypad & 0x0F);
+            }
+            else  // No group selected, return all high (unpressed)
+            {
+                result |= 0x0F;
+            }
+            return result;
+        }
 
         case 0x01:
             return gb->gb_reg.SB;
@@ -1741,46 +1761,45 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         switch (addr & 0xFF)
         {
         /* Joypad */
-        case 0x00:
+        case 0x00:  // P1 / JOYP
         {
-            /* We need the P1 state before the game writes to it to detect a falling edge. */
-            uint8_t old_input_state = gb->gb_reg.P1 & 0x0F;
+            /*
+             * Per hardware specs, writes to P1/JOYP only set the selection bits (4-5).
+             * The actual input state is determined at the time of a read, not stored here.
+             * A '0' in the input lines indicates a pressed state.
+             */
 
-            /* The game writes to bits 4 & 5 to select an input group. */
-            gb->gb_reg.P1 = val & 0x30;
+            // Preserve the old selection for interrupt check
+            uint8_t old_p1_select = gb->gb_reg.P1 & 0x30;
 
-            /* Start with all input lines high (unpressed). */
-            uint8_t new_input_state = 0x0F;
+            // A write to P1 only affects the selection bits (4 and 5).
+            gb->gb_reg.P1 = (val & 0x30);
 
-            /* If Direction keys are selected (bit 4 is low), read their state. */
-            if ((gb->gb_reg.P1 & 0x10) == 0)
+            // If the selection has changed, check for a joypad interrupt.
+            // An interrupt is requested on a high-to-low transition of any button line.
+            if (gb->direct.joypad_interrupts && old_p1_select != (gb->gb_reg.P1 & 0x30))
             {
-                new_input_state &= (gb->direct.joypad >> 4);
-            }
+                uint8_t old_state = 0x0F;
+                uint8_t new_state = 0x0F;
 
-            /* If Button keys are selected (bit 5 is low), read their state. */
-            if ((gb->gb_reg.P1 & 0x20) == 0)
-            {
-                new_input_state &= (gb->direct.joypad & 0x0F);
-            }
+                // Re-calculate what the old state *would have been*
+                if ((old_p1_select & 0x10) == 0)
+                    old_state &= (gb->direct.joypad >> 4);
+                if ((old_p1_select & 0x20) == 0)
+                    old_state &= (gb->direct.joypad & 0x0F);
 
-            if (gb->direct.joypad_interrupts)
-            {
-                /*
-                 * An interrupt is triggered if any input line transitions from high (1) to low (0).
-                 * We find these lines by seeing which bits were 1 in the old state
-                 * AND are now 0 in the new state (which is represented by ~new_input_state).
-                 */
-                if (old_input_state & (~new_input_state))
+                // Calculate the new state
+                if ((gb->gb_reg.P1 & 0x10) == 0)
+                    new_state &= (gb->direct.joypad >> 4);
+                if ((gb->gb_reg.P1 & 0x20) == 0)
+                    new_state &= (gb->direct.joypad & 0x0F);
+
+                // If any bit went from 1 to 0
+                if ((old_state & ~new_state) != 0)
                 {
-                    gb->gb_reg.IF |= CONTROL_INTR; /* Request a Joypad interrupt */
+                    gb->gb_reg.IF |= CONTROL_INTR;
                 }
             }
-
-            /* Combine the selection bits with the new input state. The upper 2 bits are unused
-                and read high. */
-            gb->gb_reg.P1 |= new_input_state | 0xC0;
-
             return;
         }
 
