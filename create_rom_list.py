@@ -6,9 +6,10 @@ import os
 
 def create_split_game_json_256():
     """
-    Downloads and processes game DAT files, then splits the final data
-    into 256 separate JSON files (00-FF) based on the first two characters
-    of the ROM CRC. Files are saved in the 'Source/db/' directory.
+    Downloads and processes game DAT files, integrates a local homebrew JSON,
+    and then splits the final data into 256 separate JSON files (00-FF)
+    based on the first two characters of the ROM CRC. Files are saved in
+    the 'Source/db/' directory.
     """
 
     headers = {
@@ -47,7 +48,7 @@ def create_split_game_json_256():
         processed_count = 0
         for entry in entries:
             if entry.strip().startswith('game ('):
-                comment_match = re.search(r'comment\s+"(.*?)"', entry)
+                comment_match = re.search(r'comment\s+\"(.*?)\"', entry)
                 crc_match = re.search(r'crc\s+([A-F0-9]{8})', entry)
 
                 if comment_match and crc_match:
@@ -72,6 +73,34 @@ def create_split_game_json_256():
                     processed_count += 1
 
         print(f"  -> Found and processed {processed_count} games from this file.")
+
+    # --- HOMEBREW JSON INTEGRATION ---
+
+    homebrew_file = "homebrew.json"
+    print(f"\nLooking for '{homebrew_file}'...")
+
+    if os.path.exists(homebrew_file):
+        try:
+            with open(homebrew_file, 'r', encoding='utf-8') as f:
+                homebrew_data = json.load(f)
+
+            print(f"  -> Found '{homebrew_file}'. Integrating entries...")
+            homebrew_added_count = 0
+            for crc, data in homebrew_data.items():
+                if crc.upper() != 'XXXXXXXX':
+                    all_games_dict[crc] = data
+                    homebrew_added_count += 1
+                else:
+                    print(f"  -> Skipped invalid entry: {data.get('long', 'N/A')}")
+
+            print(f"  -> Integrated {homebrew_added_count} homebrew games.")
+
+        except json.JSONDecodeError as e:
+            print(f"Error: Could not parse '{homebrew_file}'. It might not be valid JSON. Details: {e}")
+        except Exception as e:
+            print(f"Error: An unexpected error occurred while processing '{homebrew_file}'. Details: {e}")
+    else:
+        print(f"  -> '{homebrew_file}' not found. Skipping integration.")
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 
