@@ -219,7 +219,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
 
     for (char* p = encoded_name; *p; ++p)
     {
-        if (*p == '&')
+        if (*p == '&' || *p == ':')
         {
             *p = '_';
         }
