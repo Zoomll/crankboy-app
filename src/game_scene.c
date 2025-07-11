@@ -1587,6 +1587,25 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         uint16_t line_has_changed[LCD_HEIGHT / 16];
         memset(line_has_changed, 0, sizeof(line_has_changed));
 
+        unsigned scale_line_index = preferences_dither_line;
+
+        if (preferences_dither_stable)
+        {
+            int y_offset = context->gb->gb_reg.SCY;
+            scale_line_index = 2 - ((y_offset + 3 + scale_line_index) % 3);
+        }
+
+        if (gameScene->previous_scale_line_index != scale_line_index)
+        {
+            gbScreenRequiresFullRefresh = true;
+            gameScene->previous_scale_line_index = scale_line_index;
+        }
+
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+        int updated_playdate_lines = 0;
+        int scale_index_for_calc = scale_line_index;
+#endif
+
         for (int y = 0; y < LCD_HEIGHT; y++)
         {
             if (memcmp(
@@ -1595,35 +1614,32 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 ) != 0)
             {
                 line_has_changed[y / 16] |= (1 << (y % 16));
-            }
-        }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-        // --- Decide if the *next* frame needs interlacing ---
-        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-        {
-            int updated_playdate_lines = 0;
-            int scale_index = 0;
-
-            for (int y_gb = 0; y_gb < LCD_HEIGHT; y_gb++)
-            {
-                if ((line_has_changed[y_gb / 16] >> (y_gb % 16)) & 1)
+                if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
                 {
                     int row_height_on_playdate = 2;
-                    if (scale_index == 2)
+                    if (scale_index_for_calc == 2)
                     {
                         row_height_on_playdate = 1;
                     }
                     updated_playdate_lines += row_height_on_playdate;
                 }
-
-                scale_index++;
-                if (scale_index == 3)
-                {
-                    scale_index = 0;
-                }
+#endif
             }
 
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+            scale_index_for_calc++;
+            if (scale_index_for_calc == 3)
+            {
+                scale_index_for_calc = 0;
+            }
+#endif
+        }
+
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+        {
             int percentage_threshold = 25 + (preferences_dynamic_level * 5);
             int line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
 
@@ -1690,20 +1706,6 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         // Determine if drawing is actually needed based on changes or
         // forced display
         bool actual_gb_draw_needed = true;
-
-        unsigned scale_line_index = preferences_dither_line;
-
-        if (preferences_dither_stable)
-        {
-            int y_offset = context->gb->gb_reg.SCY;
-            scale_line_index = 2 - ((y_offset + 3 + scale_line_index) % 3);
-        }
-
-        if (gameScene->previous_scale_line_index != scale_line_index)
-        {
-            gbScreenRequiresFullRefresh = true;
-            gameScene->previous_scale_line_index = scale_line_index;
-        }
 
 #if ENABLE_RENDER_PROFILER
         if (PGB_run_profiler_on_next_frame)
