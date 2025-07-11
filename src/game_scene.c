@@ -1588,35 +1588,38 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         int scale_index_for_calc = scale_line_index;
 #endif
 
-        for (int y = 0; y < LCD_HEIGHT; y++)
+        if (memcmp(current_lcd, previous_lcd, LCD_SIZE) != 0)
         {
-            if (memcmp(
-                    &current_lcd[y * LCD_WIDTH_PACKED], &previous_lcd[y * LCD_WIDTH_PACKED],
-                    LCD_WIDTH_PACKED
-                ) != 0)
+            for (int y = 0; y < LCD_HEIGHT; y++)
             {
-                line_has_changed[y / 16] |= (1 << (y % 16));
+                if (memcmp(
+                        &current_lcd[y * LCD_WIDTH_PACKED], &previous_lcd[y * LCD_WIDTH_PACKED],
+                        LCD_WIDTH_PACKED
+                    ) != 0)
+                {
+                    line_has_changed[y / 16] |= (1 << (y % 16));
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-                {
-                    int row_height_on_playdate = 2;
-                    if (scale_index_for_calc == 2)
+                    if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
                     {
-                        row_height_on_playdate = 1;
+                        int row_height_on_playdate = 2;
+                        if (scale_index_for_calc == 2)
+                        {
+                            row_height_on_playdate = 1;
+                        }
+                        updated_playdate_lines += row_height_on_playdate;
                     }
-                    updated_playdate_lines += row_height_on_playdate;
+#endif
+                }
+
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+                scale_index_for_calc++;
+                if (scale_index_for_calc == 3)
+                {
+                    scale_index_for_calc = 0;
                 }
 #endif
             }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-            scale_index_for_calc++;
-            if (scale_index_for_calc == 3)
-            {
-                scale_index_for_calc = 0;
-            }
-#endif
         }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
