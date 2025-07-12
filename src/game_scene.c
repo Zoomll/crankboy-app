@@ -798,15 +798,39 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
         return;
     }
 
-    char tmp_filename[256];
-    char bak_filename[256];
+    // Generate .tmp and .bak filenames
+    size_t len = strlen(save_filename);
+    char* tmp_filename = pgb_malloc(len + 2);
+    char* bak_filename = pgb_malloc(len + 2);
 
-    // Find the file extension to create the .tmp and .bak variations cleanly.
-    const char* ext = strrchr(save_filename, '.');
-    int base_len = (ext) ? (ext - save_filename) : strlen(save_filename);
+    if (!tmp_filename || !bak_filename)
+    {
+        playdate->system->logToConsole("Error: Failed to allocate memory for safe save filenames.");
+        goto cleanup;
+    }
 
-    snprintf(tmp_filename, sizeof(tmp_filename), "%.*s.tmp", base_len, save_filename);
-    snprintf(bak_filename, sizeof(bak_filename), "%.*s.bak", base_len, save_filename);
+    strcpy(tmp_filename, save_filename);
+    strcpy(bak_filename, save_filename);
+
+    char* ext_tmp = strrchr(tmp_filename, '.');
+    if (ext_tmp && strcmp(ext_tmp, ".sav") == 0)
+    {
+        strcpy(ext_tmp, ".tmp");
+    }
+    else
+    {
+        strcat(tmp_filename, ".tmp");
+    }
+
+    char* ext_bak = strrchr(bak_filename, '.');
+    if (ext_bak && strcmp(ext_bak, ".sav") == 0)
+    {
+        strcpy(ext_bak, ".bak");
+    }
+    else
+    {
+        strcat(bak_filename, ".bak");
+    }
 
     playdate->file->unlink(tmp_filename, false);
 
@@ -818,7 +842,7 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
         playdate->system->logToConsole(
             "Error: Can't open temp save file for writing: %s", tmp_filename
         );
-        return;
+        goto cleanup;
     }
 
     if (sram_len > 0 && gb->gb_cart_ram != NULL)
@@ -844,7 +868,7 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
             "Error: Failed to stat temp save file %s. Aborting save.", tmp_filename
         );
         playdate->file->unlink(tmp_filename, false);
-        return;
+        goto cleanup;
     }
 
     if (stat.size == 0)
@@ -853,7 +877,7 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
             "Error: Wrote 0-byte temp save file %s. Aborting and deleting.", tmp_filename
         );
         playdate->file->unlink(tmp_filename, false);
-        return;
+        goto cleanup;
     }
 
     // Rename files: .sav -> .bak, then .tmp -> .sav
@@ -870,6 +894,12 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
         );
         playdate->file->rename(bak_filename, save_filename);
     }
+
+cleanup:
+    if (tmp_filename)
+        pgb_free(tmp_filename);
+    if (bak_filename)
+        pgb_free(bak_filename);
 }
 
 static void gb_save_to_disk_(struct gb_s* gb)
@@ -1038,7 +1068,7 @@ __core_section("fb") void update_fb_dirty_lines(
     }
     else
     {
-        // --- NORMAL PATH (Unchanged) ---
+        // --- NORMAL PATH ---
 
         int scale_index = dither_preference;
         uint8_t* restrict dither_lut0_ptr = dither_lut0;
@@ -2535,21 +2565,22 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
 
     PGB_GameSceneContext* context = gameScene->context;
     bool success = false;
+
+    char* path_prefix = NULL;
+    char* state_name = NULL;
+    char* tmp_name = NULL;
+    char* bak_name = NULL;
+    char* thumb_name = NULL;
     char* buff = NULL;
 
-    char path_prefix[256];
-    char state_name[262];
-    char tmp_name[260];
-    char bak_name[260];
-    char thumb_name[262];
-
-    snprintf(
-        path_prefix, sizeof(path_prefix), "%s/%s.%u", PGB_statesPath, gameScene->base_filename, slot
+    playdate->system->formatString(
+        &path_prefix, "%s/%s.%u", PGB_statesPath, gameScene->base_filename, slot
     );
-    snprintf(state_name, sizeof(state_name), "%s.state", path_prefix);
-    snprintf(tmp_name, sizeof(tmp_name), "%s.tmp", path_prefix);
-    snprintf(bak_name, sizeof(bak_name), "%s.bak", path_prefix);
-    snprintf(thumb_name, sizeof(thumb_name), "%s.thumb", path_prefix);
+
+    playdate->system->formatString(&state_name, "%s.state", path_prefix);
+    playdate->system->formatString(&tmp_name, "%s.tmp", path_prefix);
+    playdate->system->formatString(&thumb_name, "%s.thumb", path_prefix);
+    playdate->system->formatString(&bak_name, "%s.bak", path_prefix);
 
     // Clean up any old temp file
     playdate->file->unlink(tmp_name, false);
@@ -2676,6 +2707,16 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
     }
 
 cleanup:
+    if (path_prefix)
+        pgb_free(path_prefix);
+    if (state_name)
+        pgb_free(state_name);
+    if (tmp_name)
+        pgb_free(tmp_name);
+    if (bak_name)
+        pgb_free(bak_name);
+    if (thumb_name)
+        pgb_free(thumb_name);
     if (buff)
         pgb_free(buff);
 
