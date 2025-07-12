@@ -3,5 +3,5 @@ author=CrankBoy Dev Team
 description=A Game Boy emulator based on PlayGB, based on Peanut-GB
 bundleID=app.crankboyhq.crankboy
 version=1.0.0
-buildNumber=1
+buildNumber=2
 imagePath=launcher
