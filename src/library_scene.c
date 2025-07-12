@@ -50,30 +50,37 @@ static void save_last_selected_index(const char* rompath)
 
 static intptr_t load_last_selected_index(PGB_Array* games)
 {
-    const char* path = LAST_SELECTED_PATH;
     char* content = pgb_read_entire_file(LAST_SELECTED_PATH, NULL, kFileReadData);
-    if (content)
-    {
-        // first, try searching for a rom whose path matches the given name
-        for (int i = 0; i < games->length; ++i)
-        {
-            PGB_Game* game = games->items[i];
-            if (!strcmp(game->fullpath, content))
-            {
-                return i;
-            }
-        }
 
-        // failing that, convert the value to an integer.
-        int index = atoi(content);
-        if (index < games->length)
+    // default -- top of list
+    if (!content)
+    {
+        return 0;
+    }
+
+    intptr_t found_index = 0;
+
+    // First, try searching for a ROM whose path matches the given name
+    for (int i = 0; i < games->length; ++i)
+    {
+        PGB_Game* game = games->items[i];
+        if (!strcmp(game->fullpath, content))
         {
-            return index;
+            found_index = i;
+            goto cleanup;
         }
     }
 
-    // default -- top of list
-    return 0;
+    // Failing that, convert the value to an integer.
+    int index_from_file = atoi(content);
+    if (index_from_file >= 0 && index_from_file < games->length)
+    {
+        found_index = index_from_file;
+    }
+
+cleanup:
+    pgb_free(content);
+    return found_index;
 }
 
 static unsigned combined_display_mode(void)
