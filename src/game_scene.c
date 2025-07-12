@@ -971,62 +971,131 @@ typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
 __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdateRows,
-    unsigned scale_line_offset
+    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
+    unsigned dither_preference, int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
+    uint8_t* restrict dither_lut1
 )
 {
     framebuffer += (PGB_LCD_X / 8);
-    int scale_index = scale_line_offset;
     unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
 
-    uint8_t* restrict dither_lut0_ptr = PGB_dither_lut_row0;
-    uint8_t* restrict dither_lut1_ptr = PGB_dither_lut_row1;
-
-    for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
+    if (stable_scaling_enabled)
     {
-        int row_height_on_playdate = 2;
-        if (scale_index++ == 2)
+        // --- STABILIZED PATH ---
+
+        for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
         {
-            scale_index = 0;
-            row_height_on_playdate = 1;
+            int world_y = y_gb + scy;
 
-            uint8_t* restrict temp_ptr = dither_lut0_ptr;
-            dither_lut0_ptr = dither_lut1_ptr;
-            dither_lut1_ptr = temp_ptr;
-        }
-
-        unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
-
-        if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
-        {
-            // Line has not changed, just update the position for the next line and skip drawing.
-            fb_y_playdate_current_bottom = current_line_pd_top_y;
-            continue;
-        }
-
-        // Line has changed, draw it.
-        fb_y_playdate_current_bottom = current_line_pd_top_y;
-
-        uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
-        uint8_t* restrict pd_fb_line_top_ptr =
-            &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
-
-        for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
-        {
-            uint8_t orgpixels = gb_line_data[x_packed_gb];
-
-            // Get the pre-calculated dithered byte for the top row.
-            pd_fb_line_top_ptr[x_packed_gb] = dither_lut0_ptr[orgpixels];
-
-            if (row_height_on_playdate == 2)
+            // Row height is correctly determined by world_y to prevent rows from changing size.
+            int row_height_on_playdate = 2;
+            if ((world_y + dither_preference) % 3 == 2)
             {
-                uint8_t* restrict pd_fb_line_bottom_ptr = pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
-                // Get the pre-calculated dithered byte for the bottom row.
-                pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut1_ptr[orgpixels];
+                row_height_on_playdate = 1;
             }
-        }
 
-        markUpdateRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
+            unsigned int current_line_pd_top_y =
+                fb_y_playdate_current_bottom - row_height_on_playdate;
+
+            // Skip rendering if the source GB line has not changed.
+            if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
+            {
+                fb_y_playdate_current_bottom = current_line_pd_top_y;
+                continue;
+            }
+
+            fb_y_playdate_current_bottom = current_line_pd_top_y;
+            uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
+            uint8_t* restrict pd_fb_line_top_ptr =
+                &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
+
+            // --- STABLE DITHER LOGIC ---
+            // Dither phase is now based on the parity of the world-space Y coordinate.
+            // This ensures any given line of GB content is always dithered with the same
+            // high-frequency alternating pattern, stabilizing both uniform and non-uniform
+            // textures.
+            bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
+
+            uint8_t* restrict dither_lut_top = is_world_y_even ? dither_lut0 : dither_lut1;
+            uint8_t* restrict dither_lut_bottom = is_world_y_even ? dither_lut1 : dither_lut0;
+
+            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
+            {
+                uint8_t orgpixels = gb_line_data[x_packed_gb];
+                pd_fb_line_top_ptr[x_packed_gb] = dither_lut_top[orgpixels];
+                if (row_height_on_playdate == 2)
+                {
+                    uint8_t* restrict pd_fb_line_bottom_ptr =
+                        pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
+                    pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut_bottom[orgpixels];
+                }
+            }
+
+            markUpdatedRows(
+                current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
+            );
+        }
+    }
+    else
+    {
+        // --- NORMAL PATH (Unchanged) ---
+
+        int scale_index = dither_preference;
+        uint8_t* restrict dither_lut0_ptr = dither_lut0;
+        uint8_t* restrict dither_lut1_ptr = dither_lut1;
+
+        for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
+        {
+            int row_height_on_playdate = 2;
+            if (scale_index++ == 2)
+            {
+                scale_index = 0;
+                row_height_on_playdate = 1;
+
+                uint8_t* restrict temp_ptr = dither_lut0_ptr;
+                dither_lut0_ptr = dither_lut1_ptr;
+                dither_lut1_ptr = temp_ptr;
+            }
+
+            unsigned int current_line_pd_top_y =
+                fb_y_playdate_current_bottom - row_height_on_playdate;
+
+            if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
+            {
+                // Line has not changed, just update the position for the
+                // next line and skip drawing.
+                fb_y_playdate_current_bottom = current_line_pd_top_y;
+                continue;
+            }
+
+            // Line has changed, draw it.
+            fb_y_playdate_current_bottom = current_line_pd_top_y;
+
+            uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
+            uint8_t* restrict pd_fb_line_top_ptr =
+                &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
+
+            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
+            {
+                uint8_t orgpixels = gb_line_data[x_packed_gb];
+
+                // Get the pre-calculated dithered byte for the top row.
+                pd_fb_line_top_ptr[x_packed_gb] = dither_lut0_ptr[orgpixels];
+
+                if (row_height_on_playdate == 2)
+                {
+                    uint8_t* restrict pd_fb_line_bottom_ptr =
+                        pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
+
+                    // Get the pre-calculated dithered byte for the bottom row.
+                    pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut1_ptr[orgpixels];
+                }
+            }
+
+            markUpdatedRows(
+                current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
+            );
+        }
     }
 }
 
@@ -1569,23 +1638,21 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         uint16_t line_has_changed[LCD_HEIGHT / 16];
         memset(line_has_changed, 0, sizeof(line_has_changed));
 
-        unsigned scale_line_index = preferences_dither_line;
+        unsigned dither_preference = preferences_dither_line;
+        bool stable_scaling_enabled = preferences_dither_stable;
+        int scy = context->gb->gb_reg.SCY;
 
-        if (preferences_dither_stable)
-        {
-            int y_offset = context->gb->gb_reg.SCY;
-            scale_line_index = 2 - ((y_offset + 3 + scale_line_index) % 3);
-        }
+        int check_val = stable_scaling_enabled ? scy : dither_preference;
 
-        if (gameScene->previous_scale_line_index != scale_line_index)
+        if (gameScene->previous_scale_line_index != check_val)
         {
             gbScreenRequiresFullRefresh = true;
-            gameScene->previous_scale_line_index = scale_line_index;
+            gameScene->previous_scale_line_index = check_val;
         }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
         int updated_playdate_lines = 0;
-        int scale_index_for_calc = scale_line_index;
+        int scale_index_for_calc = dither_preference;
 #endif
 
         if (memcmp(current_lcd, previous_lcd, LCD_SIZE) != 0)
@@ -1706,7 +1773,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scale_line_index
+                playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
+                PGB_dither_lut_row0, PGB_dither_lut_row1
             );
 
             float endTime = playdate->system->getElapsedTime();
@@ -1740,7 +1808,8 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scale_line_index
+                playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
+                PGB_dither_lut_row0, PGB_dither_lut_row1
             );
 
             ITCM_CORE_FN(gb_fast_memcpy_64)(
