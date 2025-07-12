@@ -1060,199 +1060,151 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
+                            static const char* title = "Missing Cover";
+                            char middle_message[32];
+
                             if (hasDBMatch)
                             {
-                                static const char* title = "Missing Cover";
-                                static const char* message1 = "Press Ⓑ to download.";
-                                static const char* message2 = "- or -";
-                                static const char* message3 = "Connect to a computer";
-                                static const char* message4 = "and copy cover to:";
-                                static const char* message5 = "Data/*crankboy/covers";
-
-                                LCDFont* titleFont = PGB_App->bodyFont;
-                                LCDFont* bodyFont = PGB_App->subheadFont;
-                                int large_gap = 12;
-                                int small_gap = 3;
-                                int titleHeight = playdate->graphics->getFontHeight(titleFont);
-                                int messageHeight = playdate->graphics->getFontHeight(bodyFont);
-                                int containerHeight = titleHeight + large_gap + messageHeight +
-                                                      large_gap + messageHeight + large_gap +
-                                                      messageHeight + small_gap + messageHeight +
-                                                      small_gap + messageHeight;
-                                int containerY_start = (screenHeight - containerHeight) / 2;
-                                int panel_content_width = rightPanelWidth - 1;
-
-                                int titleX = leftPanelWidth + 1 +
-                                             (panel_content_width -
-                                              playdate->graphics->getTextWidth(
-                                                  titleFont, title, strlen(title), kUTF8Encoding, 0
-                                              )) /
-                                                 2;
-                                int message1_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message1, strlen(message1), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message2_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message2, strlen(message2), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message3_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message3, strlen(message3), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message4_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message4, strlen(message4), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message5_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message5, strlen(message5), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-
-                                int currentY = containerY_start;
-                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                                playdate->graphics->setFont(titleFont);
-                                playdate->graphics->drawText(
-                                    title, strlen(title), kUTF8Encoding, titleX, currentY
-                                );
-                                currentY += titleHeight + large_gap;
-                                playdate->graphics->setFont(bodyFont);
-                                playdate->graphics->drawText(
-                                    message1, strlen(message1), kUTF8Encoding, message1_X, currentY
-                                );
-                                currentY += messageHeight + large_gap;
-                                playdate->graphics->drawText(
-                                    message2, strlen(message2), kUTF8Encoding, message2_X, currentY
-                                );
-                                currentY += messageHeight + large_gap;
-                                playdate->graphics->drawText(
-                                    message3, strlen(message3), kUTF8Encoding, message3_X, currentY
-                                );
-                                currentY += messageHeight + small_gap;
-                                playdate->graphics->drawText(
-                                    message4, strlen(message4), kUTF8Encoding, message4_X, currentY
-                                );
-                                currentY += messageHeight + small_gap;
-                                playdate->graphics->drawText(
-                                    message5, strlen(message5), kUTF8Encoding, message5_X, currentY
+                                snprintf(
+                                    middle_message, sizeof(middle_message), "Press Ⓑ to download."
                                 );
                             }
                             else
                             {
-                                static const char* title = "Missing Cover";
-                                char message1[32];
-
                                 if (libraryScene->showCrc)
                                 {
-                                    PGB_Game* selectedGame =
-                                        libraryScene->games->items[selectedIndex];
                                     if (selectedGame->names->crc32 != 0)
                                     {
                                         snprintf(
-                                            message1, sizeof(message1), "%08lX",
+                                            middle_message, sizeof(middle_message), "%08lX",
                                             (unsigned long)selectedGame->names->crc32
                                         );
                                     }
                                     else
                                     {
-                                        snprintf(message1, sizeof(message1), "No CRC found");
+                                        snprintf(
+                                            middle_message, sizeof(middle_message), "No CRC found"
+                                        );
                                     }
                                 }
                                 else
                                 {
-                                    snprintf(message1, sizeof(message1), "No database match");
+                                    snprintf(
+                                        middle_message, sizeof(middle_message), "No database match"
+                                    );
                                 }
-                                static const char* message2 = "Connect to a computer";
-                                static const char* message3 = "and copy cover to:";
-                                static const char* message4 = "Data/*crankboy/covers";
+                            }
 
-                                LCDFont* titleFont = PGB_App->bodyFont;
-                                LCDFont* bodyFont = PGB_App->subheadFont;
-                                int large_gap = 12;
-                                int small_gap = 3;
-                                int titleHeight = playdate->graphics->getFontHeight(titleFont);
-                                int messageHeight = playdate->graphics->getFontHeight(bodyFont);
+                            // Common messages for the footer
+                            static const char* message_or = "- or -";
+                            static const char* message_connect = "Connect to a computer";
+                            static const char* message_copy = "and copy cover to:";
+                            static const char* message_path = "Data/*crankboy/covers";
 
-                                int containerHeight = titleHeight + large_gap + messageHeight +
-                                                      large_gap + messageHeight + small_gap +
-                                                      messageHeight + small_gap + messageHeight;
-                                int containerY_start = (screenHeight - containerHeight) / 2;
-                                int panel_content_width = rightPanelWidth - 1;
+                            LCDFont* titleFont = PGB_App->bodyFont;
+                            LCDFont* bodyFont = PGB_App->subheadFont;
+                            int large_gap = 12;
+                            int small_gap = 3;
+                            int titleHeight = playdate->graphics->getFontHeight(titleFont);
+                            int messageHeight = playdate->graphics->getFontHeight(bodyFont);
 
-                                int titleX = leftPanelWidth + 1 +
-                                             (panel_content_width -
-                                              playdate->graphics->getTextWidth(
-                                                  titleFont, title, strlen(title), kUTF8Encoding, 0
-                                              )) /
-                                                 2;
-                                int message1_X =
+                            // Calculate total height dynamically based on whether the "- or -" is
+                            // shown
+                            int containerHeight = titleHeight + large_gap + messageHeight +
+                                                  large_gap + messageHeight + small_gap +
+                                                  messageHeight + small_gap + messageHeight;
+                            if (hasDBMatch)
+                            {
+                                containerHeight += large_gap + messageHeight;
+                            }
+
+                            int currentY = (screenHeight - containerHeight) / 2;
+                            int panel_content_width = rightPanelWidth - 1;
+
+                            playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+                            // Draw Title (common)
+                            playdate->graphics->setFont(titleFont);
+                            int titleX = leftPanelWidth + 1 +
+                                         (panel_content_width -
+                                          playdate->graphics->getTextWidth(
+                                              titleFont, title, strlen(title), kUTF8Encoding, 0
+                                          )) /
+                                             2;
+                            playdate->graphics->drawText(
+                                title, strlen(title), kUTF8Encoding, titleX, currentY
+                            );
+                            currentY += titleHeight + large_gap;
+
+                            // Draw Middle Message (dynamic)
+                            playdate->graphics->setFont(bodyFont);
+                            int middle_message_X =
+                                leftPanelWidth + 1 +
+                                (panel_content_width - playdate->graphics->getTextWidth(
+                                                           bodyFont, middle_message,
+                                                           strlen(middle_message), kUTF8Encoding, 0
+                                                       )) /
+                                    2;
+                            playdate->graphics->drawText(
+                                middle_message, strlen(middle_message), kUTF8Encoding,
+                                middle_message_X, currentY
+                            );
+                            currentY += messageHeight + large_gap;
+
+                            // Draw Footer (partially conditional)
+                            if (hasDBMatch)
+                            {
+                                int message_or_X =
                                     leftPanelWidth + 1 +
                                     (panel_content_width -
                                      playdate->graphics->getTextWidth(
-                                         bodyFont, message1, strlen(message1), kUTF8Encoding, 0
+                                         bodyFont, message_or, strlen(message_or), kUTF8Encoding, 0
                                      )) /
                                         2;
-                                int message2_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message2, strlen(message2), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message3_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message3, strlen(message3), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-                                int message4_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message4, strlen(message4), kUTF8Encoding, 0
-                                     )) /
-                                        2;
-
-                                int currentY = containerY_start;
-                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                                playdate->graphics->setFont(titleFont);
                                 playdate->graphics->drawText(
-                                    title, strlen(title), kUTF8Encoding, titleX, currentY
-                                );
-                                currentY += titleHeight + large_gap;
-                                playdate->graphics->setFont(bodyFont);
-                                playdate->graphics->drawText(
-                                    message1, strlen(message1), kUTF8Encoding, message1_X, currentY
+                                    message_or, strlen(message_or), kUTF8Encoding, message_or_X,
+                                    currentY
                                 );
                                 currentY += messageHeight + large_gap;
-                                playdate->graphics->drawText(
-                                    message2, strlen(message2), kUTF8Encoding, message2_X, currentY
-                                );
-                                currentY += messageHeight + small_gap;
-                                playdate->graphics->drawText(
-                                    message3, strlen(message3), kUTF8Encoding, message3_X, currentY
-                                );
-                                currentY += messageHeight + small_gap;
-                                playdate->graphics->drawText(
-                                    message4, strlen(message4), kUTF8Encoding, message4_X, currentY
-                                );
                             }
+
+                            int message_connect_X =
+                                leftPanelWidth + 1 +
+                                (panel_content_width - playdate->graphics->getTextWidth(
+                                                           bodyFont, message_connect,
+                                                           strlen(message_connect), kUTF8Encoding, 0
+                                                       )) /
+                                    2;
+                            playdate->graphics->drawText(
+                                message_connect, strlen(message_connect), kUTF8Encoding,
+                                message_connect_X, currentY
+                            );
+                            currentY += messageHeight + small_gap;
+
+                            int message_copy_X =
+                                leftPanelWidth + 1 +
+                                (panel_content_width -
+                                 playdate->graphics->getTextWidth(
+                                     bodyFont, message_copy, strlen(message_copy), kUTF8Encoding, 0
+                                 )) /
+                                    2;
+                            playdate->graphics->drawText(
+                                message_copy, strlen(message_copy), kUTF8Encoding, message_copy_X,
+                                currentY
+                            );
+                            currentY += messageHeight + small_gap;
+
+                            int message_path_X =
+                                leftPanelWidth + 1 +
+                                (panel_content_width -
+                                 playdate->graphics->getTextWidth(
+                                     bodyFont, message_path, strlen(message_path), kUTF8Encoding, 0
+                                 )) /
+                                    2;
+                            playdate->graphics->drawText(
+                                message_path, strlen(message_path), kUTF8Encoding, message_path_X,
+                                currentY
+                            );
                         }
                     }
                 }
