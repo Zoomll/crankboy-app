@@ -309,32 +309,6 @@ static void launch_game(void* ud, int option)
     switch (option)
     {
     case 0:  // launch w/ scripts enabled
-    {
-        char* settings_path = pgb_game_config_path(game->fullpath);
-        if (settings_path)
-        {
-            void* prefs = preferences_store_subset(-1);
-
-            load_game_prefs(game->fullpath, false);
-
-            // enable script and per-game support
-            preferences_script_support = 1;
-            preferences_per_game = 1;
-            preferences_script_has_prompted = 1;
-
-            call_with_user_stack_2(
-                preferences_save_to_disk, settings_path,
-                ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
-            );
-
-            preferences_restore_subset(prefs);
-            if (prefs)
-                pgb_free(prefs);
-            pgb_free(settings_path);
-        }
-    }
-        goto launch_normal;
-
     case 1:  // launch w/ scripts disabled
     {
         char* settings_path = pgb_game_config_path(game->fullpath);
@@ -344,8 +318,8 @@ static void launch_game(void* ud, int option)
 
             load_game_prefs(game->fullpath, false);
 
-            // disable lua script and enable per-game support
-            preferences_script_support = 0;
+            // Set preferences based on option.
+            preferences_script_support = (option == 0);
             preferences_per_game = 1;
             preferences_script_has_prompted = 1;
 
@@ -359,8 +333,8 @@ static void launch_game(void* ud, int option)
                 pgb_free(prefs);
             pgb_free(settings_path);
         }
-    }
         goto launch_normal;
+    }
 
     case 2:
         // display information
