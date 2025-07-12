@@ -198,6 +198,11 @@ cleanup:
         pgb_free(rom_basename_no_ext);
     }
 
+    if (data)
+    {
+        pgb_free(data);
+    }
+
     libraryScene->activeCoverDownloadConnection = NULL;
 
     pgb_free(userdata);
