@@ -63,7 +63,7 @@ static intptr_t load_last_selected_index(PGB_Array* games)
                 return i;
             }
         }
-        
+
         // failing that, convert the value to an integer.
         int index = atoi(content);
         if (index < games->length)
@@ -71,7 +71,7 @@ static intptr_t load_last_selected_index(PGB_Array* games)
             return index;
         }
     }
-    
+
     // default -- top of list
     return 0;
 }
@@ -709,24 +709,26 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             if (!has_prompted)
             {
                 ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
-                if (info && !info->experimental)
+                if (info)
                 {
-                    const char* options[] = {"Yes", "No", "About", NULL};
-                    if (!info->info)
-                        options[2] = NULL;
-                    PGB_Modal* modal = PGB_Modal_new(
-                        "There is native Playdate support for this game.\nWould you like to enable "
-                        "it?",
-                        options, launch_game, game
-                    );
+                    if (!info->experimental)
+                    {
+                        const char* options[] = {"Yes", "No", "About", NULL};
+                        if (!info->info)
+                            options[2] = NULL;
+                        PGB_Modal* modal = PGB_Modal_new(
+                            "There is native Playdate support for this game.\n"
+                            "Would you like to enable it?",
+                            options, launch_game, game
+                        );
 
+                        modal->width = 290;
+                        modal->height = 152;
+
+                        PGB_presentModal(modal->scene);
+                        launch = false;
+                    }
                     script_info_free(info);
-
-                    modal->width = 290;
-                    modal->height = 152;
-
-                    PGB_presentModal(modal->scene);
-                    launch = false;
                 }
             }
 #endif
