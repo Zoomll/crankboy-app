@@ -270,6 +270,17 @@ void code_replacement_apply(CodeReplacement* r, bool apply);
 
 void code_replacement_free(CodeReplacement* r);
 
+void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y);
+
+// c is 0-3
+LCDColor get_palette_color(int c);
+
+// returns the number of playdate pixels associated with a 
+// given scaling ratio. If input is 3 (default), output is 240.
+// first_squished only matters if scaling does not divide 240;
+// it is the same meaning as preferences_dither_line.
+unsigned get_game_picture_height(int scaling, int first_squished);
+
 #define $JOYPAD (script_gb->direct.joypad ^ 0xFF)
 
 #define SCRIPT_ASSETS_DIR "images/script-assets/"

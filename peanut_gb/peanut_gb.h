@@ -882,6 +882,7 @@ __section__(".rare.pgb") static void __gb_rare_write(
         case 0x56:  // RP (CGB Infrared Port)
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
+        case 0x70:  // WRAM bank (CGB)
             return;
 
         /* Turn off boot ROM */
@@ -949,11 +950,13 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
         case 0x56:  // RP
         case 0x68:  // BCPS
         case 0x69:  // BCPD
+        case 0x70:  // WRAM bank
             return 0xFF;
 
         case IO_PLAYDATE_EXTENSION_CTL:
             // (| 0x1C is temporary, to prevent devs from assuming the reserved bits are 0.)
             return gb->direct.crank_docked | 0x1C;
+        
         case 0x58 ... 0x5F:
             if (gb->direct.ext_crank_menu_indexing)
             {

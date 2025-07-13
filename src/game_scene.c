@@ -88,6 +88,7 @@ unsigned game_picture_y_top;
 unsigned game_picture_y_bottom;
 unsigned game_picture_scaling;
 LCDColor game_picture_background_color;
+bool game_hide_indicator;
 bool gbScreenRequiresFullRefresh;
 
 static uint8_t PGB_dither_lut_row0[256];
@@ -257,6 +258,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_background_color = kColorBlack;
+    game_hide_indicator = false;
     game_menu_button_input_enabled = 1;
 
     PGB_Scene* scene = PGB_Scene_new();
@@ -1572,12 +1574,14 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         static unsigned prev_game_picture_x_offset,
             prev_game_picture_scaling,
             prev_game_picture_y_top,
-            prev_game_picture_y_bottom;
+            prev_game_picture_y_bottom,
+            prev_game_picture_background_color;
         
         if (prev_game_picture_x_offset != game_picture_x_offset
             || prev_game_picture_scaling != game_picture_scaling
             || prev_game_picture_y_top != game_picture_y_top
             || prev_game_picture_y_bottom != game_picture_y_bottom
+            || prev_game_picture_background_color != game_picture_background_color
         ) {
             gbScreenRequiresFullRefresh = 1;
         }
@@ -1586,6 +1590,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         prev_game_picture_scaling = game_picture_scaling;
         prev_game_picture_y_top = game_picture_y_top;
         prev_game_picture_y_bottom = game_picture_y_bottom;
+        prev_game_picture_background_color = game_picture_background_color;
     }
     
     if (didOpenMenu)
@@ -1921,7 +1926,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
         }
 
-        if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
+        if (!game_hide_indicator && (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
         {
             // Clear the right sidebar area before redrawing any static UI.
             const int rightBarX = 40 + 320;
@@ -1936,7 +1941,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             script_draw(context->scene->script, gameScene);
         }
         
-        if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
+        if (!game_hide_indicator && (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
         {
             // Draw the text labels ("Start/Select") if needed.
             if (shouldDisplayStartSelectUI)
@@ -2013,7 +2018,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             playdate->graphics->setDrawMode(kDrawModeCopy);
             gameScene->staticSelectorUIDrawn = true;
         }
-        else if (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
+        else if (!game_hide_indicator && (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
         {
             playdate->graphics->fillRect(
                 gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
