@@ -163,7 +163,7 @@ void code_replacement_apply(CodeReplacement* r, bool apply)
     {
         return;
     }
-    
+
     r->applied = target_state;
 
     const uint8_t* target = target_state ? r->tval : r->tprev;
@@ -196,51 +196,57 @@ void code_replacement_free(CodeReplacement* r)
 // these must not be edited in place, so that it can be assumed a screen update
 // is not needed if the ptr doesn't change.
 const static uint8_t lcdp_25[16] = {
-    0x88, 0x00, 0x88, 0x00, 0x88, 0x00, 0x88, 0x00,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x88, 0x00, 0x88, 0x00, 0x88, 0x00, 0x88, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 const static uint8_t lcdp_25s[16] = {
-    0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 const static uint8_t lcdp_50[16] = {
-    0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 const static uint8_t lcdp_75[16] = {
-    0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 const static uint8_t lcdp_75s[16] = {
-    0x77, 0xFF, 0xBB, 0xFF, 0x77, 0xFF, 0xBB, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x77, 0xFF, 0xBB, 0xFF, 0x77, 0xFF, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 
 LCDColor get_palette_color(int c)
 {
-    c = 3 - c; // high on gb is low on pd
-    if (c == 0) return kColorBlack;
-    if (c == 3) return kColorWhite;
-    
-    if (c >= 2) ++c;
-    
+    c = 3 - c;  // high on gb is low on pd
+    if (c == 0)
+        return kColorBlack;
+    if (c == 3)
+        return kColorWhite;
+
+    if (c >= 2)
+        ++c;
+
     bool dither_l = (preferences_dither_pattern == 2 || preferences_dither_pattern == 3);
     bool dither_d = (preferences_dither_pattern == 4 || preferences_dither_pattern == 5);
-    
+
     // dark/light patterns
-    if (c == 1 && dither_l) c = 2;
-    if (c == 3 && dither_d) c = 2;
-    
+    if (c == 1 && dither_l)
+        c = 2;
+    if (c == 3 && dither_d)
+        c = 2;
+
     switch (c | ((preferences_dither_pattern % 2) << 4))
     {
-    case 0x01: return (uintptr_t)&lcdp_25s;
-    case 0x02: return (uintptr_t)&lcdp_50;
-    case 0x03: return (uintptr_t)&lcdp_75s;
-    
-    case 0x11: return (uintptr_t)&lcdp_25;
-    case 0x12: return (uintptr_t)&lcdp_50;
-    case 0x13: return (uintptr_t)&lcdp_75;
-    
+    case 0x01:
+        return (uintptr_t)&lcdp_25s;
+    case 0x02:
+        return (uintptr_t)&lcdp_50;
+    case 0x03:
+        return (uintptr_t)&lcdp_75s;
+
+    case 0x11:
+        return (uintptr_t)&lcdp_25;
+    case 0x12:
+        return (uintptr_t)&lcdp_50;
+    case 0x13:
+        return (uintptr_t)&lcdp_75;
+
     default:
         return kColorBlack;
     }
@@ -248,35 +254,37 @@ LCDColor get_palette_color(int c)
 
 unsigned get_game_picture_height(int scaling, int first_squished)
 {
-    if (scaling <= 0) return 2 * LCD_HEIGHT;
-    
-    unsigned h = (LCD_HEIGHT / scaling) * (1 + 2*(scaling-1));
-    
+    if (scaling <= 0)
+        return 2 * LCD_HEIGHT;
+
+    unsigned h = (LCD_HEIGHT / scaling) * (1 + 2 * (scaling - 1));
+
     if (LCD_HEIGHT % scaling)
     {
-        h += (LCD_HEIGHT % scaling)*2;
+        h += (LCD_HEIGHT % scaling) * 2;
         h -= (LCD_HEIGHT % scaling >= first_squished);
     }
-    
+
     return h;
 }
 
 void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y)
 {
     uint16_t tile_addr = 0x8000 | (16 * (uint16_t)tile_idx);
-    if (tile_idx < 0x80 && mode9000) tile_addr += 0x1000;
-    
+    if (tile_idx < 0x80 && mode9000)
+        tile_addr += 0x1000;
+
     uint16_t* tile_data = (void*)&script_gb->vram[tile_addr % 0x2000];
-    
+
     for (int i = 0; i < 8; ++i)
     {
         for (int j = 0; j < 8; ++j)
         {
             int c0 = (tile_data[i] >> j) & 1;
             int c1 = (tile_data[i] >> (j + 8)) & 1;
-            
+
             LCDColor col = get_palette_color(c0 | (c1 << 1));
-            playdate->graphics->fillRect(x + j*scale, y + i*scale, scale + 1, scale + 1, col);
+            playdate->graphics->fillRect(x + j * scale, y + i * scale, scale + 1, scale + 1, col);
         }
     }
 }

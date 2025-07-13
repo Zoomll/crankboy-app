@@ -34,22 +34,23 @@ __section__(".rare") static void* user_stack_test(void* p)
 }
 
 #if TARGET_PLAYDATE
-typedef const void(*init_routine_t)(void);
-extern init_routine_t __preinit_array_start, __preinit_array_end, __init_array_start, __init_array_end, __fini_array_start, __fini_array_end;
+typedef const void (*init_routine_t)(void);
+extern init_routine_t __preinit_array_start, __preinit_array_end, __init_array_start,
+    __init_array_end, __fini_array_start, __fini_array_end;
 static PlaydateAPI* pd;
 
-__section__(".rare") 
-static void exec_array(init_routine_t* start, init_routine_t* end)
+__section__(".rare") static void exec_array(init_routine_t* start, init_routine_t* end)
 {
     while (start < end)
     {
-        for (size_t i = 0;i < 58000; ++i) asm volatile("nop");
-        if (*start) (*start)();
+        for (size_t i = 0; i < 58000; ++i)
+            asm volatile("nop");
+        if (*start)
+            (*start)();
         ++start;
     }
 }
 #endif
-
 
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 
@@ -70,14 +71,14 @@ __section__(".text.main") DllExport
         playdate = pd;
         init_user_stack();
         srand(time(NULL));
-        
+
 #ifdef TARGET_PLAYDATE
         // support for attribute((constructor)),
         // and possibly future support for c++.
         exec_array(&__preinit_array_start, &__preinit_array_end);
-		exec_array(&__init_array_start, &__init_array_end);
+        exec_array(&__init_array_start, &__init_array_end);
 #endif
-        
+
         pd_revcheck();
         playdate->system->logToConsole("Device: %s", pd_rev_description);
 

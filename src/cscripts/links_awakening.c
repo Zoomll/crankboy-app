@@ -13,56 +13,55 @@ typedef struct ScriptData
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
-    
+
     force_pref(dither_stable, false);
     force_pref(dither_line, 0);
-    
+
     return data;
 }
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
     int game_state = ram_peek(0xDB95);
-    bool gameOver = ram_peek(0xFF9C) >= 3; // not positive about this
-    
-    switch(game_state)
+    bool gameOver = ram_peek(0xFF9C) >= 3;  // not positive about this
+
+    switch (game_state)
     {
-    case 0: // intro
-    case 2: // file select
+    case 0:  // intro
+    case 2:  // file select
         game_picture_background_color = kColorBlack;
         break;
-    case 7: // map
+    case 7:  // map
         game_picture_background_color = get_palette_color(1);
         break;
     case 0xB:
         game_picture_background_color = get_palette_color(3);
-        if (gameOver) game_picture_background_color = kColorBlack;
+        if (gameOver)
+            game_picture_background_color = kColorBlack;
         break;
     default:
-        game_picture_background_color = get_palette_color(
-            gb->gb_reg.BGP & 3
-        );
+        game_picture_background_color = get_palette_color(gb->gb_reg.BGP & 3);
         break;
     }
-    
+
     game_picture_x_offset = PGB_LCD_X;
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_scaling = 3;
     game_hide_indicator = false;
-    
+
     unsigned menu_y = ram_peek(0xDB9A);
-    
+
     // in regular gameplay and/or paused
     if (game_state == 0xB && !gameOver)
     {
         game_hide_indicator = true;
-        
+
         // scroll screen to side
         game_picture_x_offset = MIN((0x80 - MIN(menu_y, 0x80)) / 3, PGB_LCD_X);
-        
+
         // corresponding vertical scaling
-        switch(game_picture_x_offset)
+        switch (game_picture_x_offset)
         {
         case 0 ... 7:
             game_picture_y_top = 3;
@@ -85,11 +84,12 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
             game_picture_scaling = 4;
             break;
         }
-        
+
         // calculate bounds correctly
         if (game_picture_scaling > 0)
         {
-            game_picture_y_bottom = (LCD_ROWS * game_picture_scaling) / (2*game_picture_scaling - 1);
+            game_picture_y_bottom =
+                (LCD_ROWS * game_picture_scaling) / (2 * game_picture_scaling - 1);
         }
         else
         {
@@ -101,13 +101,13 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
 
 static void on_draw(struct gb_s* gb, ScriptData* data)
 {
-    int sidebar_x = game_picture_x_offset*2 + 320;
+    int sidebar_x = game_picture_x_offset * 2 + 320;
     int sidebar_w = 80;
     uint8_t game_state = ram_peek(0xDB95);
-    
+
     bool refresh = gbScreenRequiresFullRefresh || (data->sidebar_x_prev != sidebar_x);
     data->sidebar_x_prev = sidebar_x;
-    
+
     if (game_state == 0xB && game_picture_x_offset < PGB_LCD_X)
     {
         if (refresh)
@@ -115,36 +115,37 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
             // draw sidebar
             playdate->graphics->fillRect(sidebar_x, 0, sidebar_w, LCD_ROWS, kColorWhite);
         }
-        
+
         unsigned hearts = ram_peek(0xDB5A);
         unsigned heartsMax = ram_peek(0xDB5B);
-        unsigned invB = ram_peek(0xDB00) ^ gb->vram[16*gb->vram[0x9C26]];
-        unsigned invA = ram_peek(0xDB01) ^ gb->vram[16*gb->vram[0x9C21]];
-        unsigned rupees = (gb->vram[0x1C2A] << 16) | (gb->vram[0x1C2B] << 8) | (gb->vram[0x1C2C] << 0);
-        
+        unsigned invB = ram_peek(0xDB00) ^ gb->vram[16 * gb->vram[0x9C26]];
+        unsigned invA = ram_peek(0xDB01) ^ gb->vram[16 * gb->vram[0x9C21]];
+        unsigned rupees =
+            (gb->vram[0x1C2A] << 16) | (gb->vram[0x1C2B] << 8) | (gb->vram[0x1C2C] << 0);
+
         // TODO: refresh if tile data or tile map have changed
-        
-        const bool inventory_changed = (invB != data->inventoryB || invA != data->inventoryA || rupees != data->rupees);
-        
+
+        const bool inventory_changed =
+            (invB != data->inventoryB || invA != data->inventoryA || rupees != data->rupees);
+
         if (refresh || inventory_changed)
         {
             // margins
-            int xm = 2 ;
+            int xm = 2;
             int ym = 4;
-            
+
             bool changed[] = {
-                invB != data->inventoryB,
-                invA != data->inventoryA,
-                rupees != data->rupees
+                invB != data->inventoryB, invA != data->inventoryA, rupees != data->rupees
             };
-            
+
             // items and rupees
             // rupees (k=2) are only 3 tiles wide
             // items are 5 tiles wide.
             for (int k = 0; k < 3; ++k)
             {
-                if (!changed[k] && !refresh) continue;
-                
+                if (!changed[k] && !refresh)
+                    continue;
+
                 for (int y = 0; y <= 1; ++y)
                 {
                     int twidth = (k == 2 ? 3 : 5);
@@ -152,43 +153,44 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
                     {
                         int src_x = k * 5 + x;
                         int src_y = y;
-                        
-                        int dst_x = sidebar_x + sidebar_w/2 - 8*twidth + 16*x + xm;
-                        int dst_y = ym + y*16 + k*38;
-                        
+
+                        int dst_x = sidebar_x + sidebar_w / 2 - 8 * twidth + 16 * x + xm;
+                        int dst_y = ym + y * 16 + k * 38;
+
                         uint8_t tile_idx = gb->vram[0x1C00 + 0x20 * src_y + src_x];
-                        
+
                         draw_vram_tile(tile_idx, true, 2, dst_x, dst_y);
                         playdate->graphics->markUpdatedRows(dst_y, dst_y + 15);
                     }
                 }
             }
         }
-        
+
         // hearts
         if (hearts != data->hearts || heartsMax != data->heartsMax || refresh)
         {
             for (int i = 0; i < 14; ++i)
             {
-                int y = 120 + 16*(i % 7);
-                int x = sidebar_x + sidebar_w/2 - 8 + 16*(i >= 7);
-                if (heartsMax >= 8) x -= 8;
-                
+                int y = 120 + 16 * (i % 7);
+                int x = sidebar_x + sidebar_w / 2 - 8 + 16 * (i >= 7);
+                if (heartsMax >= 8)
+                    x -= 8;
+
                 uint8_t idx = 0x7F;
                 if (i < heartsMax)
                 {
                     idx = 0xCD;
                 }
-                if (i*8 < hearts && i*8 + 7 >= hearts)
+                if (i * 8 < hearts && i * 8 + 7 >= hearts)
                 {
                     // half-heart
                     idx = 0xCE;
                 }
-                else if (i*8 < hearts)
+                else if (i * 8 < hearts)
                 {
                     idx = 0xA9;
                 }
-                
+
                 if (idx == 0x7F)
                 {
                     playdate->graphics->fillRect(x, y, 16, 16, kColorWhite);
@@ -197,7 +199,7 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
                 {
                     draw_vram_tile(idx, true, 2, x, y);
                 }
-                
+
                 playdate->graphics->markUpdatedRows(y, y + 15);
             }
         }

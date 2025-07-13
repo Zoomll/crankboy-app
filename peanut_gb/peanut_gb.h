@@ -956,7 +956,7 @@ __section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const ui
         case IO_PLAYDATE_EXTENSION_CTL:
             // (| 0x1C is temporary, to prevent devs from assuming the reserved bits are 0.)
             return gb->direct.crank_docked | 0x1C;
-        
+
         case 0x58 ... 0x5F:
             if (gb->direct.ext_crank_menu_indexing)
             {

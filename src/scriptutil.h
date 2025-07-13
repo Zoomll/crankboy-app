@@ -8,7 +8,6 @@
 #include "preferences.h"
 #include "script.h"
 #include "utility.h"
-#include "game_scene.h"
 
 typedef unsigned romaddr_t;
 typedef u16 addr16_t;
@@ -23,10 +22,10 @@ void ram_poke(addr16_t addr, u8 v);
 
 romaddr_t rom_size(void);
 
-#define force_pref(pref, val)                                                                      \
-    do                                                                                             \
-    {                                                                                              \
-        preferences_##pref = val;                                                                  \
+#define force_pref(pref, val)                     \
+    do                                            \
+    {                                             \
+        preferences_##pref = val;                 \
         prefs_locked_by_script |= PREFBIT_##pref; \
     } while (0)
 
@@ -275,7 +274,7 @@ void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y);
 // c is 0-3
 LCDColor get_palette_color(int c);
 
-// returns the number of playdate pixels associated with a 
+// returns the number of playdate pixels associated with a
 // given scaling ratio. If input is 3 (default), output is 240.
 // first_squished only matters if scaling does not divide 240;
 // it is the same meaning as preferences_dither_line.

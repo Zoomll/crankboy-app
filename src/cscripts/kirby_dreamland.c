@@ -1,10 +1,10 @@
 #include "scriptutil.h"
 
-#define DESCRIPTION                                \
+#define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
-    "- Full aspect ratio; no vertical squishing.\n" \
-    "- Use the crank to flap!\n" \
-    "- Start/Select buttons are no longer required anywhere." \
+    "- Full aspect ratio; no vertical squishing.\n"                              \
+    "- Use the crank to flap!\n"                                                 \
+    "- Start/Select buttons are no longer required anywhere."
 
 #define CRANK_DELTA_SMOOTH_FACTOR 0.8f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
@@ -36,17 +36,17 @@ typedef struct ScriptData
     CodeReplacement* patch_continue_flying;
     CodeReplacement* patch_fly_accel_down;
     CodeReplacement* patch_fly_accel_up;
-    
+
     LCDBitmap* sidebar;
-    
+
     // 12x12 tiles
     uint16_t tiles12[20][12];
     uint8_t lives;
     uint8_t health;
     uint8_t boss;
-    
+
     uint32_t score;
-    
+
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -123,18 +123,18 @@ static void force_prefs(void)
 static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
 {
     uint16_t* tiles12 = &data->tiles12[idx][0];
-    
+
     for (int i = 0; i < 12; ++i)
     {
         for (int j = 0; j < 12; ++j)
         {
             int _y = (i + y);
             int _x = (x + j);
-            int x8 = 7 - (_x%8);
-            lcd[rowbytes * _y + _x/8] &= ~(1 << x8);
+            int x8 = 7 - (_x % 8);
+            lcd[rowbytes * _y + _x / 8] &= ~(1 << x8);
             if (tiles12[i] & (1 << (15 - j)))
             {
-                lcd[rowbytes * _y + _x/8] |= (1 << x8);
+                lcd[rowbytes * _y + _x / 8] |= (1 << x8);
             }
         }
     }
@@ -143,18 +143,19 @@ static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, in
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
-    
+
     game_picture_background_color = kColorWhite;
     game_menu_button_input_enabled = 0;
-    
+
     force_prefs();
 
     ScriptData* data = allocz(ScriptData);
-    
+
     const char* err = NULL;
     data->sidebar = playdate->graphics->loadBitmap(KIRBY_ASSETS_DIR "sidebar", &err);
-    
-    if (err || !data->sidebar) script_error("Script error loading bitmap: %s", err);
+
+    if (err || !data->sidebar)
+        script_error("Script error loading bitmap: %s", err);
     if (data->sidebar)
     {
         for (int i = 0; i < 20; ++i)
@@ -164,9 +165,10 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
                 data->tiles12[i][j] = 0;
                 for (int k = 0; k < 12; ++k)
                 {
-                    int x = (i % 5)*12 + k;
-                    int y = 240 + (i/5)*12 + j;
-                    data->tiles12[i][j] |= playdate->graphics->getBitmapPixel(data->sidebar, x, y) << (15 - k);
+                    int x = (i % 5) * 12 + k;
+                    int y = 240 + (i / 5) * 12 + j;
+                    data->tiles12[i][j] |= playdate->graphics->getBitmapPixel(data->sidebar, x, y)
+                                           << (15 - k);
                 }
             }
         }
@@ -234,15 +236,15 @@ static void on_end(struct gb_s* gb, ScriptData* data)
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
     bool in_game = gb->gb_reg.WY >= 100 && gb->gb_reg.WX < 100;
-    
+
     if (in_game)
     {
         // flush left
         game_picture_x_offset = 0;
-        
+
         // 100% vertical scaling
         game_picture_scaling = 0;
-        game_picture_y_top = 2; // bias to show more of top of screen than bottom
+        game_picture_y_top = 2;  // bias to show more of top of screen than bottom
         game_picture_y_bottom = 122;
     }
     else
@@ -429,123 +431,114 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
     {
         return;
     }
-    
+
     uint8_t* lcd = playdate->graphics->getFrame();
     int rowbytes = PLAYDATE_ROW_STRIDE;
-    
+
     if (gbScreenRequiresFullRefresh)
     {
-        playdate->graphics->drawBitmap(
-            data->sidebar, 320, 0, kBitmapUnflipped
-        );
+        playdate->graphics->drawBitmap(data->sidebar, 320, 0, kBitmapUnflipped);
     }
-    
+
     // lives
     uint8_t newlives = ram_peek(0xD089);
     if (newlives != data->lives || gbScreenRequiresFullRefresh)
     {
         data->lives = newlives;
-        
+
         int y = 0;
         int x = 376;
         drawTile12(data, lcd, rowbytes, newlives / 10, x, y);
         drawTile12(data, lcd, rowbytes, newlives % 10, x + 12, y);
-        
+
         playdate->graphics->markUpdatedRows(y, y + 11);
     }
-    
+
     // health
     uint8_t newhealth = ram_peek(0xD086);
     if (newhealth != data->health || gbScreenRequiresFullRefresh)
     {
         data->health = newhealth;
-        
+
         for (int i = 0; i < 6; ++i)
         {
             int x = 350 - 4;
             int y = 58 + 14 * i;
-            
-            int idx = (i < newhealth)
-                ? 10
-                : 15;
-                
+
+            int idx = (i < newhealth) ? 10 : 15;
+
             drawTile12(data, lcd, rowbytes, idx, x, y);
             playdate->graphics->markUpdatedRows(y, y + 11);
         }
     }
-    
+
     // boss
     uint8_t boss = ram_peek(0xD093);
-    
+
     // visible, but empty
     if ((ram_peek(0xFF8F) & 0x80) == 0)
     {
         boss = 0xFF;
     }
-    
+
     if (boss != data->boss || gbScreenRequiresFullRefresh)
     {
         data->boss = boss;
-        
+
         const bool show = boss != 0xFF;
-        
+
         // boss display
         int x = 370;
         int y = 66;
-        
+
         drawTile12(data, lcd, rowbytes, show ? 12 : 19, x, y);
         drawTile12(data, lcd, rowbytes, show ? 13 : 19, x + 12, y);
         drawTile12(data, lcd, rowbytes, show ? 17 : 19, x, y + 12);
         drawTile12(data, lcd, rowbytes, show ? 18 : 19, x + 12, y + 12);
-        
+
         y += 24;
         x += 6;
-        
+
         for (int i = 0; i < 6; ++i)
         {
             const bool disp = (i < boss && show);
-            
+
             drawTile12(data, lcd, rowbytes, disp ? 11 : 19, x, y);
-            drawTile12(data, lcd, rowbytes, disp ? 16 : 19, x, y+12);
+            drawTile12(data, lcd, rowbytes, disp ? 16 : 19, x, y + 12);
             playdate->graphics->markUpdatedRows(y, y + 13);
-            
+
             y += 14;
         }
     }
-    
+
     // score
-    uint32_t newscore = ram_peek(0xD070)
-        | (ram_peek(0xD071) << 8)
-        | (ram_peek(0xD072) << 16)
-        | (ram_peek(0xD073) << 24);
-        
+    uint32_t newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
+                        (ram_peek(0xD073) << 24);
+
     if (newscore != data->score || gbScreenRequiresFullRefresh)
     {
         int y = 240 - 13;
         bool isDrawing = 0;
         for (int i = 0; i < 5; ++i)
         {
-            int digit = (newscore >> (8*i)) & 0xFF;
-            if (i == 4) digit = 0;
-            int x = 320 + 12 + 12*i;
+            int digit = (newscore >> (8 * i)) & 0xFF;
+            if (i == 4)
+                digit = 0;
+            int x = 320 + 12 + 12 * i;
             if (digit > 0 || isDrawing || i == 4)
             {
                 isDrawing = 1;
-                drawTile12(
-                    data, lcd, rowbytes, digit, x, y
-                );
+                drawTile12(data, lcd, rowbytes, digit, x, y);
             }
             else
             {
                 // clear
-                drawTile12(
-                    data, lcd, rowbytes, 19, x, y
-                );
+                drawTile12(data, lcd, rowbytes, 19, x, y);
             }
         }
-        
+
         playdate->graphics->markUpdatedRows(y, y + 11);
-        
+
         data->score = newscore;
     }
 }

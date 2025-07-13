@@ -243,7 +243,7 @@ __section__(".rare") static int pgb_force_pref(lua_State* L)
     if (strcmp(preference, #x) == 0)                                                    \
     {                                                                                   \
         preferences_##x = value;                                                        \
-        prefs_locked_by_script |= (1 << (preferences_bitfield_t)i);          \
+        prefs_locked_by_script |= (1 << (preferences_bitfield_t)i);                     \
         playdate->system->logToConsole("forced preference %s=%d\n", preference, value); \
         return 0;                                                                       \
     }                                                                                   \
