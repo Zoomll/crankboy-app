@@ -14,6 +14,9 @@
 // The height of a blank line in pixels.
 #define EMPTY_LINE_HEIGHT 15
 
+// Extra vertical space to add after a bullet point.
+#define BULLET_POINT_SPACING 5
+
 static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
 {
     if (PGB_App->pendingScene)
@@ -22,7 +25,6 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     PGB_InfoScene* infoScene = object;
-
     LCDFont* font = PGB_App->bodyFont;
     playdate->graphics->setFont(font);
 
@@ -39,6 +41,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     int scrollDir = !!(buttonsDown & kButtonDown) - !!(buttonsDown & kButtonUp);
     infoScene->scroll += scrollDir * dt * SCROLL_RATE;
 
+    // --- HEIGHT CALCULATION LOOP ---
     float total_text_height = 0.0f;
     int bullet_indent = playdate->graphics->getTextWidth(font, "- ", 2, kUTF8Encoding, tracking);
     const char* text_ptr = infoScene->text;
@@ -49,7 +52,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
         int line_len = next_newline ? (next_newline - text_ptr) : strlen(text_ptr);
 
         if (line_len == 0)
-        {  // This is an empty line
+        {
             total_text_height += EMPTY_LINE_HEIGHT;
         }
         else
@@ -57,18 +60,25 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
             int current_indent = 0;
             const char* text_to_measure = text_ptr;
             int len_to_measure = line_len;
+            bool is_bullet_point = (strncmp(text_ptr, "- ", 2) == 0);
 
-            if (strncmp(text_ptr, "- ", 2) == 0)
+            if (is_bullet_point)
             {
                 current_indent = bullet_indent;
                 text_to_measure += 2;
                 len_to_measure -= 2;
             }
+
             float line_height = playdate->graphics->getTextHeightForMaxWidth(
                 font, text_to_measure, len_to_measure, width - current_indent, kUTF8Encoding,
                 kWrapWord, tracking, extraLeading
             );
             total_text_height += line_height;
+
+            if (is_bullet_point)
+            {
+                total_text_height += BULLET_POINT_SPACING;
+            }
         }
 
         if (next_newline)
@@ -81,6 +91,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
+    // --- SCROLLBAR LOGIC ---
     float visible_height = PGB_LCD_HEIGHT - (margin * 2);
     if (total_text_height > visible_height)
     {
@@ -95,6 +106,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
         infoScene->scroll = 0;
     }
 
+    // --- DRAWING LOOP ---
     playdate->graphics->clear(kColorWhite);
     float current_y = margin - infoScene->scroll;
     text_ptr = infoScene->text;
@@ -112,8 +124,9 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
         {
             const char* text_to_draw = text_ptr;
             int current_indent = 0;
+            bool is_bullet_point = (strncmp(text_ptr, "- ", 2) == 0);
 
-            if (strncmp(text_ptr, "- ", 2) == 0)
+            if (is_bullet_point)
             {
                 playdate->graphics->drawText("-", 1, kUTF8Encoding, (int)margin, (int)current_y);
                 current_indent = bullet_indent;
@@ -132,6 +145,11 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
             );
 
             current_y += line_height;
+
+            if (is_bullet_point)
+            {
+                current_y += BULLET_POINT_SPACING;
+            }
         }
 
         if (next_newline)
