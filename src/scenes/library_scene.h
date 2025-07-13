@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "app.h"
-#include "array.h"
-#include "listview.h"
-#include "scene.h"
+#include "../app.h"
+#include "../array.h"
+#include "../listview.h"
+#include "../scene.h"
 
 #include <stdio.h>
 

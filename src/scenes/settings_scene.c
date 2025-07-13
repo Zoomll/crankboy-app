@@ -6,15 +6,15 @@
 //
 #include "settings_scene.h"
 
-#include "../minigb_apu/minigb_apu.h"
-#include "app.h"
+#include "../../minigb_apu/minigb_apu.h"
+#include "../app.h"
+#include "../dtcm.h"
+#include "../modal.h"
+#include "../preferences.h"
+#include "../revcheck.h"
+#include "../userstack.h"
+#include "../utility.h"
 #include "credits_scene.h"
-#include "dtcm.h"
-#include "modal.h"
-#include "preferences.h"
-#include "revcheck.h"
-#include "userstack.h"
-#include "utility.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -8,8 +8,8 @@
 #ifndef settings_scene_h
 #define settings_scene_h
 
+#include "../scene.h"
 #include "game_scene.h"
-#include "scene.h"
 
 #include <stdio.h>
 

@@ -1,10 +1,10 @@
 #include "image_conversion_scene.h"
 
-#include "app.h"
+#include "../app.h"
+#include "../pdi.h"
+#include "../utility.h"
 #include "cover_cache_scene.h"
 #include "library_scene.h"
-#include "pdi.h"
-#include "utility.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"

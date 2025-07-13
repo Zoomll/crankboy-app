@@ -4,23 +4,19 @@
 #undef lua_State
 #undef lua_CFunction
 
+#include "../lua-5.4.7/lauxlib.h"
+#include "../lua-5.4.7/lua.h"
+#include "../lua-5.4.7/lualib.h"
 #include "../minigb_apu/minigb_apu.h"
-#include "utility.h"
-
-// clang-format off
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
-// clang-format on
-
 #include "../peanut_gb/peanut_gb.h"
+#include "./scenes/game_scene.h"
 #include "app.h"
 #include "dtcm.h"
-#include "scenes/game_scene.h"
 #include "jparse.h"
 #include "script.h"
 #include "scriptutil.h"
 #include "userstack.h"
+#include "utility.h"
 
 #include <stdbool.h>
 #include <stdio.h>

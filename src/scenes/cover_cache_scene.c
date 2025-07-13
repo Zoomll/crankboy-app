@@ -1,9 +1,9 @@
 #include "cover_cache_scene.h"
 
-#include "../lz4/lz4.h"
-#include "app.h"
+#include "../../lz4/lz4.h"
+#include "../app.h"
+#include "../utility.h"
 #include "library_scene.h"
-#include "utility.h"
 
 #define MAX_CACHE_SIZE_BYTES (3072 * 1024)  // 3MB
 

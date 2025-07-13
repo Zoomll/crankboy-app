@@ -8,9 +8,9 @@
 
 #include "utility.h"
 
+#include "./scenes/library_scene.h"
 #include "app.h"
 #include "jparse.h"
-#include "scenes/library_scene.h"
 #include "preferences.h"
 
 #include <ctype.h>

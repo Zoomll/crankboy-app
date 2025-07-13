@@ -1,4 +1,4 @@
-#include "scriptutil.h"
+#include "../scriptutil.h"
 
 typedef struct ScriptData
 {

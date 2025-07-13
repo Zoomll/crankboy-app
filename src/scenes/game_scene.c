@@ -7,28 +7,25 @@
 //
 
 #define PGB_IMPL
+#include "game_scene.h"
 
-#include "../minigb_apu/minigb_apu.h"
-#include "../peanut_gb/peanut_gb.h"
-#include "app.h"
+#include "../../minigb_apu/minigb_apu.h"
+#include "../../peanut_gb/peanut_gb.h"
+#include "../app.h"
+#include "../dtcm.h"
+#include "../modal.h"
+#include "../preferences.h"
+#include "../revcheck.h"
+#include "../script.h"
+#include "../userstack.h"
+#include "../utility.h"
 #include "credits_scene.h"
-#include "dtcm.h"
 #include "info_scene.h"
 #include "library_scene.h"
-#include "modal.h"
-#include "preferences.h"
-#include "revcheck.h"
-#include "script.h"
 #include "settings_scene.h"
-#include "userstack.h"
-#include "utility.h"
 
 #include <stdlib.h>
 #include <string.h>
-
-// clang-format off
-#include "game_scene.h"
-// clang-format on
 
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208

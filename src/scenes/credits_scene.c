@@ -1,9 +1,9 @@
 #include "credits_scene.h"
 
-#include "app.h"
-#include "jparse.h"
-#include "pgmusic.h"
-#include "version.h"
+#include "../app.h"
+#include "../jparse.h"
+#include "../pgmusic.h"
+#include "../version.h"
 
 #include <stdlib.h>
 #include <time.h>

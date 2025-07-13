@@ -1,7 +1,7 @@
 // game_scanning_scene.c
 #include "game_scanning_scene.h"
 
-#include "app.h"
+#include "../app.h"
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 #include "library_scene.h"

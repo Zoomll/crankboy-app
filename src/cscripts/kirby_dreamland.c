@@ -1,4 +1,4 @@
-#include "scriptutil.h"
+#include "../scriptutil.h"
 
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
