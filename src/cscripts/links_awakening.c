@@ -32,7 +32,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         game_picture_background_color = kColorBlack;
         break;
     case 7: // map
-        game_picture_background_color = get_palette_color(2);
+        game_picture_background_color = get_palette_color(1);
         break;
     case 0xB:
         game_picture_background_color = get_palette_color(3);
@@ -118,8 +118,8 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
         
         unsigned hearts = ram_peek(0xDB5A);
         unsigned heartsMax = ram_peek(0xDB5B);
-        unsigned invB = ram_peek(0xDB00);
-        unsigned invA = ram_peek(0xDB01);
+        unsigned invB = ram_peek(0xDB00) ^ gb->vram[16*gb->vram[0x9C26]];
+        unsigned invA = ram_peek(0xDB01) ^ gb->vram[16*gb->vram[0x9C21]];
         unsigned rupees = (gb->vram[0x1C2A] << 16) | (gb->vram[0x1C2B] << 8) | (gb->vram[0x1C2C] << 0);
         
         // TODO: refresh if tile data or tile map have changed
