@@ -252,7 +252,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
-        
+
     game_picture_x_offset = PGB_LCD_X;
     game_picture_scaling = 3;
     game_picture_y_top = 0;
@@ -1028,7 +1028,7 @@ __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict dither_lut1
 )
 {
-    framebuffer += game_picture_x_offset/8;
+    framebuffer += game_picture_x_offset / 8;
     unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
     const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
@@ -1036,11 +1036,18 @@ __core_section("fb") void update_fb_dirty_lines(
     {
         // --- STABILIZED PATH ---
 
-        for (int y_gb = game_picture_y_bottom; y_gb --> game_picture_y_top;)
+        // Track the last vertical scroll offset to detect camera movement.
+        // Initialize to an unlikely value to ensure the first frame logic is correct.
+        static int last_scy = -1000;
+        const bool is_scrolling = (scy != last_scy);
+        last_scy = scy;
+
+        bool dither_phase_flipped = false;
+
+        for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
         {
             int world_y = y_gb + scy;
 
-            // Row height is correctly determined by world_y to prevent rows from changing size.
             int row_height_on_playdate = 2;
             if ((world_y + dither_preference) % scaling == scaling - 1)
             {
@@ -1050,10 +1057,15 @@ __core_section("fb") void update_fb_dirty_lines(
             unsigned int current_line_pd_top_y =
                 fb_y_playdate_current_bottom - row_height_on_playdate;
 
-            // Skip rendering if the source GB line has not changed.
+            // When skipping lines, we must still update the dither phase for the
+            // screen-stable (non-scrolling) mode to work correctly.
             if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
             {
                 fb_y_playdate_current_bottom = current_line_pd_top_y;
+                if (row_height_on_playdate == 1)
+                {
+                    dither_phase_flipped = !dither_phase_flipped;
+                }
                 continue;
             }
 
@@ -1062,15 +1074,28 @@ __core_section("fb") void update_fb_dirty_lines(
             uint8_t* restrict pd_fb_line_top_ptr =
                 &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
 
-            // --- STABLE DITHER LOGIC ---
-            // Dither phase is now based on the parity of the world-space Y coordinate.
-            // This ensures any given line of GB content is always dithered with the same
-            // high-frequency alternating pattern, stabilizing both uniform and non-uniform
-            // textures.
-            bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
+            uint8_t* restrict dither_lut_top;
+            uint8_t* restrict dither_lut_bottom;
 
-            uint8_t* restrict dither_lut_top = is_world_y_even ? dither_lut0 : dither_lut1;
-            uint8_t* restrict dither_lut_bottom = is_world_y_even ? dither_lut1 : dither_lut0;
+            if (is_scrolling)
+            {
+                // --- SCROLLING LOGIC ---
+                // Dither is locked to the content's world_y coordinate.
+                // This prevents textures (like water) from jittering during movement.
+                bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
+                dither_lut_top = is_world_y_even ? dither_lut0 : dither_lut1;
+                dither_lut_bottom = is_world_y_even ? dither_lut1 : dither_lut0;
+            }
+            else
+            {
+                // --- STATIC LOGIC ---
+                // Dither is locked to the screen, correcting for short rows.
+                // This prevents any idle shimmer when the camera is still.
+                bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
+                bool use_lut0_first = is_world_y_even ^ dither_phase_flipped;
+                dither_lut_top = use_lut0_first ? dither_lut0 : dither_lut1;
+                dither_lut_bottom = use_lut0_first ? dither_lut1 : dither_lut0;
+            }
 
             for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
             {
@@ -1082,6 +1107,12 @@ __core_section("fb") void update_fb_dirty_lines(
                         pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
                     pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut_bottom[orgpixels];
                 }
+            }
+
+            // For the static logic, flip phase on short rows.
+            if (row_height_on_playdate == 1)
+            {
+                dither_phase_flipped = !dither_phase_flipped;
             }
 
             markUpdatedRows(
@@ -1568,7 +1599,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     {
         gameScene->staticSelectorUIDrawn = false;
     }
-    
+
     // check if game picture bounds have changed
     {
         static unsigned prev_game_picture_x_offset,
@@ -1592,7 +1623,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         prev_game_picture_y_bottom = game_picture_y_bottom;
         prev_game_picture_background_color = game_picture_background_color;
     }
-    
+
     if (didOpenMenu)
     {
         gbScreenRequiresFullRefresh = 1;
@@ -1876,7 +1907,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             return;
         }
 #endif
-        
+
         if (actual_gb_draw_needed)
         {
             if (gbScreenRequiresFullRefresh)
@@ -1932,10 +1963,11 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             const int rightBarX = 40 + 320;
             const int rightBarWidth = 40;
             playdate->graphics->fillRect(
-                rightBarX, 0, rightBarWidth, playdate->display->getHeight(), game_picture_background_color
+                rightBarX, 0, rightBarWidth, playdate->display->getHeight(),
+                game_picture_background_color
             );
         }
-        
+
         if (preferences_script_support && context->scene->script)
         {
             script_draw(context->scene->script, gameScene);
