@@ -19,3 +19,4 @@ void possibly_check_for_updates(update_result_cb cb, void* ud);
 void version_quit(void);
 
 const char* get_current_version(void);
+const char* get_download_url(void);

@@ -379,8 +379,8 @@ static void CB_updatecheck(int code, const char* text, void* ud)
     else if (code == 2)
     {
         modal_result = aprintf(
-            "CrankBoy Update!\n\nNew: %s - Installed: %s\n\nPlease download manually to update.",
-            text, get_current_version()
+            "CrankBoy Update!\n\nNew: %s - Installed: %s\n\nGet it from: %s", text,
+            get_current_version(), get_download_url()
         );
     }
 

@@ -22,6 +22,7 @@ struct VersionInfo
     char* name;
     char* domain;
     char* path;
+    char* download;
 };
 static struct VersionInfo* localVersionInfo = NULL;
 
@@ -53,8 +54,10 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     json_value jname = json_get_table_value(jvinfo, "name");
     json_value jpath = json_get_table_value(jvinfo, "path");
     json_value jdomain = json_get_table_value(jvinfo, "domain");
+    json_value jdownload = json_get_table_value(jvinfo, "download");
 
-    if (jname.type != kJSONString || jpath.type != kJSONString || jdomain.type != kJSONString)
+    if (jname.type != kJSONString || jpath.type != kJSONString || jdomain.type != kJSONString ||
+        jdownload.type != kJSONString)
     {
         free_json_data(jvinfo);
         return -2;
@@ -63,6 +66,7 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     oinfo->name = string_copy(jname.data.stringval);
     oinfo->path = string_copy(jpath.data.stringval);
     oinfo->domain = string_copy(jdomain.data.stringval);
+    oinfo->download = string_copy(jdownload.data.stringval);
 
     free_json_data(jvinfo);
 
@@ -102,6 +106,18 @@ const char* get_current_version(void)
     if (read_local_version() == 1)
     {
         return localVersionInfo->name;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+const char* get_download_url(void)
+{
+    if (read_local_version() == 1)
+    {
+        return localVersionInfo->download;
     }
     else
     {
