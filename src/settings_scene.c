@@ -167,8 +167,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     if (gameScene)
     {
         // some settings cannot be changed
-        settingsScene->immutable_settings =
-            preferences_store_subset(prefs_locked_by_script);
+        settingsScene->immutable_settings = preferences_store_subset(prefs_locked_by_script);
     }
     else
     {
@@ -182,7 +181,9 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 
     PGB_Scene_refreshMenu(scene);
 
-    if (last_selected_preference && playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <= TIME_FORGET_LAST_PREFERENCE)
+    if (last_selected_preference &&
+        playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <=
+            TIME_FORGET_LAST_PREFERENCE)
     {
         int i = 0;
         for (OptionsMenuEntry* entry = settingsScene->entries; entry->name; ++entry, ++i)
@@ -973,15 +974,15 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
     {
         OptionsMenuEntry* entry = &entries[i];
         int j = 0;
-#define PREF(x, ...)                                                                             \
-    if (entry->pref_var == &preferences_##x)                                                     \
-    {                                                                                            \
+#define PREF(x, ...)                                                   \
+    if (entry->pref_var == &preferences_##x)                           \
+    {                                                                  \
         if (prefs_locked_by_script & (1 << (preferences_bitfield_t)j)) \
-        {                                                                                        \
-            entry->locked = 1;                                                                   \
-            entry->description = "Disabled by game script.";                                     \
-        }                                                                                        \
-    }                                                                                            \
+        {                                                              \
+            entry->locked = 1;                                         \
+            entry->description = "Disabled by game script.";           \
+        }                                                              \
+    }                                                                  \
     ++j;
 #include "prefs.x"
     }
@@ -1458,10 +1459,8 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             if (p > 1.0f)
                 p = 1.0f;
 
-            int m = 4;
-
             playdate->graphics->fillRect(
-                0, y - (rowSpacing / 2) + m, kDividerX * p, rowHeight - 2 * m, kColorXOR
+                0, y - (rowSpacing / 2), kDividerX * p, rowHeight, kColorXOR
             );
         }
     }
