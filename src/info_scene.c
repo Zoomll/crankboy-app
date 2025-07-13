@@ -22,7 +22,10 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     PGB_InfoScene* infoScene = object;
+
     LCDFont* font = PGB_App->bodyFont;
+    playdate->graphics->setFont(font);
+
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     int margin = 14;
