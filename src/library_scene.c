@@ -323,7 +323,7 @@ static void launch_game(void* ud, int option)
             preferences_per_game = 1;
             preferences_script_has_prompted = 1;
 
-            call_with_user_stack_2(
+            call_with_main_stack_2(
                 preferences_save_to_disk, settings_path,
                 ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
             );
