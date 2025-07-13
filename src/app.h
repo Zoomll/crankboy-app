@@ -200,6 +200,7 @@ void itcm_core_init(void);
 
 // files that have been copied from PDX to data folder
 #define COPIED_FILES "manifest.json"
+#define PATCH_LIST_FILE "manifest.json"
 #define VERSION_INFO_FILE "version.json"
 #define BUNDLE_FILE "bundle.json"
 

@@ -26,6 +26,7 @@ const char* PGB_coversPath = "covers";
 const char* PGB_statesPath = "states";
 const char* PGB_settingsPath = "settings";
 const char* PGB_globalPrefsPath = "preferences.json";
+const char* PGB_patchesPath = "patches";
 
 /* clang-format off */
 const clalign uint8_t PGB_patterns[4][4][4] = {
@@ -781,6 +782,16 @@ fail_free_dat:
 fail:
     playdate->file->close(file);
     return NULL;
+}
+
+void memswap(void* a, void* b, size_t size)
+{
+    unsigned char temp;
+    for (size_t i = 0; i < size; i++) {
+        temp = ((unsigned char*)a)[i];
+        ((unsigned char*)a)[i] = ((unsigned char*)b)[i];
+        ((unsigned char*)b)[i] = temp;
+    }
 }
 
 bool pgb_write_entire_file(const char* path, const void* data, size_t size)

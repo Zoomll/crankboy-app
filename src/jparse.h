@@ -38,5 +38,12 @@ int compare_key_pairs(const void* a, const void* b);
 
 json_value json_get_table_value(json_value table, const char* key);
 
+json_value json_new_table(void);
+
+json_value json_new_string(const char* s);
+json_value json_new_bool(bool v);
+json_value json_new_int(int v);
+
 // returns true on success
 bool json_set_table_value(json_value* table, const char* key, json_value value);
+

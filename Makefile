@@ -44,6 +44,7 @@ SRC += src/modal.c
 SRC += src/scenes/game_scanning_scene.c
 SRC += src/scenes/game_scene.c
 SRC += src/userstack.c
+SRC += src/softpatch.c
 SRC += src/jparse.c
 SRC += src/script.c
 SRC += src/dtcm.c

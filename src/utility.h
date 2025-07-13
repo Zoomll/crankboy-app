@@ -42,6 +42,7 @@ extern const char* PGB_coversPath;
 extern const char* PGB_statesPath;
 extern const char* PGB_settingsPath;
 extern const char* PGB_globalPrefsPath;
+extern const char* PGB_patchesPath;
 
 typedef struct
 {
@@ -264,7 +265,12 @@ void* mallocz(size_t size);
 
 #define allocz(Type) ((Type*)mallocz(sizeof(Type)))
 
+// malloc array and memset to zero
+#define allocza(Type, N) ((Type*)mallocz(sizeof(Type) * (N)));
+
 // non-negative floating-point modulo
 float nnfmodf(float a, float b);
+
+void memswap(void* a, void* b, size_t size);
 
 #endif /* utility_h */

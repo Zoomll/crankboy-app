@@ -108,6 +108,48 @@ __section__(".rare") static void decodeError(
     playdate->system->logToConsole("Error decoding json: %s", error);
 }
 
+json_value json_new_table(void)
+{
+    json_value v;
+    v.data.tableval = allocz(JsonObject);
+    if (!v.data.tableval)
+    {
+        v.type = kJSONNull;
+    }
+    else
+    {
+        v.type = kJSONTable;
+    }
+    
+    return v;
+}
+
+json_value json_new_string(const char* s)
+{
+    json_value jv = {
+        .type = kJSONString
+    };
+    jv.data.stringval = aprintf("%s", s);
+    return jv;
+}
+
+json_value json_new_bool(bool v)
+{
+    json_value jv = {
+        .type = v ? kJSONTrue : kJSONFalse
+    };
+    return jv;
+}
+
+json_value json_new_int(int i)
+{
+    json_value jv = {
+        .type = kJSONInteger,
+    };
+    jv.data.intval = i;
+    return jv;
+}
+
 bool json_set_table_value(json_value* table, const char* key, json_value value)
 {
     if (table->type != kJSONTable)

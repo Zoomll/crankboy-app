@@ -59,6 +59,7 @@ static void copy_file_callback(const char* filename, void* userdata)
     {
         dst_path = aprintf("%s/%s", PGB_coversPath, filename);
     }
+    // TODO: .ips/.bps
     else if (!strcasecmp(extension, ".gb") || !strcasecmp(extension, ".gbc"))
     {
         dst_path = aprintf("%s/%s", PGB_gamesPath, filename);
@@ -288,6 +289,7 @@ void PGB_init(void)
     playdate->file->mkdir(PGB_savesPath);
     playdate->file->mkdir(PGB_statesPath);
     playdate->file->mkdir(PGB_settingsPath);
+    playdate->file->mkdir(PGB_patchesPath);
 
     PGB_App->bodyFont = playdate->graphics->loadFont("fonts/Roobert-11-Medium", NULL);
     PGB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
