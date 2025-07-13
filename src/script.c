@@ -16,7 +16,7 @@
 #include "../peanut_gb/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"
-#include "game_scene.h"
+#include "scenes/game_scene.h"
 #include "jparse.h"
 #include "script.h"
 #include "scriptutil.h"

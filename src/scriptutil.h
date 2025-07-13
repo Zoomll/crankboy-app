@@ -3,7 +3,7 @@
 // convenient import for scripts
 
 #include "app.h"
-#include "game_scene.h"
+#include "scenes/game_scene.h"
 #include "peanut_gb/peanut_gb.h"
 #include "preferences.h"
 #include "script.h"

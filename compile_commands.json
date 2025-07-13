@@ -1,8 +1,8 @@
 [
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/credits_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/credits_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/credits_scene.c -o build/src/credits_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/credits_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/credits_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/credits_scene.c -o build/src/credits_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/credits_scene.c"
+        "file": "src/scenes/credits_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/modal.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/modal.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/modal.c -o build/src/modal.o",
@@ -50,14 +50,14 @@
         "file": "src/scene.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/library_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/library_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/library_scene.c -o build/src/library_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/library_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/library_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/library_scene.c -o build/src/library_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/library_scene.c"
+        "file": "src/scenes/library_scene.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/game_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/game_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/game_scene.c -o build/src/game_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/game_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/game_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/game_scene.c -o build/src/game_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/game_scene.c"
+        "file": "src/scenes/game_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/array.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/array.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/array.c -o build/src/array.o",
@@ -75,9 +75,9 @@
         "file": "src/preferences.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/settings_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/settings_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/settings_scene.c -o build/src/settings_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/settings_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/settings_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/settings_scene.c -o build/src/settings_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/settings_scene.c"
+        "file": "src/scenes/settings_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/minigb_apu.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/minigb_apu.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 minigb_apu/minigb_apu.c -o build/minigb_apu/minigb_apu.o",
@@ -115,9 +115,9 @@
         "file": "src/version.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/image_conversion_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/image_conversion_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/image_conversion_scene.c -o build/src/image_conversion_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/image_conversion_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/image_conversion_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/image_conversion_scene.c -o build/src/image_conversion_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/image_conversion_scene.c"
+        "file": "src/scenes/image_conversion_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/pgmusic.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/pgmusic.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/pgmusic.c -o build/src/pgmusic.o",
@@ -125,14 +125,14 @@
         "file": "src/pgmusic.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/info_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/info_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/info_scene.c -o build/src/info_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/info_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/info_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/info_scene.c -o build/src/info_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/info_scene.c"
+        "file": "src/scenes/info_scene.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/game_scanning_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/game_scanning_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/game_scanning_scene.c -o build/src/game_scanning_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/game_scanning_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/game_scanning_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/game_scanning_scene.c -o build/src/game_scanning_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/game_scanning_scene.c"
+        "file": "src/scenes/game_scanning_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/kirby_dreamland.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/kirby_dreamland.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/cscripts/kirby_dreamland.c -o build/src/cscripts/kirby_dreamland.o",
@@ -150,9 +150,9 @@
         "file": "src/scriptutil.c"
     },
     {
-        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/cover_cache_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/cover_cache_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/cover_cache_scene.c -o build/src/cover_cache_scene.o",
+        "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/cover_cache_scene.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/cover_cache_scene.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 src/scenes/cover_cache_scene.c -o build/src/cover_cache_scene.o",
         "directory": "${workspaceFolder}",
-        "file": "src/cover_cache_scene.c"
+        "file": "src/scenes/cover_cache_scene.c"
     },
     {
         "command": "arm-none-eabi-gcc -g3 -c -mthumb -D__FPU_USED=1 -O2 -falign-functions=16 -fomit-frame-pointer -gdwarf-2 -Wall -Wno-unused -Wstrict-prototypes -Wno-unknown-pragmas -fverbose-asm -Wdouble-promotion -mword-relocations -fno-common -ffunction-sections -fdata-sections -Wa,-ahlms=build/lz4.lst -DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1 -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -MD -MP -MF build/dep/lz4.o.d -I . -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 lz4/lz4.c -o build/lz4/lz4.o",

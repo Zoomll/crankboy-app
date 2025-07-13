@@ -10,7 +10,7 @@
 #include "../peanut_gb/peanut_gb.h"
 #include "../src/app.h"
 #include "../src/dtcm.h"
-#include "../src/game_scene.h"
+#include "../src/scenes/game_scene.h"
 #include "../src/preferences.h"
 
 #include <stdbool.h>

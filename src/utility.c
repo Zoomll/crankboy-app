@@ -10,7 +10,7 @@
 
 #include "app.h"
 #include "jparse.h"
-#include "library_scene.h"
+#include "scenes/library_scene.h"
 #include "preferences.h"
 
 #include <ctype.h>
