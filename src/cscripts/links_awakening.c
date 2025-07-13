@@ -23,15 +23,20 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
     int game_state = ram_peek(0xDB95);
+    bool gameOver = ram_peek(0xFF9C) >= 3; // not positive about this
     
     switch(game_state)
     {
     case 0: // intro
     case 2: // file select
-        game_picture_background_color = 0;
+        game_picture_background_color = kColorBlack;
         break;
     case 7: // map
         game_picture_background_color = get_palette_color(2);
+        break;
+    case 0xB:
+        game_picture_background_color = get_palette_color(3);
+        if (gameOver) game_picture_background_color = kColorBlack;
         break;
     default:
         game_picture_background_color = get_palette_color(
@@ -49,7 +54,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     unsigned menu_y = ram_peek(0xDB9A);
     
     // in regular gameplay and/or paused
-    if (game_state == 0xB)
+    if (game_state == 0xB && !gameOver)
     {
         game_hide_indicator = true;
         
@@ -117,6 +122,8 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
         unsigned invA = ram_peek(0xDB01);
         unsigned rupees = (gb->vram[0x1C2A] << 16) | (gb->vram[0x1C2B] << 8) | (gb->vram[0x1C2C] << 0);
         
+        // TODO: refresh if tile data or tile map have changed
+        
         const bool inventory_changed = (invB != data->inventoryB || invA != data->inventoryA || rupees != data->rupees);
         
         if (refresh || inventory_changed)
@@ -158,8 +165,42 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
             }
         }
         
-        // TODO: hearts
-        
+        // hearts
+        if (hearts != data->hearts || heartsMax != data->heartsMax || refresh)
+        {
+            for (int i = 0; i < 14; ++i)
+            {
+                int y = 120 + 16*(i % 7);
+                int x = sidebar_x + sidebar_w/2 - 8 + 16*(i >= 7);
+                if (heartsMax >= 8) x -= 8;
+                
+                uint8_t idx = 0x7F;
+                if (i < heartsMax)
+                {
+                    idx = 0xCD;
+                }
+                if (i*8 < hearts && i*8 + 7 >= hearts)
+                {
+                    // half-heart
+                    idx = 0xCE;
+                }
+                else if (i*8 < hearts)
+                {
+                    idx = 0xA9;
+                }
+                
+                if (idx == 0x7F)
+                {
+                    playdate->graphics->fillRect(x, y, 16, 16, kColorWhite);
+                }
+                else
+                {
+                    draw_vram_tile(idx, true, 2, x, y);
+                }
+                
+                playdate->graphics->markUpdatedRows(y, y + 15);
+            }
+        }
         data->hearts = hearts;
         data->heartsMax = heartsMax;
         data->rupees = rupees;
@@ -174,7 +215,6 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 
 C_SCRIPT{
     .rom_name = "ZELDA",
-    .experimental = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
