@@ -10,6 +10,8 @@ typedef struct PGB_PatchesScene
     SoftPatch* patches;
     char* patches_dir;
     bool dismiss : 1;
+    bool didDrag : 1;
+    unsigned selected;
 } PGB_PatchesScene;
 
 PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game);

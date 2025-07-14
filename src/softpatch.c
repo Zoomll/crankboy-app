@@ -76,7 +76,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
     pgb_free(patch_dir);
     
     json_value jv;
-    parse_json(listpath, &jv, kFileRead);
+    parse_json(listpath, &jv, kFileReadData);
     pgb_free(listpath);
     json_value jpatches = json_get_table_value(jv, "patches");
     int nextorder = 0;
@@ -194,6 +194,7 @@ void save_patches_state(const char* rom_path, SoftPatch* patches)
     playdate->file->mkdir(dir);
     char* plf = patch_list_file(dir);
     pgb_free(dir);
+    printf("saving patches state to %s...\n", plf);
     write_json_to_disk(plf, jmanifest);
     pgb_free(plf);
     
@@ -288,7 +289,7 @@ bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
             
             while (length --> 0)
             {
-                ((uint8_t*)rom)[offset++] = v;
+                ((uint8_t*)*rom)[offset++] = v;
             }
         }
         else
@@ -300,10 +301,12 @@ bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
                 unsigned v = read_bigendian(ips, 1);
                 ADVANCE(1);
                 
-                ((uint8_t*)rom)[offset++] = v;
+                ((uint8_t*)*rom)[offset++] = v;
             }
         }
     }
+    
+    // TODO: ips extension for cropping ROM length
         
     return true;
     
@@ -319,6 +322,8 @@ bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
     for (const SoftPatch* patch = patchlist; patch && patch->fullpath; patch++)
     {
         if (patch->state != PATCH_ENABLED) continue;
+        
+        printf("Applying %s...\n", patch->fullpath);
         
         if (patch->ips)
         {

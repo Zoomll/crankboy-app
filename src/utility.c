@@ -1171,3 +1171,10 @@ float nnfmodf(float a, float b)
     float mod = fmodf(a, b);
     return mod >= 0 ? mod : mod + b;
 }
+
+bool string_has_descenders(const char* str)
+{
+    if (!str)
+        return false;
+    return strpbrk(str, "gjpqy") != NULL;
+}

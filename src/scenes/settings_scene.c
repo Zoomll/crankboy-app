@@ -90,13 +90,6 @@ void display_script_info(struct OptionsMenuEntry* entry, PGB_SettingsScene* sett
     }
 }
 
-static bool string_has_descenders(const char* str)
-{
-    if (!str)
-        return false;
-    return strpbrk(str, "gjpqy") != NULL;
-}
-
 static void open_patches(OptionsMenuEntry* option, PGB_SettingsScene* settingsScene)
 {
     PGB_PatchesScene* patchesScene = PGB_PatchesScene_new(option->ud);
@@ -1405,7 +1398,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         int y = initialY + i * rowHeight;
         const char* name = current_entry->name;
         const char* stateText =
-            current_entry->values ? current_entry->values[*current_entry->pref_var] : "";
+            (current_entry->values && *current_entry->pref_var < current_entry->max_value) ? current_entry->values[*current_entry->pref_var] : "";
         if (current_entry->show_value_only_on_hover && itemIndex != settingsScene->cursorIndex)
             stateText = "";
 

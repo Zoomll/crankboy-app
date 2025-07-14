@@ -138,6 +138,8 @@ char* aprintf(const char* fmt, ...);
 // caller-freed
 char* en_human_time(unsigned seconds);
 
+bool string_has_descenders(const char* str);
+
 PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
     const char* cover_path, int max_target_width, int max_target_height
 );

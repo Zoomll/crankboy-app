@@ -23,6 +23,7 @@
 #include "info_scene.h"
 #include "library_scene.h"
 #include "settings_scene.h"
+#include "../softpatch.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -316,6 +317,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     {
         // Try loading game-specific preferences
         preferences_per_game = 0;
+        
+        // FIXME: shouldn't we be using call_with_main_stack for these?
         call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
 
         // we always use the per-game save slot, even if global settings are enabled
@@ -400,6 +403,17 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     if (rom)
     {
         playdate->system->logToConsole("Opened ROM.");
+        
+        // try patches
+        SoftPatch* patches = list_patches(rom_filename, NULL);
+        if (patches)
+        {
+            printf("softpatching ROM...\n");
+            bool result = call_with_main_stack_3(patch_rom, (void*)&rom, &rom_size, patches);
+            
+            free_patches(patches);
+        }
+        
         context->rom = rom;
 
         static uint8_t lcd[LCD_SIZE];
