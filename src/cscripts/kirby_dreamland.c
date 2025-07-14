@@ -34,8 +34,6 @@ typedef struct ScriptData
     CodeReplacement* patch_no_door;
     CodeReplacement* patch_start_flying;
     CodeReplacement* patch_continue_flying;
-    CodeReplacement* patch_fly_accel_down;
-    CodeReplacement* patch_fly_accel_up;
 
     LCDBitmap* sidebar;
 
@@ -46,6 +44,9 @@ typedef struct ScriptData
     uint8_t boss;
 
     uint32_t score;
+    
+    bool fly_thrust_enabled;
+    int fly_thrust;
 
 } ScriptData;
 
@@ -107,6 +108,22 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4494))
                 $A |= 0x40;
             }
         }
+    }
+}
+
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3c8))
+{
+    if (data->fly_thrust_enabled && data->fly_thrust < 0)
+    {
+        $A = -data->fly_thrust;
+    }
+}
+
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3FB))
+{
+    if (data->fly_thrust_enabled && data->fly_thrust >= 0)
+    {
+        $A = data->fly_thrust;
     }
 }
 
@@ -211,12 +228,6 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     data->patch_continue_flying =
         code_replacement(1, 0x467C, (0xF0, 0x8B), (0x3E, K_BUTTON_UP), true);
 
-    data->patch_fly_accel_down =
-        code_replacement(0, 0x3C5, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true);
-
-    data->patch_fly_accel_up =
-        code_replacement(0, 0x3F8, (0xFA, 0x7E, 0xD0), (0x3E, PLACEHOLDER, 0x00), true);
-
     SET_BREAKPOINTS(!!strcmp(header_name, "KIRBY DREAM LAND"));
 
     return data;
@@ -227,8 +238,6 @@ static void on_end(struct gb_s* gb, ScriptData* data)
     code_replacement_free(data->patch_no_door);
     code_replacement_free(data->patch_start_flying);
     code_replacement_free(data->patch_continue_flying);
-    code_replacement_free(data->patch_fly_accel_down);
-    code_replacement_free(data->patch_fly_accel_up);
 
     pgb_free(data);
 }
@@ -407,19 +416,12 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
 
     if (has_fly_thrust)
     {
-        data->patch_fly_accel_down->tval[1] = MAX(-fly_thrust, 0);
-        data->patch_fly_accel_down->applied = false;
-        data->patch_fly_accel_up->tval[1] = MAX(fly_thrust, 0);
-        data->patch_fly_accel_up->applied = false;
-        code_replacement_apply(data->patch_fly_accel_down, true);
-        code_replacement_apply(data->patch_fly_accel_up, true);
+        data->fly_thrust_enabled = true;
+        data->fly_thrust = fly_thrust;
     }
     else
     {
-        data->patch_fly_accel_down->applied = true;
-        data->patch_fly_accel_up->applied = true;
-        code_replacement_apply(data->patch_fly_accel_down, false);
-        code_replacement_apply(data->patch_fly_accel_up, false);
+        data->fly_thrust_enabled = false;
     }
 
     data->crank_angle = new_crank_angle;
