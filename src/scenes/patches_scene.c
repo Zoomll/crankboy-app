@@ -194,36 +194,39 @@ static void PGB_PatchesScene_menu(void* object)
 
 PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
 {
+    char* patches_dir_path = get_patches_directory(game->fullpath);
+    playdate->file->mkdir(patches_dir_path);
+
     SoftPatch* patches = call_with_main_stack_2(list_patches, game->fullpath, NULL);
-    char* patches_dir = get_patches_directory(game->fullpath);
 
-    // make patches directory
-    playdate->file->mkdir(patches_dir);
-    pgb_free(patches_dir);
-
-    // if no patches, display info instead.
+    // If no patches are found, display an informational scene.
     if (!patches || !patches[0].fullpath)
     {
-        LCDFont* font = PGB_App->bodyFont;
+        // For the help message, get the ROM's basename to show the user.
+        char* rom_basename = pgb_basename(game->fullpath, true);
+
         char* msg = aprintf(
-            "No patches found for %s.\n \n"
+            "No patches found for %s.\n\n"
             "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
-            "2. From a connected device, add .ips patches to Data/*crankboy/%s\n"
+            "2. Via your computer, add .ips patches to: Data/*crankboy/patches/%s\n"
             "3. Finally, enable them from this screen (settings > Patches).\n\n"
             "You may be able to find .ips patches for %s by searching on romhacking.net or "
             "romhack.ing",
-
-            game->names->name_short_leading_article, patches_dir,
+            game->names->name_short_leading_article, rom_basename,
             game->names->name_short_leading_article
         );
 
-        pgb_free(patches_dir);
-        free_patches(patches);
+        pgb_free(rom_basename);
+        pgb_free(patches_dir_path);
+        if (patches)
+        {
+            free_patches(patches);
+        }
 
-        // FIXME: type pun ugh
         return (void*)PGB_InfoScene_new(msg);
     }
 
+    // If patches were found, create the patches scene.
     PGB_Scene* scene = PGB_Scene_new();
     PGB_PatchesScene* patchesScene = allocz(PGB_PatchesScene);
     patchesScene->scene = scene;
@@ -231,17 +234,17 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
 
     patchesScene->game = game;
     patchesScene->patches = patches;
-    patchesScene->patches_dir = patches_dir;
+    patchesScene->patches_dir = patches_dir_path;
 
     scene->update = PGB_PatchesScene_update;
     scene->free = PGB_PatchesScene_free;
     scene->menu = PGB_PatchesScene_menu;
 
-    // set selected to first enabled patch
-    int i = 0;
-    for (SoftPatch* patch = patchesScene->patches; patch->fullpath; ++patch, ++i)
+    // Set selected to first enabled patch, or default to the first item.
+    patchesScene->selected = 0;
+    for (int i = 0; patches[i].fullpath; ++i)
     {
-        if (patch->state == PATCH_ENABLED)
+        if (patches[i].state == PATCH_ENABLED)
         {
             patchesScene->selected = i;
             break;
