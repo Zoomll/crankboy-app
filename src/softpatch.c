@@ -3,6 +3,7 @@
 #include "pd_api.h"
 #include "jparse.h"
 #include "app.h"
+#include "userstack.h"
 
 char* get_patches_directory(const char* rom_path)
 {
@@ -45,6 +46,7 @@ void list_patch_cb(const char* filename, void* ud)
     {
         // add new one
         acc->list = playdate->system->realloc(acc->list, sizeof(SoftPatch)*(n+2));
+        acc->list[n+1].fullpath = NULL; // terminal
         acc->list[n+1].basename = NULL; // terminal
         
         SoftPatch* patch = &acc->list[n];
@@ -93,7 +95,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
                 if (jbasename.type != kJSONString || jorder.type != kJSONInteger) continue;
                 
                 // find matching patch
-                for (SoftPatch* patch = acc.list; patch && patch->basename; ++patch)
+                for (SoftPatch* patch = acc.list; patch && patch->fullpath; ++patch)
                 {
                     if (!strcmp(jbasename.data.stringval, patch->basename))
                     {
@@ -115,7 +117,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
     
     // assign an _order value to any unlisted patches
     size_t len = 0;
-    for (SoftPatch* patch = acc.list; patch && patch->basename; ++patch)
+    for (SoftPatch* patch = acc.list; patch && patch->fullpath; ++patch)
     {
         if (patch->_order < 0)
         {
@@ -125,7 +127,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
         ++len;
     }
 
-    // inserion-sort by _order value.
+    // insertion-sort by _order value.
     if (len > 1) {
         for (size_t i = 1; i < len; i++) {
             size_t j = i;
@@ -157,7 +159,7 @@ void save_patches_state(const char* rom_path, SoftPatch* patches)
     
     json_value jmanifest = json_new_table();
     json_value jpatches = {
-        .type = kJSONArray,
+        .type = kJSONArray
     };
     jpatches.data.arrayval = jpatcharray;
     json_set_table_value(&jmanifest, "patches", jpatches);
@@ -208,4 +210,126 @@ void free_patches(SoftPatch* patchlist)
         if (patch->basename) pgb_free(patch->basename);
     }
     pgb_free(patchlist);
+}
+
+unsigned read_bigendian(void* src, int bytes)
+{
+    unsigned x = 0;
+    while (bytes --> 0)
+    {
+        x <<= 8;
+        x |= *(uint8_t*)(src++);
+    }
+    return x;
+}
+
+#define IPS_MAGIC "PATCH"
+#define IPS_EOF 0x454F46 /* "EOF" */
+
+static
+bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
+{
+    size_t ips_len;
+    void* ips = call_with_main_stack_3(pgb_read_entire_file, patch->fullpath, &ips_len, kFileReadData);
+    if (!ips)
+    {
+        playdate->system->error("Unable to open IPS patch \"%s\"", patch->fullpath);
+        return false;
+    }
+    
+    #define ADVANCE(X) do { unsigned __x = (X); ips += __x; ips_len -= __x; } while (0)
+    #define CHECKLEN(l) do { if (ips_len < (l)) goto err; } while (0)
+    
+    if (memcmp(ips, IPS_MAGIC, 5))
+    {
+        goto err;
+    }
+    ADVANCE(5);
+    
+    while (ips_len > 0)
+    {
+        CHECKLEN(3);
+        unsigned offset = read_bigendian(ips, 3);
+        ADVANCE(3);
+        
+        if (offset == IPS_EOF) break;
+        
+        bool rle = false;
+        CHECKLEN(2);
+        unsigned length = read_bigendian(ips, 2);
+        ADVANCE(2);
+        
+        if (length == 0)
+        {
+            CHECKLEN(3);
+            
+            // RLE
+            length = read_bigendian(ips, 2);
+            rle = true;
+        }
+        
+        if (length + offset >= *romsize)
+        {
+            *romsize = length + offset;
+            *rom = pgb_realloc(*rom, *romsize);
+            if (!*rom)
+            {
+                playdate->system->error("IPS patch requires ROM to be resized, but there was not enough memory.");
+                pgb_free(ips);
+                return false;
+            }
+        }
+        
+        if (rle)
+        {
+            // run-length encoded hunk
+            CHECKLEN(1);
+            unsigned v = read_bigendian(ips, 1);
+            
+            while (length --> 0)
+            {
+                ((uint8_t*)rom)[offset++] = v;
+            }
+        }
+        else
+        {
+            // standard hunk
+            CHECKLEN(length);
+            while(length --> 0)
+            {
+                unsigned v = read_bigendian(ips, 1);
+                ADVANCE(1);
+                
+                ((uint8_t*)rom)[offset++] = v;
+            }
+        }
+    }
+        
+    return true;
+    
+err:
+    playdate->system->error("Error applying IPS patch \"%s\"", patch->fullpath);
+    pgb_free(ips);
+    return false;
+}
+
+bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
+{
+    bool success = true;
+    for (const SoftPatch* patch = patchlist; patch && patch->fullpath; patch++)
+    {
+        if (patch->state != PATCH_ENABLED) continue;
+        
+        if (patch->ips)
+        {
+            success = success && apply_ips_patch(rom, romsize, patch);
+        }
+        else
+        {
+            success = false;
+            playdate->system->error("BPS patches are currently unsupported.");
+        }
+    }
+    
+    return success;
 }

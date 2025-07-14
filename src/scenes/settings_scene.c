@@ -9,12 +9,13 @@
 #include "../../minigb_apu/minigb_apu.h"
 #include "../app.h"
 #include "../dtcm.h"
-#include "../modal.h"
+#include "../scenes/modal.h"
 #include "../preferences.h"
 #include "../revcheck.h"
 #include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
+#include "patches_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -73,7 +74,7 @@ typedef struct OptionsMenuEntry
 static void* last_selected_preference;
 static unsigned last_selected_preference_time;
 
-OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
+static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene);
 
 void display_credits(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
 {
@@ -96,17 +97,24 @@ static bool string_has_descenders(const char* str)
     return strpbrk(str, "gjpqy") != NULL;
 }
 
-PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
+static void open_patches(OptionsMenuEntry* option, PGB_SettingsScene* settingsScene)
+{
+    PGB_PatchesScene* patchesScene = PGB_PatchesScene_new(option->ud);
+    PGB_presentModal(patchesScene->scene);
+}
+
+PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, PGB_LibraryScene* libraryScene)
 {
     setCrankSoundsEnabled(true);
     PGB_SettingsScene* settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
+    settingsScene->libraryScene = libraryScene;
     settingsScene->cursorIndex = 0;
     settingsScene->topVisibleIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
-    settingsScene->entries = getOptionsEntries(gameScene);
+    settingsScene->entries = getOptionsEntries(settingsScene);
 
     // Initialize continuous scrolling variables
     settingsScene->scroll_direction = 0;
@@ -448,8 +456,14 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
     }
 }
 
-OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
+static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
 {
+    PGB_GameScene* gameScene = scene->gameScene;
+    PGB_LibraryScene* libraryScene = scene->libraryScene;
+    PGB_Game* selectedGame = (libraryScene && libraryScene->listView->selectedItem < libraryScene->games->length)
+        ? libraryScene->games->items[libraryScene->listView->selectedItem]
+        : NULL;
+    
     int max_entries = 30;  // we can overshoot, it's ok
     OptionsMenuEntry* entries = pgb_malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
@@ -517,6 +531,22 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
+        };
+    }
+    
+    if (libraryScene && selectedGame)
+    {
+        static char* desc = NULL;
+        if (desc != NULL) pgb_free(desc);
+        desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
+        
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Patches…",
+            .values = NULL,
+            .description = desc,
+            .max_value = 0,
+            .on_press = open_patches,
+            .ud = selectedGame
         };
     }
 
@@ -997,7 +1027,7 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
         pgb_free(settingsScene->entries);
     }
 
-    settingsScene->entries = getOptionsEntries(settingsScene->gameScene);
+    settingsScene->entries = getOptionsEntries(settingsScene);
 
     // count all entries that have a name
     settingsScene->totalMenuItemCount = 0;

@@ -637,7 +637,6 @@ ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scen
             return NULL;
         }
 
-        script_info_free(info);
         DTCM_VERIFY();
     }
 #endif

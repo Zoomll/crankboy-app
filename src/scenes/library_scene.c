@@ -14,7 +14,7 @@
 #include "../dtcm.h"
 #include "../http.h"
 #include "../jparse.h"
-#include "../modal.h"
+#include "../scenes/modal.h"
 #include "../preferences.h"
 #include "../script.h"
 #include "../userstack.h"
@@ -439,7 +439,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     PGB_Scene* scene = PGB_Scene_new();
 
-    PGB_LibraryScene* libraryScene = pgb_calloc(1, sizeof(PGB_LibraryScene));
+    PGB_LibraryScene* libraryScene = allocz(PGB_LibraryScene);
 
     libraryScene->state = kLibraryStateInit;
     libraryScene->build_index = 0;
@@ -1350,14 +1350,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
 static void PGB_LibraryScene_showSettings(void* userdata)
 {
-    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(NULL);
+    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(NULL, userdata);
     PGB_presentModal(settingsScene->scene);
 }
 
 static void PGB_LibraryScene_menu(void* object)
 {
     playdate->system->addMenuItem("Credits", PGB_showCredits, object);
-
     playdate->system->addMenuItem("Settings", PGB_LibraryScene_showSettings, object);
 }
 

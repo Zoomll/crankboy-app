@@ -32,6 +32,7 @@ VPATH += lz4
 SRC += $(wildcard src/cscripts/*.c)
 
 # List C source files here
+SRC += src/scenes/patches_scene.c
 SRC += src/scriptutil.c
 SRC += src/pgmusic.c
 SRC += src/scenes/info_scene.c
@@ -40,7 +41,7 @@ SRC += src/scenes/image_conversion_scene.c
 SRC += src/http.c
 SRC += src/version.c
 SRC += src/scenes/credits_scene.c
-SRC += src/modal.c
+SRC += src/scenes/modal.c
 SRC += src/scenes/game_scanning_scene.c
 SRC += src/scenes/game_scene.c
 SRC += src/userstack.c

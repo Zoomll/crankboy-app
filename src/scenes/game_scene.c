@@ -13,7 +13,7 @@
 #include "../../peanut_gb/peanut_gb.h"
 #include "../app.h"
 #include "../dtcm.h"
-#include "../modal.h"
+#include "../scenes/modal.h"
 #include "../preferences.h"
 #include "../revcheck.h"
 #include "../script.h"
@@ -2273,7 +2273,7 @@ __section__(".rare") void PGB_GameScene_didSelectLibrary(void* userdata)
 __section__(".rare") static void PGB_GameScene_showSettings(void* userdata)
 {
     PGB_GameScene* gameScene = userdata;
-    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(gameScene);
+    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(gameScene, NULL);
     PGB_presentModal(settingsScene->scene);
 
     // We need to set this here to None in case the user selected any button.

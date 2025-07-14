@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #define PATCH_ENABLED 1
 #define PATCH_DISABLED 0
@@ -27,3 +28,4 @@ SoftPatch* list_patches(const char* rom_path, int* o_new_patch_count);
 void save_patches_state(const char* rom_path, SoftPatch* patches);
 void free_patches(SoftPatch* patchlist);
 
+bool patch_rom(void** io_rom, size_t* io_romsize, const SoftPatch* patchlist);
