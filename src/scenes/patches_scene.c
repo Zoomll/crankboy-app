@@ -14,7 +14,7 @@
 
 #define INFO_Y (HEADER_HEIGHT + 2 * MARGIN + ROW_HEIGHT * MAX_DISP)
 
-#define INFO                                                                                           \
+#define INFO                                                                                       \
     "Press Ⓐ to toggle patches.\n \nHold Ⓐ to rearrange patches. Enabled patches will be applied " \
     "in the order listed."
 
