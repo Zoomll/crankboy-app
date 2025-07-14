@@ -21,6 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple Save State slots per game (note: not currently available if game has its own cartridge data)
 - You can download cover art for your library from within CrankBoy.
 - Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
+- Support for softpatching `.ips` patch files. Instead of making a bunch of copies of a ROM for all the different ROMhacks you'd like to apply to it, you can use a single clean ROM and several .ips files, each of which you can toggle from the settings. [Instructions below](#softpatching).
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing a just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "Bundle Mode," below
 
@@ -54,6 +55,12 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 Please note that the copy of the files in the PDX will not be deleted, so this could waste some disk space on your Playdate unnecessarily. However, even if you then re-install a fresh copy of CrankBoy without any additions to the PDX, the ROMs will still be present (and any new ROMs will be copied in).
 
 Also note that ROMs and cover art cannot be *replaced* or *deleted* through this method, as it will not overwrite a previously-copied ROM from the PDX.
+
+## Softpatching
+
+Using the USB method described above, create a folder in the game's data directory, in the `patches/` subdirectory, matching the associated ROM name without extension. For instance, given a ROM `Squid Game Boy.gb`, create the directory `patches/Squid Game Boy/`, and place your various `.ips` patch files in this directory. (If you go to `⊙ > settings > Patch...` from the main library within CrankBoy, this directory will be automatically created for you.)
+
+Then, you can enable, disable, and reorder your patches by going to `⊙ > settings > Patch` while the appropriate game is selected on main game library screen. Please note that the patches are applied in the order given; this matters if different patches conflict. In the case of a conflict, no warning message will be displayed.
 
 ## Bundle Mode
 

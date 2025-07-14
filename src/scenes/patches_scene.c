@@ -179,6 +179,11 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
     SoftPatch* patches = call_with_main_stack_2(list_patches, game->fullpath, NULL);
     char* patches_dir = get_patches_directory(game->fullpath);
     
+    // make patches directory
+    playdate->file->mkdir(patches_dir);
+    pgb_free(patches_dir);
+    
+    // if no patches, display info instead.
     if (!patches || !patches[0].fullpath)
     {
         LCDFont* font = PGB_App->bodyFont;
@@ -200,11 +205,6 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
         // FIXME: type pun ugh
         return (void*)PGB_InfoScene_new(msg);
     }
-    
-    // make patches directory
-    char* dir = get_patches_directory(game->fullpath);
-    playdate->file->mkdir(dir);
-    pgb_free(dir);
     
     PGB_Scene* scene = PGB_Scene_new();
     PGB_PatchesScene* patchesScene = allocz(PGB_PatchesScene);
