@@ -158,5 +158,15 @@
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 -c ${env:PLAYDATE_SDK_PATH}/C_API/buildsupport/setup.c -o build/setup.o",
         "directory": "${workspaceFolder}",
         "file": "${env:PLAYDATE_SDK_PATH}/C_API/buildsupport/setup.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 -c src/scenes/patches_scene.c -o build/src/scenes/patches_scene.o",
+        "directory": "${workspaceFolder}",
+        "file": "src/scenes/patches_scene.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I peanut_gb -I minigb_apu -I lcd -I lz4 -I lua-5.4.7 -c src/softpatch.c -o build/src/softpatch.o",
+        "directory": "${workspaceFolder}",
+        "file": "src/softpatch.c"
     }
 ]
