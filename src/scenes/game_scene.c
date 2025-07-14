@@ -3163,7 +3163,7 @@ __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_num
     }
 }
 
-void show_game_script_info(const char* rompath)
+void show_game_script_info(const char* rompath, const char* name_short)
 {
     ScriptInfo* info = script_get_info_by_rom_path(rompath);
     if (!info)
@@ -3175,7 +3175,19 @@ void show_game_script_info(const char* rompath)
         return;
     }
 
-    char* text = aprintf("\"%s\"\nScript information:\n\n%s", info->rom_name, info->info);
+    char* text = NULL;
+
+    // Check if name_short was provided and is not an empty string
+    if (name_short && name_short[0] != '\0')
+    {
+        text = aprintf("%s\nScript information:\n\n%s", name_short, info->info);
+    }
+    else
+    {
+        // Fallback to just the rom_name if name_short is not available
+        text = aprintf("%s\nScript information:\n\n%s", info->rom_name, info->info);
+    }
+
     script_info_free(info);
     if (!text)
         return;

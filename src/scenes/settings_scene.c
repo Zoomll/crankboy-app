@@ -87,7 +87,7 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
     CB_GameScene* gameScene = settingsScene->gameScene;
     if (gameScene && gameScene->script_info_available)
     {
-        show_game_script_info(gameScene->rom_filename);
+        show_game_script_info(gameScene->rom_filename, gameScene->name_short);
     }
 }
 

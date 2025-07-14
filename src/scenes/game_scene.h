@@ -160,7 +160,7 @@ unsigned get_save_state_timestamp(CB_GameScene *gameScene, unsigned slot);
 bool load_state_thumbnail(CB_GameScene *gameScene, unsigned slot, uint8_t* out);
 
 struct CB_Game;
-void show_game_script_info(const char* rompath);
+void show_game_script_info(const char* rompath, const char* name_short);
 
 // horizontal position of game boy screen on playdate screen; must be a multiple of 8
 extern unsigned game_picture_x_offset;

@@ -347,7 +347,7 @@ static void launch_game(void* ud, int option)
     case 2:
         // display information
         {
-            show_game_script_info(game->fullpath);
+            show_game_script_info(game->fullpath, game->names->name_short_leading_article);
         }
         break;
 
