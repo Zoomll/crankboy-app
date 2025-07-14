@@ -87,7 +87,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
     acc.list = NULL;
     acc.patch_dir = patch_dir;
 
-    playdate->file->listfiles(patch_dir, list_patch_cb, &acc, true);
+    playdate->file->listfiles(patch_dir, list_patch_cb, &acc, false);
     char* listpath = patch_list_file(patch_dir);
     pgb_free(patch_dir);
 
