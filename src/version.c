@@ -25,6 +25,7 @@ struct VersionInfo
     char* download;
 };
 static struct VersionInfo* localVersionInfo = NULL;
+static struct VersionInfo* newVersionInfo = NULL;
 
 // previously been alerted to this version update, so dismiss it
 char* ignore_version = NULL;
@@ -41,6 +42,8 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
         pgb_free(oinfo->domain);
     if (oinfo->path)
         pgb_free(oinfo->path);
+    if (oinfo->download)
+        pgb_free(oinfo->download);
 
     int jparse_result = (ispath) ? parse_json(VERSION_INFO_FILE, &jvinfo, kFileRead | kFileReadData)
                                  : parse_json_string(text, &jvinfo);
@@ -115,13 +118,13 @@ const char* get_current_version(void)
 
 const char* get_download_url(void)
 {
-    if (read_local_version() == 1)
+    if (newVersionInfo && newVersionInfo->download)
     {
-        return localVersionInfo->download;
+        return newVersionInfo->download;
     }
     else
     {
-        return NULL;
+        return "Please download it manually";
     }
 }
 
@@ -145,54 +148,59 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
         // try parsing json. We have to skip to the first `{` because
         // the playdate HTTP API seems to put some garbage data (the http status code?) at the
         // beginning.
-        json_value jv;
-        int result = parse_json_string(strchr(data, '{'), &jv);
-
-        if (result != 0)
+        char* json_start = strchr(data, '{');
+        if (!json_start)
         {
-            // otherwise, we're done! Validate result:
-            json_value jname = json_get_table_value(jv, "name");
+            cbud->cb(-651, "Invalid JSON response", cbud->ud);
+            pgb_free(ud);
+            return;
+        }
 
-            if (jname.type == kJSONString && strlen(jname.data.stringval) > 0)
+        if (!newVersionInfo)
+        {
+            newVersionInfo = pgb_malloc(sizeof(struct VersionInfo));
+            if (!newVersionInfo)
             {
-                // if this matches the last-seen version, we mention that in the callback
-                if (ignore_version && strcmp(jname.data.stringval, ignore_version) == 0)
-                {
-                    // new version available, but we already knew about it
-                    cbud->cb(1, jname.data.stringval, cbud->ud);
-                }
-                else
-                {
-                    // update last-seen version
-                    pgb_write_entire_file(
-                        UPDATE_LAST_KNOWN_VERSION, jname.data.stringval,
-                        strlen(jname.data.stringval)
-                    );
-                    if (ignore_version)
-                        pgb_free(ignore_version);
-                    ignore_version = string_copy(jname.data.stringval);
+                cbud->cb(ERRMEM, STR_ERRMEM, cbud->ud);
+                pgb_free(ud);
+                return;
+            }
+            memset(newVersionInfo, 0, sizeof(*newVersionInfo));
+        }
 
-                    if (strcmp(jname.data.stringval, localVersionInfo->name))
-                    {
-                        // new version available
-                        cbud->cb(2, jname.data.stringval, cbud->ud);
-                    }
-                    else
-                    {
-                        cbud->cb(0, "No update available.", cbud->ud);
-                    }
-                }
+        if (read_version_info(json_start, false, newVersionInfo) == 0)
+        {
+            // if this matches the last-seen version, we mention that in the callback
+            if (ignore_version && strcmp(newVersionInfo->name, ignore_version) == 0)
+            {
+                // new version available, but we already knew about it
+                cbud->cb(1, newVersionInfo->name, cbud->ud);
             }
             else
             {
-                cbud->cb(-650, "Invalid version information receieved", cbud->ud);
+                // update last-seen version
+                pgb_write_entire_file(
+                    UPDATE_LAST_KNOWN_VERSION, newVersionInfo->name, strlen(newVersionInfo->name)
+                );
+                if (ignore_version)
+                    pgb_free(ignore_version);
+                ignore_version = string_copy(newVersionInfo->name);
+
+                if (strcmp(newVersionInfo->name, localVersionInfo->name))
+                {
+                    // new version available
+                    cbud->cb(2, newVersionInfo->name, cbud->ud);
+                }
+                else
+                {
+                    cbud->cb(0, "No update available.", cbud->ud);
+                }
             }
         }
         else
         {
-            cbud->cb(-651, "Invalid JSON response", cbud->ud);
+            cbud->cb(-650, "Invalid version information receieved", cbud->ud);
         }
-        free_json_data(jv);
     }
     pgb_free(ud);
 }
@@ -288,8 +296,19 @@ void version_quit(void)
         pgb_free(localVersionInfo->name);
         pgb_free(localVersionInfo->domain);
         pgb_free(localVersionInfo->path);
+        pgb_free(localVersionInfo->download);
         pgb_free(localVersionInfo);
         localVersionInfo = NULL;
+    }
+
+    if (newVersionInfo)
+    {
+        pgb_free(newVersionInfo->name);
+        pgb_free(newVersionInfo->domain);
+        pgb_free(newVersionInfo->path);
+        pgb_free(newVersionInfo->download);
+        pgb_free(newVersionInfo);
+        newVersionInfo = NULL;
     }
     if (ignore_version)
     {
