@@ -36,6 +36,10 @@ static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
 static bool library_was_initialized_once = false;
 
+// Animation state for the "Downloading cover..." text
+static float coverDownloadAnimationTimer = 0.0f;
+static int coverDownloadAnimationStep = 0;
+
 typedef struct
 {
     CB_LibraryScene* libraryScene;
@@ -263,6 +267,10 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     }
 
     set_download_status(libraryScene, COVER_DOWNLOAD_DOWNLOADING, "Downloading cover...");
+
+    coverDownloadAnimationTimer = 0.0f;
+    coverDownloadAnimationStep = 0;
+    libraryScene->scene->forceFullRefresh = true;
 
     CoverDownloadUserdata* userdata = cb_malloc(sizeof(CoverDownloadUserdata));
     userdata->libraryScene = libraryScene;
@@ -655,6 +663,17 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
+    if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+    {
+        coverDownloadAnimationTimer += dt;
+        if (coverDownloadAnimationTimer >= 0.5f)  // 500 ms
+        {
+            coverDownloadAnimationTimer -= 0.5f;
+            coverDownloadAnimationStep = (coverDownloadAnimationStep + 1) % 4;
+            libraryScene->scene->forceFullRefresh = true;
+        }
+    }
+
     if (!has_checked_for_update)
     {
         has_checked_for_update = true;
@@ -1014,9 +1033,26 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                         {
                             char message[32];
+                            const char* width_calc_string = NULL;
 
-                            if (libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
-                                libraryScene->showCrc)
+                            if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+                            {
+                                const char* base_text = "Downloading cover";
+                                // Animation sequence: 0 dots, 1 dots, 2 dot, 3 dots
+                                const int dot_counts[] = {0, 1, 2, 3};
+                                int num_dots = dot_counts[coverDownloadAnimationStep];
+
+                                snprintf(message, sizeof(message), "%s", base_text);
+                                for (int i = 0; i < num_dots; i++)
+                                {
+                                    strncat(message, ".", sizeof(message) - strlen(message) - 1);
+                                }
+                                // Use the full string for width calculation to prevent jitter
+                                width_calc_string = "Downloading cover...";
+                            }
+                            else if (libraryScene->coverDownloadState ==
+                                         COVER_DOWNLOAD_NO_GAME_IN_DB &&
+                                     libraryScene->showCrc)
                             {
                                 CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                                 if (selectedGame->names->crc32 != 0)
@@ -1040,9 +1076,15 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 snprintf(message, sizeof(message), "%s", defaultMessage);
                             }
 
+                            if (width_calc_string == NULL)
+                            {
+                                width_calc_string = message;
+                            }
+
                             playdate->graphics->setFont(CB_App->bodyFont);
                             int textWidth = playdate->graphics->getTextWidth(
-                                CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+                                CB_App->bodyFont, width_calc_string, strlen(width_calc_string),
+                                kUTF8Encoding, 0
                             );
                             int panel_content_width = rightPanelWidth - 1;
                             int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
