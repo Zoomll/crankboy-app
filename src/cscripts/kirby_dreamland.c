@@ -33,7 +33,6 @@ typedef struct ScriptData
 
     CodeReplacement* patch_no_door;
     CodeReplacement* patch_start_flying;
-    CodeReplacement* patch_continue_flying;
 
     LCDBitmap* sidebar;
 
@@ -47,6 +46,7 @@ typedef struct ScriptData
 
     bool fly_thrust_enabled;
     int fly_thrust;
+    bool continue_flying;
 
 } ScriptData;
 
@@ -124,6 +124,14 @@ SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3FB))
     if (data->fly_thrust_enabled && data->fly_thrust >= 0)
     {
         $A = data->fly_thrust;
+    }
+}
+
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x467E))
+{
+    if (data->continue_flying)
+    {
+        $A |= K_BUTTON_UP;
     }
 }
 
@@ -225,9 +233,6 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 
     data->patch_start_flying = code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
 
-    data->patch_continue_flying =
-        code_replacement(1, 0x467C, (0xF0, 0x8B), (0x3E, K_BUTTON_UP), true);
-
     SET_BREAKPOINTS(!!strcmp(header_name, "KIRBY DREAM LAND"));
 
     return data;
@@ -237,7 +242,6 @@ static void on_end(struct gb_s* gb, ScriptData* data)
 {
     code_replacement_free(data->patch_no_door);
     code_replacement_free(data->patch_start_flying);
-    code_replacement_free(data->patch_continue_flying);
 
     cb_free(data);
 }
@@ -399,20 +403,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     code_replacement_apply(data->patch_start_flying, start_flying_via_crank);
     code_replacement_apply(data->patch_no_door, start_flying_via_crank);
 
-    if (continue_flying)
-    {
-        u8 buttons = K_BUTTON_UP | $JOYPAD;
-        if (buttons != data->patch_continue_flying->tval[1])
-        {
-            data->patch_continue_flying->applied = false;
-            data->patch_continue_flying->tval[1] = buttons;
-        }
-        code_replacement_apply(data->patch_continue_flying, true);
-    }
-    else
-    {
-        code_replacement_apply(data->patch_continue_flying, false);
-    }
+    data->continue_flying = continue_flying;
 
     if (has_fly_thrust)
     {
