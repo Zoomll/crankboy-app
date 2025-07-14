@@ -787,7 +787,8 @@ fail:
 void memswap(void* a, void* b, size_t size)
 {
     unsigned char temp;
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         temp = ((unsigned char*)a)[i];
         ((unsigned char*)a)[i] = ((unsigned char*)b)[i];
         ((unsigned char*)b)[i] = temp;

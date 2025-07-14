@@ -1,7 +1,7 @@
 #pragma once
 
-#include "library_scene.h"
 #include "../softpatch.h"
+#include "library_scene.h"
 
 typedef struct PGB_PatchesScene
 {

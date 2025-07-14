@@ -120,24 +120,20 @@ json_value json_new_table(void)
     {
         v.type = kJSONTable;
     }
-    
+
     return v;
 }
 
 json_value json_new_string(const char* s)
 {
-    json_value jv = {
-        .type = kJSONString
-    };
+    json_value jv = {.type = kJSONString};
     jv.data.stringval = aprintf("%s", s);
     return jv;
 }
 
 json_value json_new_bool(bool v)
 {
-    json_value jv = {
-        .type = v ? kJSONTrue : kJSONFalse
-    };
+    json_value jv = {.type = v ? kJSONTrue : kJSONFalse};
     return jv;
 }
 

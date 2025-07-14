@@ -51,6 +51,8 @@ typedef struct PGB_SettingsScene
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
 } PGB_SettingsScene;
 
-PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, struct PGB_LibraryScene* libraryScene);
+PGB_SettingsScene* PGB_SettingsScene_new(
+    PGB_GameScene* gameScene, struct PGB_LibraryScene* libraryScene
+);
 
 #endif /* settings_scene_h */

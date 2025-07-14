@@ -9,9 +9,9 @@
 #include "../../minigb_apu/minigb_apu.h"
 #include "../app.h"
 #include "../dtcm.h"
-#include "../scenes/modal.h"
 #include "../preferences.h"
 #include "../revcheck.h"
+#include "../scenes/modal.h"
 #include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
@@ -453,10 +453,11 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
 {
     PGB_GameScene* gameScene = scene->gameScene;
     PGB_LibraryScene* libraryScene = scene->libraryScene;
-    PGB_Game* selectedGame = (libraryScene && libraryScene->listView->selectedItem < libraryScene->games->length)
-        ? libraryScene->games->items[libraryScene->listView->selectedItem]
-        : NULL;
-    
+    PGB_Game* selectedGame =
+        (libraryScene && libraryScene->listView->selectedItem < libraryScene->games->length)
+            ? libraryScene->games->items[libraryScene->listView->selectedItem]
+            : NULL;
+
     int max_entries = 30;  // we can overshoot, it's ok
     OptionsMenuEntry* entries = pgb_malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
@@ -1398,7 +1399,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         int y = initialY + i * rowHeight;
         const char* name = current_entry->name;
         const char* stateText =
-            (current_entry->values && *current_entry->pref_var < current_entry->max_value) ? current_entry->values[*current_entry->pref_var] : "";
+            (current_entry->values && *current_entry->pref_var < current_entry->max_value)
+                ? current_entry->values[*current_entry->pref_var]
+                : "";
         if (current_entry->show_value_only_on_hover && itemIndex != settingsScene->cursorIndex)
             stateText = "";
 

@@ -46,4 +46,3 @@ json_value json_new_int(int v);
 
 // returns true on success
 bool json_set_table_value(json_value* table, const char* key, json_value value);
-

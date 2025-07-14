@@ -12,12 +12,12 @@ typedef struct SoftPatch
     // if NULL, indicates end to list of SoftPatch
     char* fullpath;
     char* basename;
-    int state: 2; // PATCH_ENABLED, _DISABLED, or _UNKNOWN
-    
+    int state : 2;  // PATCH_ENABLED, _DISABLED, or _UNKNOWN
+
     // format (mutually exclusive)
     unsigned ips : 1;
     unsigned bps : 1;
-    
+
     // private
     int _order : 12;
 } SoftPatch;
