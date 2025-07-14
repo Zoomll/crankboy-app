@@ -1,5 +1,9 @@
 #include "../scriptutil.h"
 
+#define DESCRIPTION                                                              \
+    "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
+    "- Full aspect ratio; no vertical squishing."
+
 typedef struct ScriptData
 {
     int sidebar_x_prev;
@@ -217,6 +221,8 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 
 C_SCRIPT{
     .rom_name = "ZELDA",
+    .description = DESCRIPTION,
+    .experimental = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
