@@ -655,7 +655,8 @@ CB_ListItemButton* CB_ListItemButton_new(char* title)
 
     item->height = CB_ListView_rowHeight;
 
-    buttonItem->title = cb_strdup(title);
+    // If the title is NULL, slay dragons.
+    buttonItem->title = cb_strdup(title ? title : "There be dragons...");
     buttonItem->coverImage = NULL;
     buttonItem->textScrollOffset = 0.0f;
     buttonItem->needsTextScroll = false;
