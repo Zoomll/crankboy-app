@@ -15,13 +15,13 @@
 
 struct OptionsMenuEntry;
 struct PDSynth;
-struct PGB_LibraryScene;
+struct CB_LibraryScene;
 
-typedef struct PGB_SettingsScene
+typedef struct CB_SettingsScene
 {
-    PGB_Scene* scene;
-    PGB_GameScene* gameScene;
-    struct PGB_LibraryScene* libraryScene;
+    CB_Scene* scene;
+    CB_GameScene* gameScene;
+    struct CB_LibraryScene* libraryScene;
 
     int cursorIndex;
     int topVisibleIndex;
@@ -49,10 +49,10 @@ typedef struct PGB_SettingsScene
     float header_animation_p;
 
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
-} PGB_SettingsScene;
+} CB_SettingsScene;
 
-PGB_SettingsScene* PGB_SettingsScene_new(
-    PGB_GameScene* gameScene, struct PGB_LibraryScene* libraryScene
+CB_SettingsScene* CB_SettingsScene_new(
+    CB_GameScene* gameScene, struct CB_LibraryScene* libraryScene
 );
 
 #endif /* settings_scene_h */

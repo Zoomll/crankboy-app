@@ -14,10 +14,10 @@
 
 #include <stdio.h>
 
-typedef struct PGB_Scene
+typedef struct CB_Scene
 {
     void* managedObject;
-    struct PGB_Scene* parentScene;
+    struct CB_Scene* parentScene;
 
     float preferredRefreshRate;
 
@@ -28,13 +28,13 @@ typedef struct PGB_Scene
     void (*menu)(void* object);
     void (*free)(void* object);
     void (*event)(void* object, PDSystemEvent event, uint32_t arg);
-} PGB_Scene;
+} CB_Scene;
 
-PGB_Scene* PGB_Scene_new(void);
+CB_Scene* CB_Scene_new(void);
 
-void PGB_Scene_refreshMenu(PGB_Scene* scene);
+void CB_Scene_refreshMenu(CB_Scene* scene);
 
-void PGB_Scene_update(void* scene, uint32_t u32enc_dt);
-void PGB_Scene_free(void* scene);
+void CB_Scene_update(void* scene, uint32_t u32enc_dt);
+void CB_Scene_free(void* scene);
 
 #endif /* scene_h */

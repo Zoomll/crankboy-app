@@ -15,7 +15,7 @@ at build time, and they must contain a C_SCRIPT { ... } declaration.
 
 */
 
-struct PGB_GameScene;
+struct CB_GameScene;
 struct gb_s;
 struct lua_State;
 
@@ -66,15 +66,15 @@ typedef struct ScriptState
     CS_OnBreakpoint* cbp;
 } ScriptState;
 
-ScriptState* script_begin(const char* game_name, struct PGB_GameScene* game_scene);
-void script_end(ScriptState* state, struct PGB_GameScene* game_scene);
-void script_tick(ScriptState* state, struct PGB_GameScene* game_scene);
-void script_draw(ScriptState* state, struct PGB_GameScene* game_scene);
-void script_on_breakpoint(struct PGB_GameScene* game_scene, int index);
+ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene);
+void script_end(ScriptState* state, struct CB_GameScene* game_scene);
+void script_tick(ScriptState* state, struct CB_GameScene* game_scene);
+void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
+void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
 void script_quit(void);
 
 void register_c_script(const struct CScriptInfo* info);
-void pgb_register_all_scripts(void);
+void cb_register_all_scripts(void);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.

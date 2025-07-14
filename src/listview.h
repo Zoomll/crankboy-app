@@ -22,7 +22,7 @@ typedef struct
     bool scrollIndicatorVisible;
     int scrollIndicatorOffset;
     int scrollIndicatorHeight;
-} PGB_ListViewModel;
+} CB_ListViewModel;
 
 typedef struct
 {
@@ -34,49 +34,49 @@ typedef struct
     bool indicatorVisible;
     float indicatorOffset;
     float indicatorHeight;
-} PGB_ListViewScroll;
+} CB_ListViewScroll;
 
 typedef enum
 {
-    PGB_ListViewItemTypeButton,
-    PGB_ListViewItemTypeSwitch
-} PGB_ListItemType;
+    CB_ListViewItemTypeButton,
+    CB_ListViewItemTypeSwitch
+} CB_ListItemType;
 
 typedef enum
 {
-    PGB_ListViewDirectionNone,
-    PGB_ListViewDirectionUp,
-    PGB_ListViewDirectionDown
-} PGB_ListViewDirection;
+    CB_ListViewDirectionNone,
+    CB_ListViewDirectionUp,
+    CB_ListViewDirectionDown
+} CB_ListViewDirection;
 
 typedef struct
 {
-    PGB_ListItemType type;
+    CB_ListItemType type;
     void* object;
     int height;
     int offsetY;
-} PGB_ListItem;
+} CB_ListItem;
 
 typedef struct
 {
-    PGB_ListItem* item;
+    CB_ListItem* item;
     char* title;
     LCDBitmap* coverImage;
     float textScrollOffset;
     bool needsTextScroll;
-} PGB_ListItemButton;
+} CB_ListItemButton;
 
 typedef struct
 {
-    PGB_Array* items;
-    PGB_ListViewModel model;
+    CB_Array* items;
+    CB_ListViewModel model;
     int selectedItem;
 
     int contentOffset;
     int contentSize;
 
-    PGB_ListViewScroll scroll;
-    PGB_ListViewDirection direction;
+    CB_ListViewScroll scroll;
+    CB_ListViewDirection direction;
     int repeatLevel;
     float repeatIncrementTime;
     float repeatTime;
@@ -87,19 +87,19 @@ typedef struct
 
     float textScrollTime;
     float textScrollPause;
-} PGB_ListView;
+} CB_ListView;
 
-PGB_ListView* PGB_ListView_new(void);
+CB_ListView* CB_ListView_new(void);
 
-void PGB_ListView_update(PGB_ListView* listView);
-void PGB_ListView_draw(PGB_ListView* listView);
+void CB_ListView_update(CB_ListView* listView);
+void CB_ListView_draw(CB_ListView* listView);
 
-void PGB_ListView_reload(PGB_ListView* listView);
+void CB_ListView_reload(CB_ListView* listView);
 
-void PGB_ListView_free(PGB_ListView* listView);
+void CB_ListView_free(CB_ListView* listView);
 
-PGB_ListItemButton* PGB_ListItemButton_new(char* title);
+CB_ListItemButton* CB_ListItemButton_new(char* title);
 
-void PGB_ListItem_free(PGB_ListItem* item);
+void CB_ListItem_free(CB_ListItem* item);
 
 #endif /* listview_h */

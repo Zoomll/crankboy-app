@@ -48,7 +48,7 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
     }
 #endif
 
-    void* original_ptr = pgb_malloc(size + alignment - 1 + sizeof(void*));
+    void* original_ptr = cb_malloc(size + alignment - 1 + sizeof(void*));
     if (!original_ptr)
     {
         return NULL;
@@ -147,8 +147,7 @@ struct dtcm_store_t* dtcm_store(void)
     size_t size = (uintptr_t)dtcm_mempool + 4 - (uintptr_t)dtcm_low_canary_addr;
 
     playdate->system->logToConsole("Storing DTCM (0x%x bytes)", size);
-    struct dtcm_store_t* buff =
-        (struct dtcm_store_t*)pgb_malloc(sizeof(struct dtcm_store_t) + size);
+    struct dtcm_store_t* buff = (struct dtcm_store_t*)cb_malloc(sizeof(struct dtcm_store_t) + size);
     buff->dtcm_low = dtcm_low_canary_addr;
     buff->dtcm_mempool = dtcm_mempool;
     memcpy(buff->data, dtcm_low_canary_addr, size);
@@ -169,7 +168,7 @@ void dtcm_restore(struct dtcm_store_t* buff)
     size_t size = (uintptr_t)dtcm_mempool + 4 - (uintptr_t)dtcm_low_canary_addr;
     playdate->system->logToConsole("-> restored DTCM is 0x%x bytes", size);
     memcpy(dtcm_low_canary_addr, buff->data, size);
-    pgb_free(buff);
+    cb_free(buff);
     playdate->system->logToConsole("Restore complete.");
 #endif
 }
@@ -189,5 +188,5 @@ void dtcm_free(void* ptr)
     }
 #endif
     void* original_ptr = ((void**)ptr)[-1];
-    pgb_free(original_ptr);
+    cb_free(original_ptr);
 }

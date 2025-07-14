@@ -1,20 +1,20 @@
 require "common"
 
-pgb.setCrankSoundsDisabled()
-pgb.force_pref("crank_mode", 5)
-pgb.force_pref("crank_undock_button", 0)
-pgb.force_pref("crank_dock_button", 0)
+cb.setCrankSoundsDisabled()
+cb.force_pref("crank_mode", 5)
+cb.force_pref("crank_undock_button", 0)
+cb.force_pref("crank_dock_button", 0)
 
 -- decide version based on name in header
-if pgb.rom_peek(0x13C) == 0x52 then
+if cb.rom_peek(0x13C) == 0x52 then
     POKERED = true
     POKEVER = "R"
 end
-if pgb.rom_peek(0x13C) == 0x42 then
+if cb.rom_peek(0x13C) == 0x42 then
     POKEBLUE = true
     POKEVER = "B"
 end
-if pgb.rom_peek(0x13C) == 0x59 then
+if cb.rom_peek(0x13C) == 0x59 then
     POKEYELLOW = true
     POKEVER = "Y"
 end
@@ -28,7 +28,7 @@ XRAM_TRAINER = 0xFEA5
 
 -- 2: enable xram [0xFEA0-FEFF]
 -- 4: enable crank menu mode
-pgb.ram_poke(0xFF57, 0x06)
+cb.ram_poke(0xFF57, 0x06)
 
 if bint(POKERED) + bint(POKEBLUE) + bint(POKEYELLOW) ~= 1 then
     error("Unrecognized gen1 ROM")

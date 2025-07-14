@@ -4,11 +4,11 @@ end
 
 function poke_verify(bank, addr, prev, val)
     addr = bank*0x4000 | (addr % 0x4000)
-    if pgb.rom_peek(addr) ~= prev then
-        error("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at " .. string.format("0x%04X", addr) .. " expected " .. string.format("0x%02X", prev) .. " got " .. string.format("0x%02X", pgb.rom_peek(addr)))
+    if cb.rom_peek(addr) ~= prev then
+        error("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at " .. string.format("0x%04X", addr) .. " expected " .. string.format("0x%02X", prev) .. " got " .. string.format("0x%02X", cb.rom_peek(addr)))
     end
 
-    pgb.rom_poke(addr, val)
+    cb.rom_poke(addr, val)
 end
 
 function code_replacement(bank, addr, tprev, tval, unsafe)
@@ -23,7 +23,7 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
     local base_addr = bank * 0x4000 | (addr % 0x4000)
     for i = 1, #tprev do
         local current_addr = base_addr + i - 1
-        local current_byte = pgb.rom_peek(current_addr)
+        local current_byte = cb.rom_peek(current_addr)
         if current_byte ~= tprev[i] then
             error(string.format("SCRIPT ERROR -- is this the right ROM? Poke_verify failed at 0x%04X expected 0x%02X got 0x%02X",
                 current_addr, tprev[i], current_byte))
@@ -55,14 +55,14 @@ function code_replacement(bank, addr, tprev, tval, unsafe)
 
         if not self.unsafe then
             -- wait until PC is outside the replacement area
-            while pgb.regs.pc >= self.addr and pgb.regs.pc < self.addr + self.length do
-                pgb.step_cpu()
+            while cb.regs.pc >= self.addr and cb.regs.pc < self.addr + self.length do
+                cb.step_cpu()
             end
         end
 
         -- Apply the changes
         for i = 1, self.length do
-            pgb.rom_poke(self.addr + i - 1, target[i])
+            cb.rom_poke(self.addr + i - 1, target[i])
         end
     end
 
@@ -75,7 +75,7 @@ function find_code_cave(bank)
     local bank_end = bank_start + 0x4000 - 1
     if bank == nil then
         bank_start = 0
-        bank_end = pgb.rom_size() - 1
+        bank_end = cb.rom_size() - 1
     end
     local max_start = 0
     local max_size = 0
@@ -83,7 +83,7 @@ function find_code_cave(bank)
     local current_size = 0
 
     for addr = bank_start, bank_end do
-        local byte = pgb.rom_peek(addr)
+        local byte = cb.rom_peek(addr)
 
         -- Check if byte is part of a code cave (0x00 or 0xFF)
         -- ignore if it's the first byte of a bank, to split caves by bank
@@ -335,9 +335,9 @@ function apply_patch(patch, rom_addr, ram_addr, max_size, _labels)
         end
         if (rom_addr >= 0xFEA0 and rom_addr <= 0xFEFF) then
             -- xram trainer
-            pgb.ram_poke(rom_addr + i - 1, b)
+            cb.ram_poke(rom_addr + i - 1, b)
         else
-            pgb.rom_poke(rom_addr + i - 1, b)
+            cb.rom_poke(rom_addr + i - 1, b)
         end
     end
 

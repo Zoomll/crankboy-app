@@ -22,8 +22,8 @@ PREF(crank_undock_button, PREF_BUTTON_NONE)
 PREF(crank_dock_button, PREF_BUTTON_NONE)
 PREF(joypad_interrupts, 0)
 PREF(overclock, 0)
-PREF(bios, !(PGB_App->bundled_rom))
-PREF(script_support, !!(PGB_App->bundled_rom))
+PREF(bios, !(CB_App->bundled_rom))
+PREF(script_support, !!(CB_App->bundled_rom))
 PREF(script_has_prompted, false)  // (not a real setting)
 
 // library

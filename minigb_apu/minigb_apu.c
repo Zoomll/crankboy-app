@@ -10,8 +10,8 @@
 #include "../peanut_gb/peanut_gb.h"
 #include "../src/app.h"
 #include "../src/dtcm.h"
-#include "../src/scenes/game_scene.h"
 #include "../src/preferences.h"
+#include "../src/scenes/game_scene.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -745,8 +745,8 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
     DTCM_VERIFY_DEBUG();
 
-    PGB_GameScene** gameScene_ptr = context;
-    PGB_GameScene* gameScene = *gameScene_ptr;
+    CB_GameScene** gameScene_ptr = context;
+    CB_GameScene* gameScene = *gameScene_ptr;
 
     if (!gameScene || gameScene->audioLocked)
     {

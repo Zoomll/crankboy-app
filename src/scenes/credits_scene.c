@@ -31,25 +31,25 @@ static void shuffle_array(JsonArray* array)
     }
 }
 
-static void PGB_CreditsScene_didSelectBack(void* userdata)
+static void CB_CreditsScene_didSelectBack(void* userdata)
 {
-    PGB_CreditsScene* creditsScene = userdata;
+    CB_CreditsScene* creditsScene = userdata;
     creditsScene->shouldDismiss = true;
 }
 
-static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
+static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
 
-    PGB_CreditsScene* creditsScene = object;
+    CB_CreditsScene* creditsScene = object;
     JsonArray* carray = creditsScene->jcred.data.arrayval;
 
     if (creditsScene->shouldDismiss)
     {
-        PGB_dismiss(creditsScene->scene);
+        CB_dismiss(creditsScene->scene);
         return;
     }
 
@@ -107,9 +107,9 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
             // title
             {
-                playdate->graphics->setFont(PGB_App->titleFont);
+                playdate->graphics->setFont(CB_App->titleFont);
                 int advance = playdate->graphics->getTextHeightForMaxWidth(
-                    PGB_App->titleFont, section.data.stringval, strlen(section.data.stringval),
+                    CB_App->titleFont, section.data.stringval, strlen(section.data.stringval),
                     width, kUTF8Encoding, kWrapWord, tracking, extraLeading
                 );
 
@@ -123,9 +123,9 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             // subtitle
             if (subtitle.type == kJSONString)
             {
-                playdate->graphics->setFont(PGB_App->labelFont);
+                playdate->graphics->setFont(CB_App->labelFont);
                 int advance = playdate->graphics->getTextHeightForMaxWidth(
-                    PGB_App->labelFont, subtitle.data.stringval, strlen(subtitle.data.stringval),
+                    CB_App->labelFont, subtitle.data.stringval, strlen(subtitle.data.stringval),
                     width, kUTF8Encoding, kWrapWord, tracking, extraLeading
                 );
 
@@ -147,9 +147,9 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
                 {
                     json_value contributor = contsObj->data[j];
 
-                    playdate->graphics->setFont(PGB_App->bodyFont);
+                    playdate->graphics->setFont(CB_App->bodyFont);
                     int advance = playdate->graphics->getTextHeightForMaxWidth(
-                        PGB_App->bodyFont, contributor.data.stringval,
+                        CB_App->bodyFont, contributor.data.stringval,
                         strlen(contributor.data.stringval), width, kUTF8Encoding, kWrapWord,
                         tracking, extraLeading
                     );
@@ -180,10 +180,10 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
                 }
                 else
                 {
-                    playdate->graphics->setFont(PGB_App->labelFont);
+                    playdate->graphics->setFont(CB_App->labelFont);
                     int advance =
                         playdate->graphics->getTextHeightForMaxWidth(
-                            PGB_App->labelFont, line.data.stringval, strlen(line.data.stringval),
+                            CB_App->labelFont, line.data.stringval, strlen(line.data.stringval),
                             width, kUTF8Encoding, kWrapWord, tracking, extraLeading
                         ) +
                         1;
@@ -200,7 +200,7 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
         json_value logo = json_get_table_value(entry, "logo");
         if (logo.type == kJSONTrue)
         {
-            playdate->graphics->setFont(PGB_App->labelFont);
+            playdate->graphics->setFont(CB_App->labelFont);
             const char* version = get_current_version();
 
             if (version)
@@ -256,71 +256,71 @@ static void PGB_CreditsScene_update(void* object, uint32_t u32enc_dt)
         creditsScene->scroll = credits_height - LCD_ROWS;
     }
 
-    if (PGB_App->buttons_pressed & kButtonB)
+    if (CB_App->buttons_pressed & kButtonB)
     {
         creditsScene->shouldDismiss = true;
     }
 }
 
-static void PGB_CreditsScene_menu(void* object)
+static void CB_CreditsScene_menu(void* object)
 {
-    PGB_CreditsScene* creditsScene = object;
+    CB_CreditsScene* creditsScene = object;
     playdate->system->removeAllMenuItems();
 
-    if (!PGB_App->bundled_rom)
+    if (!CB_App->bundled_rom)
     {
-        playdate->system->addMenuItem("Library", PGB_CreditsScene_didSelectBack, creditsScene);
+        playdate->system->addMenuItem("Library", CB_CreditsScene_didSelectBack, creditsScene);
     }
     else
     {
         if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
         {
             // Back to settings
-            playdate->system->addMenuItem("Back", PGB_CreditsScene_didSelectBack, creditsScene);
+            playdate->system->addMenuItem("Back", CB_CreditsScene_didSelectBack, creditsScene);
         }
         else
         {
             // Back to game
-            playdate->system->addMenuItem("Resume", PGB_CreditsScene_didSelectBack, creditsScene);
+            playdate->system->addMenuItem("Resume", CB_CreditsScene_didSelectBack, creditsScene);
         }
     }
 }
 
-static void PGB_CreditsScene_free(void* object)
+static void CB_CreditsScene_free(void* object)
 {
     pgmusic_end();
-    PGB_CreditsScene* creditsScene = object;
-    PGB_Scene_free(creditsScene->scene);
+    CB_CreditsScene* creditsScene = object;
+    CB_Scene_free(creditsScene->scene);
     free_json_data(creditsScene->jcred);
     if (creditsScene->logo)
         playdate->graphics->freeBitmap(creditsScene->logo);
-    pgb_free(creditsScene->y_advance_by_item);
-    pgb_free(creditsScene);
+    cb_free(creditsScene->y_advance_by_item);
+    cb_free(creditsScene);
 }
 
-PGB_CreditsScene* PGB_CreditsScene_new(void)
+CB_CreditsScene* CB_CreditsScene_new(void)
 {
     setCrankSoundsEnabled(true);
     pgmusic_begin();
     playdate->system->getCrankChange();
-    PGB_CreditsScene* creditsScene = pgb_malloc(sizeof(PGB_CreditsScene));
+    CB_CreditsScene* creditsScene = cb_malloc(sizeof(CB_CreditsScene));
     if (!creditsScene)
         return NULL;
     memset(creditsScene, 0, sizeof(*creditsScene));
     creditsScene->scroll = 0.0f;
     creditsScene->time = 0.0f;
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
     if (!scene)
     {
-        pgb_free(creditsScene);
+        cb_free(creditsScene);
         return NULL;
     }
 
     scene->managedObject = creditsScene;
-    scene->update = PGB_CreditsScene_update;
-    scene->free = PGB_CreditsScene_free;
-    scene->menu = PGB_CreditsScene_menu;
+    scene->update = CB_CreditsScene_update;
+    scene->free = CB_CreditsScene_free;
+    scene->menu = CB_CreditsScene_menu;
 
     creditsScene->scene = scene;
     creditsScene->logo = playdate->graphics->loadBitmap("images/logo", NULL);
@@ -334,13 +334,13 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
         {
             playdate->graphics->freeBitmap(creditsScene->logo);
         }
-        pgb_free(creditsScene);
-        pgb_free(scene);
+        cb_free(creditsScene);
+        cb_free(scene);
         return NULL;
     }
     creditsScene->jcred = j;
 
-    creditsScene->y_advance_by_item = pgb_malloc(sizeof(int) * ((JsonArray*)j.data.tableval)->n);
+    creditsScene->y_advance_by_item = cb_malloc(sizeof(int) * ((JsonArray*)j.data.tableval)->n);
     if (creditsScene->y_advance_by_item)
     {
         for (size_t i = 0; i < ((JsonArray*)j.data.tableval)->n; ++i)
@@ -352,8 +352,8 @@ PGB_CreditsScene* PGB_CreditsScene_new(void)
     return creditsScene;
 }
 
-void PGB_showCredits(void* userdata)
+void CB_showCredits(void* userdata)
 {
-    PGB_CreditsScene* creditsScene = PGB_CreditsScene_new();
-    PGB_presentModal(creditsScene->scene);
+    CB_CreditsScene* creditsScene = CB_CreditsScene_new();
+    CB_presentModal(creditsScene->scene);
 }

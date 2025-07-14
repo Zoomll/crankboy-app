@@ -63,7 +63,7 @@ __section__(".text.main") DllExport
 
     if (event != kEventInit)
     {
-        PGB_event(event, arg);
+        CB_event(event, arg);
     }
 
     if (event == kEventInit)
@@ -85,13 +85,13 @@ __section__(".text.main") DllExport
 #ifdef TARGET_PLAYDATE
         playdate->system->logToConsole("Test user stack");
         void* result = call_with_user_stack_1(user_stack_test, (void*)(uintptr_t)0x103);
-        PGB_ASSERT(result == 0x784);
+        CB_ASSERT(result == 0x784);
         playdate->system->logToConsole("User stack validated");
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
 
-        PGB_init();
+        CB_init();
 
         pd->system->setUpdateCallback(update, pd);
     }
@@ -101,7 +101,7 @@ __section__(".text.main") DllExport
         exec_array(&__fini_array_start, &__fini_array_end);
 #endif
 
-        PGB_quit();
+        CB_quit();
     }
 
     DTCM_VERIFY_DEBUG();
@@ -125,7 +125,7 @@ __section__(".text.main") int update(void* userdata)
     float dt = pd->system->getElapsedTime();
     pd->system->resetElapsedTime();
 
-    PGB_update(dt);
+    CB_update(dt);
 
     DTCM_VERIFY_DEBUG();
 

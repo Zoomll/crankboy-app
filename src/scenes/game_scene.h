@@ -16,33 +16,33 @@
 #include <math.h>
 #include <stdio.h>
 
-typedef struct PGB_GameSceneContext PGB_GameSceneContext;
-typedef struct PGB_GameScene PGB_GameScene;
+typedef struct CB_GameSceneContext CB_GameSceneContext;
+typedef struct CB_GameScene CB_GameScene;
 
-extern PGB_GameScene* audioGameScene;
-
-typedef enum
-{
-    PGB_GameSceneStateLoaded,
-    PGB_GameSceneStateError
-} PGB_GameSceneState;
+extern CB_GameScene* audioGameScene;
 
 typedef enum
 {
-    PGB_GameSceneErrorUndefined,
-    PGB_GameSceneErrorLoadingRom,
-    PGB_GameSceneErrorWrongLocation,
-    PGB_GameSceneErrorFatal
-} PGB_GameSceneError;
+    CB_GameSceneStateLoaded,
+    CB_GameSceneStateError
+} CB_GameSceneState;
+
+typedef enum
+{
+    CB_GameSceneErrorUndefined,
+    CB_GameSceneErrorLoadingRom,
+    CB_GameSceneErrorWrongLocation,
+    CB_GameSceneErrorFatal
+} CB_GameSceneError;
 
 typedef struct
 {
-    PGB_GameSceneState state;
-    PGB_GameSceneError error;
+    CB_GameSceneState state;
+    CB_GameSceneError error;
     int selectorIndex;
     int crank_mode;
     bool empty;
-} PGB_GameSceneModel;
+} CB_GameSceneModel;
 
 typedef struct
 {
@@ -64,26 +64,26 @@ typedef struct
     float index;
     bool startPressed;
     bool selectPressed;
-} PGB_CrankSelector;
+} CB_CrankSelector;
 
 struct gb_s;
 
-typedef struct PGB_GameSceneContext
+typedef struct CB_GameSceneContext
 {
-    PGB_GameScene* scene;
+    CB_GameScene* scene;
     struct gb_s* gb;
     uint8_t wram[WRAM_SIZE];
     uint8_t vram[VRAM_SIZE];
     uint8_t* rom;
     uint8_t* cart_ram;
     uint8_t previous_lcd[LCD_HEIGHT * LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
-} PGB_GameSceneContext;
+} CB_GameSceneContext;
 
 struct ScriptState;
 
-typedef struct PGB_GameScene
+typedef struct CB_GameScene
 {
-    PGB_Scene* scene;
+    CB_Scene* scene;
     char* save_filename;
     char* rom_filename;
     char* base_filename;  // rom filename with extension stripped
@@ -115,14 +115,14 @@ typedef struct PGB_GameScene
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;
 
-    PGB_GameSceneState state;
-    PGB_GameSceneContext *context;
-    PGB_GameSceneModel model;
-    PGB_GameSceneError error;
+    CB_GameSceneState state;
+    CB_GameSceneContext *context;
+    CB_GameSceneModel model;
+    CB_GameSceneError error;
 
-    PGB_CrankSelector selector;
+    CB_CrankSelector selector;
 
-#if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
+#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
     PDRect debug_highlightFrame;
     bool debug_updatedRows[LCD_ROWS];
 #endif
@@ -150,16 +150,16 @@ typedef struct PGB_GameScene
     int previous_scale_line_index;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
-} PGB_GameScene;
+} CB_GameScene;
 
-PGB_GameScene *PGB_GameScene_new(const char *rom_filename, char* name_short);
-void PGB_GameScene_apply_settings(PGB_GameScene *gameScene, bool audio_settings_changed);
-void PGB_GameScene_didSelectLibrary(void* userdata);
+CB_GameScene *CB_GameScene_new(const char *rom_filename, char* name_short);
+void CB_GameScene_apply_settings(CB_GameScene *gameScene, bool audio_settings_changed);
+void CB_GameScene_didSelectLibrary(void* userdata);
 
-unsigned get_save_state_timestamp(PGB_GameScene *gameScene, unsigned slot);
-bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out);
+unsigned get_save_state_timestamp(CB_GameScene *gameScene, unsigned slot);
+bool load_state_thumbnail(CB_GameScene *gameScene, unsigned slot, uint8_t* out);
 
-struct PGB_Game;
+struct CB_Game;
 void show_game_script_info(const char* rompath);
 
 // horizontal position of game boy screen on playdate screen; must be a multiple of 8

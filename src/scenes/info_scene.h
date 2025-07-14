@@ -6,13 +6,13 @@
 
 // Just displays some text. Plain and simple.
 
-typedef struct PGB_InfoScene
+typedef struct CB_InfoScene
 {
-    PGB_Scene* scene;
+    CB_Scene* scene;
 
     char* text;
     float scroll;
     bool canClose;
-} PGB_InfoScene;
+} CB_InfoScene;
 
-PGB_InfoScene* PGB_InfoScene_new(char* text);
+CB_InfoScene* CB_InfoScene_new(char* text);

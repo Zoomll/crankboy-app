@@ -8,10 +8,10 @@
 
 char* get_patches_directory(const char* rom_path)
 {
-    char* bn = pgb_basename(rom_path, true);
-    char* f = aprintf("%s/%s", PGB_patchesPath, bn);
+    char* bn = cb_basename(rom_path, true);
+    char* f = aprintf("%s/%s", CB_patchesPath, bn);
 
-    pgb_free(bn);
+    cb_free(bn);
     return f;
 }
 
@@ -21,7 +21,7 @@ bool patches_directory_exists(const char* rom_path)
 
     FileStat stat;
     int result = playdate->file->stat(dir, &stat);
-    pgb_free(dir);
+    cb_free(dir);
 
     if (result != 0)
         return false;
@@ -56,7 +56,7 @@ void list_patch_cb(const char* filename, void* ud)
 
         SoftPatch* patch = &acc->list[n];
         patch->fullpath = aprintf("%s/%s", acc->patch_dir, filename);
-        patch->basename = pgb_basename(filename, true);
+        patch->basename = cb_basename(filename, true);
         patch->ips = ips;
         patch->bps = bps;
         patch->state = PATCH_UNKNOWN;
@@ -77,7 +77,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
     FileStat stat;
     if (playdate->file->stat(patch_dir, &stat) != 0 || !stat.isdir)
     {
-        pgb_free(patch_dir);
+        cb_free(patch_dir);
         if (new_patch_count)
             *new_patch_count = 0;
         return NULL;
@@ -89,11 +89,11 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
 
     playdate->file->listfiles(patch_dir, list_patch_cb, &acc, false);
     char* listpath = patch_list_file(patch_dir);
-    pgb_free(patch_dir);
+    cb_free(patch_dir);
 
     json_value jv;
     parse_json(listpath, &jv, kFileReadData);
-    pgb_free(listpath);
+    cb_free(listpath);
     json_value jpatches = json_get_table_value(jv, "patches");
     int nextorder = 0;
     if (jpatches.type == kJSONArray)
@@ -176,7 +176,7 @@ void save_patches_state(const char* rom_path, SoftPatch* patches)
     if (len == 0)
         return;
 
-    JsonArray* jpatcharray = pgb_malloc(sizeof(JsonArray) + len * sizeof(json_value));
+    JsonArray* jpatcharray = cb_malloc(sizeof(JsonArray) + len * sizeof(json_value));
     if (!jpatcharray)
         return;
     jpatcharray->n = len;
@@ -203,10 +203,10 @@ void save_patches_state(const char* rom_path, SoftPatch* patches)
     char* dir = get_patches_directory(rom_path);
     playdate->file->mkdir(dir);
     char* plf = patch_list_file(dir);
-    pgb_free(dir);
+    cb_free(dir);
     printf("saving patches state to %s...\n", plf);
     write_json_to_disk(plf, jmanifest);
-    pgb_free(plf);
+    cb_free(plf);
 
     free_json_data(jmanifest);
 }
@@ -218,11 +218,11 @@ void free_patches(SoftPatch* patchlist)
 
     for (SoftPatch* patch = patchlist; patch->fullpath; ++patch)
     {
-        pgb_free(patch->fullpath);
+        cb_free(patch->fullpath);
         if (patch->basename)
-            pgb_free(patch->basename);
+            cb_free(patch->basename);
     }
-    pgb_free(patchlist);
+    cb_free(patchlist);
 }
 
 unsigned read_bigendian(void* src, int bytes)
@@ -243,7 +243,7 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 {
     size_t ips_len;
     void* ips =
-        call_with_main_stack_3(pgb_read_entire_file, patch->fullpath, &ips_len, kFileReadData);
+        call_with_main_stack_3(cb_read_entire_file, patch->fullpath, &ips_len, kFileReadData);
     if (!ips)
     {
         playdate->system->error("Unable to open IPS patch \"%s\"", patch->fullpath);
@@ -297,13 +297,13 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
         if (length + offset >= *romsize)
         {
             *romsize = length + offset;
-            *rom = pgb_realloc(*rom, *romsize);
+            *rom = cb_realloc(*rom, *romsize);
             if (!*rom)
             {
                 playdate->system->error(
                     "IPS patch requires ROM to be resized, but there was not enough memory."
                 );
-                pgb_free(ips);
+                cb_free(ips);
                 return false;
             }
         }
@@ -340,7 +340,7 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 
 err:
     playdate->system->error("Error applying IPS patch \"%s\"", patch->fullpath);
-    pgb_free(ips);
+    cb_free(ips);
     return false;
 }
 

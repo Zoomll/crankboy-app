@@ -44,7 +44,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         break;
     }
 
-    game_picture_x_offset = PGB_LCD_X;
+    game_picture_x_offset = CB_LCD_X;
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_scaling = 3;
@@ -58,7 +58,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         game_hide_indicator = true;
 
         // scroll screen to side
-        game_picture_x_offset = MIN((0x80 - MIN(menu_y, 0x80)) / 3, PGB_LCD_X);
+        game_picture_x_offset = MIN((0x80 - MIN(menu_y, 0x80)) / 3, CB_LCD_X);
 
         // corresponding vertical scaling
         switch (game_picture_x_offset)
@@ -108,7 +108,7 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
     bool refresh = gbScreenRequiresFullRefresh || (data->sidebar_x_prev != sidebar_x);
     data->sidebar_x_prev = sidebar_x;
 
-    if (game_state == 0xB && game_picture_x_offset < PGB_LCD_X)
+    if (game_state == 0xB && game_picture_x_offset < CB_LCD_X)
     {
         if (refresh)
         {

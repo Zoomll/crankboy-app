@@ -129,13 +129,13 @@ CodeReplacement* code_replacement_new(
         return NULL;
     }
 
-    r->tprev = pgb_malloc(length);
-    r->tval = pgb_malloc(length);
+    r->tprev = cb_malloc(length);
+    r->tval = cb_malloc(length);
     if (!r->tprev || !r->tval)
     {
-        pgb_free(r->tprev);
-        pgb_free(r->tval);
-        pgb_free(r);
+        cb_free(r->tprev);
+        cb_free(r->tval);
+        cb_free(r);
         script_error("SCRIPT ERROR -- memory allocation failed");
         return NULL;
     }
@@ -188,9 +188,9 @@ void code_replacement_free(CodeReplacement* r)
 {
     if (!r)
         return;
-    pgb_free(r->tprev);
-    pgb_free(r->tval);
-    pgb_free(r);
+    cb_free(r->tprev);
+    cb_free(r->tval);
+    cb_free(r);
 }
 
 // these must not be edited in place, so that it can be assumed a screen update

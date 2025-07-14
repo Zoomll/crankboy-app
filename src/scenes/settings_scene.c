@@ -23,20 +23,20 @@
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
 
-static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt);
-static void PGB_SettingsScene_free(void* object);
-static void PGB_SettingsScene_menu(void* object);
-static void PGB_SettingsScene_didSelectBack(void* userdata);
-static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene);
-static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene);
-static void settings_load_state(PGB_GameScene* gameScene, PGB_SettingsScene* settingsScene);
+static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt);
+static void CB_SettingsScene_free(void* object);
+static void CB_SettingsScene_menu(void* object);
+static void CB_SettingsScene_didSelectBack(void* userdata);
+static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene);
+static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene);
+static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* settingsScene);
 
-bool save_state(PGB_GameScene* gameScene, unsigned slot);
-bool load_state(PGB_GameScene* gameScene, unsigned slot);
-extern const uint16_t PGB_dither_lut_c0[];
-extern const uint16_t PGB_dither_lut_c1[];
+bool save_state(CB_GameScene* gameScene, unsigned slot);
+bool load_state(CB_GameScene* gameScene, unsigned slot);
+extern const uint16_t CB_dither_lut_c0[];
+extern const uint16_t CB_dither_lut_c1[];
 
-static void update_thumbnail(PGB_SettingsScene* settingsScene);
+static void update_thumbnail(CB_SettingsScene* settingsScene);
 
 static char* itcm_base_desc = NULL;
 static char* itcm_restart_desc = NULL;
@@ -65,8 +65,8 @@ typedef struct OptionsMenuEntry
     bool graphics_test : 1;
     bool header : 1;
 
-    void (*on_press)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
-    void (*on_hold)(struct OptionsMenuEntry*, PGB_SettingsScene* settingsScene);
+    void (*on_press)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
+    void (*on_hold)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
     void* ud;
 } OptionsMenuEntry;
 
@@ -75,32 +75,32 @@ typedef struct OptionsMenuEntry
 static void* last_selected_preference;
 static unsigned last_selected_preference_time;
 
-static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene);
+static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene);
 
-void display_credits(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
+void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
-    PGB_showCredits(settingsScene);
+    CB_showCredits(settingsScene);
 }
 
-void display_script_info(struct OptionsMenuEntry* entry, PGB_SettingsScene* settingsScene)
+void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
-    PGB_GameScene* gameScene = settingsScene->gameScene;
+    CB_GameScene* gameScene = settingsScene->gameScene;
     if (gameScene && gameScene->script_info_available)
     {
         show_game_script_info(gameScene->rom_filename);
     }
 }
 
-static void open_patches(OptionsMenuEntry* option, PGB_SettingsScene* settingsScene)
+static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
-    PGB_PatchesScene* patchesScene = PGB_PatchesScene_new(option->ud);
-    PGB_presentModal(patchesScene->scene);
+    CB_PatchesScene* patchesScene = CB_PatchesScene_new(option->ud);
+    CB_presentModal(patchesScene->scene);
 }
 
-PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, PGB_LibraryScene* libraryScene)
+CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene* libraryScene)
 {
     setCrankSoundsEnabled(true);
-    PGB_SettingsScene* settingsScene = pgb_malloc(sizeof(PGB_SettingsScene));
+    CB_SettingsScene* settingsScene = cb_malloc(sizeof(CB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
     settingsScene->libraryScene = libraryScene;
@@ -154,11 +154,11 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, PGB_LibrarySc
         gameScene->audioLocked = true;
     }
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
     scene->managedObject = settingsScene;
-    scene->update = PGB_SettingsScene_update;
-    scene->free = PGB_SettingsScene_free;
-    scene->menu = PGB_SettingsScene_menu;
+    scene->update = CB_SettingsScene_update;
+    scene->free = CB_SettingsScene_free;
+    scene->menu = CB_SettingsScene_menu;
 
     settingsScene->scene = scene;
 
@@ -181,7 +181,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, PGB_LibrarySc
 
     preferences_ui_sounds = global_ui_sounds;
 
-    PGB_Scene_refreshMenu(scene);
+    CB_Scene_refreshMenu(scene);
 
     if (last_selected_preference &&
         playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <=
@@ -205,7 +205,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene, PGB_LibrarySc
 
 static void state_action_modal_callback(void* userdata, int option)
 {
-    PGB_SettingsScene* settingsScene = userdata;
+    CB_SettingsScene* settingsScene = userdata;
 
     if (option == 0)
     {
@@ -213,12 +213,12 @@ static void state_action_modal_callback(void* userdata, int option)
     }
 }
 
-static void settings_load_state(PGB_GameScene* gameScene, PGB_SettingsScene* settingsScene)
+static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* settingsScene)
 {
     if (!load_state(gameScene, preferences_save_state_slot))
     {
         const char* options[] = {"OK", NULL};
-        PGB_presentModal(PGB_Modal_new("Failed to load state.", options, NULL, NULL)->scene);
+        CB_presentModal(CB_Modal_new("Failed to load state.", options, NULL, NULL)->scene);
         playdate->system->logToConsole("Error loading state %d", 0);
     }
     else
@@ -227,18 +227,18 @@ static void settings_load_state(PGB_GameScene* gameScene, PGB_SettingsScene* set
 
         // TODO: something less invasive than a modal here.
         const char* options[] = {"Game", "Settings", NULL};
-        PGB_presentModal(PGB_Modal_new(
-                             "State loaded. Return to:", options, state_action_modal_callback,
-                             settingsScene
+        CB_presentModal(CB_Modal_new(
+                            "State loaded. Return to:", options, state_action_modal_callback,
+                            settingsScene
         )
-                             ->scene);
+                            ->scene);
     }
 }
 
 typedef struct
 {
-    PGB_GameScene* gameScene;
-    PGB_SettingsScene* settingsScene;
+    CB_GameScene* gameScene;
+    CB_SettingsScene* settingsScene;
 } LoadStateUserdata;
 
 static void settings_confirm_load_state(void* userdata, int option)
@@ -248,10 +248,10 @@ static void settings_confirm_load_state(void* userdata, int option)
     {
         settings_load_state(data->gameScene, data->settingsScene);
     }
-    pgb_free(data);
+    cb_free(data);
 }
 
-static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
+static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
 {
     int result = 0;
 
@@ -267,7 +267,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         else
         {
             result = (int)(intptr_t)call_with_main_stack_2(
-                preferences_save_to_disk, PGB_globalPrefsPath,
+                preferences_save_to_disk, CB_globalPrefsPath,
                 0
                     // never save these to global prefs
                     | PREFBIT_per_game | PREFBIT_save_state_slot |
@@ -292,16 +292,16 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
     {
         // Not in a game, just save the global file
         result =
-            (int)(intptr_t)call_with_main_stack_2(preferences_save_to_disk, PGB_globalPrefsPath, 0);
+            (int)(intptr_t)call_with_main_stack_2(preferences_save_to_disk, CB_globalPrefsPath, 0);
     }
 
     if (!result)
     {
-        PGB_presentModal(PGB_Modal_new("Error saving preferences.", NULL, NULL, NULL)->scene);
+        CB_presentModal(CB_Modal_new("Error saving preferences.", NULL, NULL, NULL)->scene);
     }
     else
     {
-        PGB_dismiss(settingsScene->scene);
+        CB_dismiss(settingsScene->scene);
     }
 }
 
@@ -335,10 +335,10 @@ static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"
 static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
 static const char* article_labels[] = {"Leading", "As-is"};
 
-static void update_thumbnail(PGB_SettingsScene* settingsScene)
+static void update_thumbnail(CB_SettingsScene* settingsScene)
 {
     int slot = preferences_save_state_slot;
-    PGB_GameScene* gameScene = settingsScene->gameScene;
+    CB_GameScene* gameScene = settingsScene->gameScene;
 
     if (!gameScene)
         return;
@@ -351,21 +351,21 @@ static void update_thumbnail(PGB_SettingsScene* settingsScene)
     }
 }
 
-static void confirm_save_state(PGB_SettingsScene* settingsScene, int option)
+static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
 {
     // must select 'yes'
     if (option != 1)
         return;
 
-    PGB_GameScene* gameScene = settingsScene->gameScene;
+    CB_GameScene* gameScene = settingsScene->gameScene;
     int slot = preferences_save_state_slot;
     if (!save_state(gameScene, slot))
     {
         char* msg;
         playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());
         const char* options[] = {"OK", NULL};
-        PGB_presentModal(PGB_Modal_new(msg, options, NULL, NULL)->scene);
-        pgb_free(msg);
+        CB_presentModal(CB_Modal_new(msg, options, NULL, NULL)->scene);
+        cb_free(msg);
     }
     else
     {
@@ -373,19 +373,19 @@ static void confirm_save_state(PGB_SettingsScene* settingsScene, int option)
 
         // TODO: something less invasive than a modal here.
         const char* options[] = {"Game", "Settings", NULL};
-        PGB_presentModal(PGB_Modal_new(
-                             "State saved. Return to:", options, state_action_modal_callback,
-                             settingsScene
+        CB_presentModal(CB_Modal_new(
+                            "State saved. Return to:", options, state_action_modal_callback,
+                            settingsScene
         )
-                             ->scene);
+                            ->scene);
     }
 
     update_thumbnail(settingsScene);
 }
 
-static void settings_action_save_state(OptionsMenuEntry* e, PGB_SettingsScene* settingsScene)
+static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
 {
-    PGB_GameScene* gameScene = e->ud;
+    CB_GameScene* gameScene = e->ud;
     int slot = preferences_save_state_slot;
 
     unsigned timestamp = get_save_state_timestamp(gameScene, slot);
@@ -397,14 +397,14 @@ static void settings_action_save_state(OptionsMenuEntry* e, PGB_SettingsScene* s
         char* human_time = en_human_time(now - timestamp);
         char* msg;
         playdate->system->formatString(&msg, "Overwrite state which is %s old?", human_time);
-        pgb_free(human_time);
+        cb_free(human_time);
 
         const char* options[] = {"Cancel", "Yes", NULL};
-        PGB_presentModal(
-            PGB_Modal_new(msg, options, (PGB_ModalCallback)confirm_save_state, settingsScene)->scene
+        CB_presentModal(
+            CB_Modal_new(msg, options, (CB_ModalCallback)confirm_save_state, settingsScene)->scene
         );
 
-        pgb_free(msg);
+        cb_free(msg);
     }
     else
     {
@@ -412,16 +412,16 @@ static void settings_action_save_state(OptionsMenuEntry* e, PGB_SettingsScene* s
     }
 }
 
-static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* settingsScene)
+static void settings_action_load_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
 {
-    PGB_GameScene* gameScene = e->ud;
+    CB_GameScene* gameScene = e->ud;
     int slot = preferences_save_state_slot;
 
     // confirmation needed if more than 2 minutes of progress made
     if (gameScene->playtime >= 60 * 120)
     {
         const char* confirm_options[] = {"No", "Yes", NULL};
-        LoadStateUserdata* data = pgb_malloc(sizeof(LoadStateUserdata));
+        LoadStateUserdata* data = cb_malloc(sizeof(LoadStateUserdata));
         data->gameScene = gameScene;
         data->settingsScene = settingsScene;
         unsigned timestamp = get_save_state_timestamp(gameScene, slot);
@@ -436,13 +436,13 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
         {
             char* human_time = en_human_time(now - timestamp);
             playdate->system->formatString(&text, "Really load state from %s ago?", human_time);
-            pgb_free(human_time);
+            cb_free(human_time);
         }
 
-        PGB_presentModal(
-            PGB_Modal_new(text, confirm_options, (void*)settings_confirm_load_state, data)->scene
+        CB_presentModal(
+            CB_Modal_new(text, confirm_options, (void*)settings_confirm_load_state, data)->scene
         );
-        pgb_free(text);
+        cb_free(text);
     }
     else
     {
@@ -450,17 +450,17 @@ static void settings_action_load_state(OptionsMenuEntry* e, PGB_SettingsScene* s
     }
 }
 
-static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
+static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 {
-    PGB_GameScene* gameScene = scene->gameScene;
-    PGB_LibraryScene* libraryScene = scene->libraryScene;
-    PGB_Game* selectedGame =
+    CB_GameScene* gameScene = scene->gameScene;
+    CB_LibraryScene* libraryScene = scene->libraryScene;
+    CB_Game* selectedGame =
         (libraryScene && libraryScene->listView->selectedItem < libraryScene->games->length)
             ? libraryScene->games->items[libraryScene->listView->selectedItem]
             : NULL;
 
     int max_entries = 30;  // we can overshoot, it's ok
-    OptionsMenuEntry* entries = pgb_malloc(sizeof(OptionsMenuEntry) * max_entries);
+    OptionsMenuEntry* entries = cb_malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
     memset(entries, 0, sizeof(OptionsMenuEntry) * max_entries);
@@ -532,7 +532,7 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
     if (libraryScene && selectedGame)
     {
         if (patches_desc != NULL) {
-            pgb_free(patches_desc);
+            cb_free(patches_desc);
         }
 
         patches_desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
@@ -953,7 +953,7 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
         }
     #endif
 
-    if (PGB_App->bundled_rom)
+    if (CB_App->bundled_rom)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "About CrankBoy",
@@ -966,7 +966,7 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
     }
 
     /* clang-format on */
-    PGB_ASSERT(i < max_entries - 1);
+    CB_ASSERT(i < max_entries - 1);
 
     // remove any entries hidden by bundle
     if (preferences_bundle_hidden)
@@ -1017,11 +1017,11 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
     return entries;
 };
 
-static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
+static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
 {
     if (settingsScene->entries)
     {
-        pgb_free(settingsScene->entries);
+        cb_free(settingsScene->entries);
     }
 
     settingsScene->entries = getOptionsEntries(settingsScene);
@@ -1042,9 +1042,9 @@ static void PGB_SettingsScene_rebuildEntries(PGB_SettingsScene* settingsScene)
     }
 }
 
-static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
+static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
@@ -1057,16 +1057,16 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
     };
 
-    PGB_SettingsScene* settingsScene = object;
+    CB_SettingsScene* settingsScene = object;
     int oldCursorIndex = settingsScene->cursorIndex;
 
     if (settingsScene->shouldDismiss)
     {
-        PGB_SettingsScene_attemptDismiss(settingsScene);
+        CB_SettingsScene_attemptDismiss(settingsScene);
         return;
     }
 
-    PGB_GameScene* gameScene = settingsScene->gameScene;
+    CB_GameScene* gameScene = settingsScene->gameScene;
 
     TOWARD(settingsScene->header_animation_p, preferences_per_game, dt * HEADER_ANIMATION_RATE);
 
@@ -1079,7 +1079,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     int menuItemCount = settingsScene->totalMenuItemCount;
 
-    PGB_Scene_update(settingsScene->scene, dt);
+    CB_Scene_update(settingsScene->scene, dt);
 
     // Consolidate all inputs into a single 'steps' variable
     int steps = 0;
@@ -1102,9 +1102,9 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Button Input (discrete and continuous)
-    PDButtons pushed = PGB_App->buttons_pressed;
-    PDButtons pressed = PGB_App->buttons_down;
-    PDButtons released = PGB_App->buttons_released;
+    PDButtons pushed = CB_App->buttons_pressed;
+    PDButtons pressed = CB_App->buttons_down;
+    PDButtons released = CB_App->buttons_released;
 
     if (pushed & kButtonDown)
     {
@@ -1146,7 +1146,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         if (settingsScene->repeatIncrementTime >= repeatInterval)
         {
-            settingsScene->repeatLevel = PGB_MIN(3, settingsScene->repeatLevel + 1);
+            settingsScene->repeatLevel = CB_MIN(3, settingsScene->repeatLevel + 1);
             settingsScene->repeatIncrementTime =
                 fmodf(settingsScene->repeatIncrementTime, repeatInterval);
         }
@@ -1212,12 +1212,12 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     if (oldCursorIndex != settingsScene->cursorIndex)
     {
-        pgb_play_ui_sound(PGB_UISound_Navigate);
+        cb_play_ui_sound(CB_UISound_Navigate);
     }
 
     if (pushed & kButtonB)
     {
-        PGB_SettingsScene_attemptDismiss(settingsScene);
+        CB_SettingsScene_attemptDismiss(settingsScene);
         return;
     }
 
@@ -1286,7 +1286,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             if (old_value != *cursor_entry->pref_var)
             {
                 // setting value has changed
-                pgb_play_ui_sound(PGB_UISound_Confirm);
+                cb_play_ui_sound(CB_UISound_Confirm);
 
                 // special behavior if we've switched between per-game and global settings
                 if (cursor_entry->pref_var == &preferences_per_game)
@@ -1304,14 +1304,14 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                             preferences_save_to_disk, game_settings_path, prefs_locked_by_script
                         );
 
-                        preferences_merge_from_disk(PGB_globalPrefsPath);
+                        preferences_merge_from_disk(CB_globalPrefsPath);
                         preferences_per_game = 0;
                     }
                     else if (preferences_per_game && !old_preferences_per_game)
                     {
                         // write global prefs to disk
                         call_with_main_stack_2(
-                            preferences_save_to_disk, PGB_globalPrefsPath,
+                            preferences_save_to_disk, CB_globalPrefsPath,
                             PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
                         );
 
@@ -1322,19 +1322,19 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     if (stored_save_slot)
                     {
                         preferences_restore_subset(stored_save_slot);
-                        pgb_free(stored_save_slot);
+                        cb_free(stored_save_slot);
                     }
 
                     preferences_ui_sounds = global_ui_sounds;
 
-                    PGB_SettingsScene_rebuildEntries(settingsScene);
+                    CB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
                 }
 
                 if (strcmp(cursor_entry->name, "30 FPS mode") == 0 ||
                     strcmp(cursor_entry->name, "Interlacing") == 0)
                 {
-                    PGB_SettingsScene_rebuildEntries(settingsScene);
+                    CB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
                 }
             }
@@ -1346,7 +1346,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     playdate->graphics->clear(kColorWhite);
 
-    int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+    int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
     int rowSpacing = 10;
     int rowHeight = fontHeight + rowSpacing;
     int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
@@ -1355,7 +1355,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // header y
     if (header_y > 0 && gameScene && gameScene->name_short)
     {
-        LCDFont* font = PGB_App->labelFont;
+        LCDFont* font = CB_App->labelFont;
         playdate->graphics->setFont(font);
         int nameWidth = playdate->graphics->getTextWidth(
             font, gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, 0
@@ -1378,7 +1378,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         );
     }
 
-    playdate->graphics->setFont(PGB_App->bodyFont);
+    playdate->graphics->setFont(CB_App->bodyFont);
 
     // --- Left Pane (Options - 60%) ---
 
@@ -1409,10 +1409,10 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             stateText = "";
 
         int nameWidth = playdate->graphics->getTextWidth(
-            PGB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
+            CB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
         );
         int stateWidth = playdate->graphics->getTextWidth(
-            PGB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0
+            CB_App->bodyFont, stateText, strlen(stateText), kUTF8Encoding, 0
         );
         int stateX = kDividerX - stateWidth - kLeftPanePadding;
 
@@ -1431,13 +1431,13 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         if (current_entry->header)
         {
             int nameWidth = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
+                CB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
             );
             int textX = kDividerX / 2 - nameWidth / 2;
 
             playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, y);
 
-            int fontHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+            int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
 
             int lineY = y + (fontHeight / 2);
             int padding = 5;
@@ -1504,7 +1504,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         float calculatedHeight =
             (float)scrollAreaHeight * ((float)MAX_VISIBLE_ITEMS / menuItemCount);
 
-        float handleHeight = PGB_MAX(calculatedHeight, SCROLL_INDICATOR_MIN_HEIGHT);
+        float handleHeight = CB_MAX(calculatedHeight, SCROLL_INDICATOR_MIN_HEIGHT);
 
         float handleY =
             (float)scrollAreaY +
@@ -1527,7 +1527,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // --- Right Pane (Description - 40%) ---
-    playdate->graphics->setFont(PGB_App->labelFont);
+    playdate->graphics->setFont(CB_App->labelFont);
 
     const char* description = cursor_entry->description;
 
@@ -1540,7 +1540,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         char* line = strtok(descriptionCopy, "\n");
 
         int descY = initialY;
-        int descLineHeight = playdate->graphics->getFontHeight(PGB_App->labelFont) + 2;
+        int descLineHeight = playdate->graphics->getFontHeight(CB_App->labelFont) + 2;
 
         while (line != NULL)
         {
@@ -1575,8 +1575,8 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         // graphics test
         if (cursor_entry->graphics_test)
         {
-            uint16_t d0 = PGB_dither_lut_c0[preferences_dither_pattern];
-            uint16_t d1 = PGB_dither_lut_c1[preferences_dither_pattern];
+            uint16_t d0 = CB_dither_lut_c0[preferences_dither_pattern];
+            uint16_t d1 = CB_dither_lut_c1[preferences_dither_pattern];
 
             int cwidth = 4 * 8;
 
@@ -1641,31 +1641,31 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     playdate->graphics->drawLine(kDividerX, header_y, kDividerX, kScreenHeight, 1, kColorBlack);
 }
 
-static void PGB_SettingsScene_didSelectBack(void* userdata)
+static void CB_SettingsScene_didSelectBack(void* userdata)
 {
-    PGB_SettingsScene* settingsScene = userdata;
+    CB_SettingsScene* settingsScene = userdata;
     settingsScene->shouldDismiss = true;
 }
 
-static void PGB_SettingsScene_menu(void* object)
+static void CB_SettingsScene_menu(void* object)
 {
-    PGB_SettingsScene* settingsScene = object;
+    CB_SettingsScene* settingsScene = object;
     playdate->system->removeAllMenuItems();
 
     if (settingsScene->gameScene)
     {
-        playdate->system->addMenuItem("Resume", PGB_SettingsScene_didSelectBack, settingsScene);
+        playdate->system->addMenuItem("Resume", CB_SettingsScene_didSelectBack, settingsScene);
     }
     else
     {
-        playdate->system->addMenuItem("Library", PGB_SettingsScene_didSelectBack, settingsScene);
+        playdate->system->addMenuItem("Library", CB_SettingsScene_didSelectBack, settingsScene);
     }
 }
 
-static void PGB_SettingsScene_free(void* object)
+static void CB_SettingsScene_free(void* object)
 {
     DTCM_VERIFY();
-    PGB_SettingsScene* settingsScene = object;
+    CB_SettingsScene* settingsScene = object;
 
     if (settingsScene->gameScene)
     {
@@ -1673,7 +1673,7 @@ static void PGB_SettingsScene_free(void* object)
             (settingsScene->initial_sound_mode != preferences_sound_mode) ||
             (settingsScene->initial_sample_rate != preferences_sample_rate);
 
-        PGB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
+        CB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
 
@@ -1681,31 +1681,31 @@ static void PGB_SettingsScene_free(void* object)
     if (settingsScene->immutable_settings)
     {
         preferences_restore_subset(settingsScene->immutable_settings);
-        pgb_free(settingsScene->immutable_settings);
+        cb_free(settingsScene->immutable_settings);
     }
 
     if (settingsScene->entries)
-        pgb_free(settingsScene->entries);
+        cb_free(settingsScene->entries);
 
     if (itcm_base_desc)
     {
-        pgb_free(itcm_base_desc);
+        cb_free(itcm_base_desc);
         itcm_base_desc = NULL;
     }
 
     if (itcm_restart_desc)
     {
-        pgb_free(itcm_restart_desc);
+        cb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
     }
 
     if (patches_desc)
     {
-        pgb_free(patches_desc);
+        cb_free(patches_desc);
         patches_desc = NULL;
     }
 
-    PGB_Scene_free(settingsScene->scene);
-    pgb_free(settingsScene);
+    CB_Scene_free(settingsScene->scene);
+    cb_free(settingsScene);
     DTCM_VERIFY();
 }

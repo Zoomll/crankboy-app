@@ -148,7 +148,7 @@ __space bool errdiff_dither(
 
     int error_row = 0;
 
-    fw_t* error = pgb_malloc(sizeof(fw_t) * err_stride);
+    fw_t* error = cb_malloc(sizeof(fw_t) * err_stride);
     if (!error)
         return false;
     memset(error, 0, sizeof(fw_t) * err_stride);
@@ -218,7 +218,7 @@ __space bool errdiff_dither(
         memset(&error[err_row_idx[0] * out_width], 0, err_stride);
     }
 
-    pgb_free(error);
+    cb_free(error);
     return true;
 }
 
@@ -318,7 +318,7 @@ void* png_to_pdi(
     size_t opaque_size = has_transparency ? stride * max_height : 0;
     size_t total_size = sizeof(header) + sizeof(cell) + white_size + opaque_size;
 
-    void* pdi_data = pgb_malloc(total_size);
+    void* pdi_data = cb_malloc(total_size);
     if (!pdi_data)
     {
         stbi_image_free(img_data);
@@ -418,7 +418,7 @@ void* png_to_pdi(
 static int process_png(const char* fname)
 {
     size_t len;
-    void* data = pgb_read_entire_file(fname, &len, kFileReadData);
+    void* data = cb_read_entire_file(fname, &len, kFileReadData);
     if (!data)
         return -1;
 
@@ -428,65 +428,65 @@ static int process_png(const char* fname)
     {
         size_t pdi_len = 0;
         void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
-        pgb_free(data);
+        cb_free(data);
 
         if (pdi && pdi_len > 0)
         {
-            char* basename = pgb_basename(fname, true);
-            char* pdi_name = aprintf("%s/%s.pdi", PGB_coversPath, basename);
-            pgb_free(basename);
+            char* basename = cb_basename(fname, true);
+            char* pdi_name = aprintf("%s/%s.pdi", CB_coversPath, basename);
+            cb_free(basename);
 
-            if (pgb_write_entire_file(pdi_name, pdi, pdi_len))
+            if (cb_write_entire_file(pdi_name, pdi, pdi_len))
             {
                 playdate->file->unlink(fname, false);
                 success = true;
             }
 
-            pgb_free(pdi_name);
+            cb_free(pdi_name);
         }
 
         if (pdi)
         {
-            pgb_free(pdi);
+            cb_free(pdi);
         }
     }
 
     return success;
 }
 
-void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
+void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
 
-    PGB_ImageConversionScene* convScene = object;
+    CB_ImageConversionScene* convScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     switch (convScene->state)
     {
     case kStateListingFiles:
     {
-        pgb_draw_logo_screen_to_buffer("Scanning for new images…");
+        cb_draw_logo_screen_to_buffer("Scanning for new images…");
 
-        playdate->file->listfiles(PGB_coversPath, on_list_file, convScene, false);
+        playdate->file->listfiles(CB_coversPath, on_list_file, convScene, false);
 
         convScene->state = kStateDone;
 
         // check if any files are in the data directory.
         for (int i = 0; i < convScene->files_count; ++i)
         {
-            char* fpath = aprintf("%s/%s", PGB_coversPath, convScene->files[i]);
+            char* fpath = aprintf("%s/%s", CB_coversPath, convScene->files[i]);
             if (fpath)
             {
-                if (pgb_file_exists(fpath, kFileReadData))
+                if (cb_file_exists(fpath, kFileReadData))
                 {
                     convScene->state = kStatePrompt;
-                    pgb_free(fpath);
+                    cb_free(fpath);
                     break;
                 }
-                pgb_free(fpath);
+                cb_free(fpath);
             }
         }
         break;
@@ -503,12 +503,12 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             "One or more image files need to be converted to PDI format.\n\nThe original image "
             "files will then be deleted.\n\nPress Ⓐ to confirm.";
 
-        playdate->graphics->setFont(PGB_App->bodyFont);
+        playdate->graphics->setFont(CB_App->bodyFont);
         playdate->graphics->drawTextInRect(
             msg, strlen(msg), kUTF8Encoding, margin, 50, width, 300, kWrapWord, kAlignTextCenter
         );
 
-        if (PGB_App->buttons_pressed & kButtonA)
+        if (CB_App->buttons_pressed & kButtonA)
         {
             convScene->state = kStateConverting;
         }
@@ -528,7 +528,7 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 fname[len - 1] = '\0';
             }
 
-            char* full_fname = aprintf("%s/%s", PGB_coversPath, fname);
+            char* full_fname = aprintf("%s/%s", CB_coversPath, fname);
 
             char* progress_msg = aprintf(
                 "Converting image (%d of %d) to .pdi…", (int)convScene->idx,
@@ -537,12 +537,12 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
             if (progress_msg)
             {
-                pgb_draw_logo_screen_to_buffer(progress_msg);
-                pgb_free(progress_msg);
+                cb_draw_logo_screen_to_buffer(progress_msg);
+                cb_free(progress_msg);
             }
 
             int result = process_png(full_fname);
-            pgb_free(full_fname);
+            cb_free(full_fname);
 
             if (result >= 0)
             {
@@ -558,22 +558,22 @@ void PGB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
     case kStateDone:
     {
-        PGB_CoverCacheScene* cacheScene = PGB_CoverCacheScene_new();
-        PGB_present(cacheScene->scene);
+        CB_CoverCacheScene* cacheScene = CB_CoverCacheScene_new();
+        CB_present(cacheScene->scene);
         break;
     }
     }
 }
 
-void PGB_ImageConversionScene_free(void* object)
+void CB_ImageConversionScene_free(void* object)
 {
-    PGB_ImageConversionScene* convScene = object;
+    CB_ImageConversionScene* convScene = object;
     for (int i = 0; i < convScene->files_count; ++i)
     {
-        pgb_free(convScene->files[i]);
+        cb_free(convScene->files[i]);
     }
-    pgb_free(convScene->files);
-    pgb_free(convScene);
+    cb_free(convScene->files);
+    cb_free(convScene);
 }
 
 bool filename_has_stbi_extension(const char* fname)
@@ -586,12 +586,12 @@ bool filename_has_stbi_extension(const char* fname)
 
 static void on_list_file(const char* fname, void* ud)
 {
-    PGB_ImageConversionScene* convScene = ud;
+    CB_ImageConversionScene* convScene = ud;
 
     if (filename_has_stbi_extension(fname))
     {
         char** new_files =
-            pgb_realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
+            cb_realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
 
         if (new_files == NULL)
         {
@@ -612,15 +612,15 @@ static void on_list_file(const char* fname, void* ud)
     }
 }
 
-PGB_ImageConversionScene* PGB_ImageConversionScene_new(void)
+CB_ImageConversionScene* CB_ImageConversionScene_new(void)
 {
-    PGB_Scene* scene = PGB_Scene_new();
-    PGB_ImageConversionScene* convScene = pgb_malloc(sizeof(PGB_ImageConversionScene));
+    CB_Scene* scene = CB_Scene_new();
+    CB_ImageConversionScene* convScene = cb_malloc(sizeof(CB_ImageConversionScene));
     convScene->scene = scene;
 
     scene->managedObject = convScene;
-    scene->update = PGB_ImageConversionScene_update;
-    scene->free = PGB_ImageConversionScene_free;
+    scene->update = CB_ImageConversionScene_update;
+    scene->free = CB_ImageConversionScene_free;
     scene->use_user_stack = false;
 
     convScene->idx = 0;

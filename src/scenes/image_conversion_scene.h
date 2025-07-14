@@ -21,16 +21,16 @@ typedef enum
     kStateDone
 } ConversionState;
 
-typedef struct PGB_ImageConversionScene
+typedef struct CB_ImageConversionScene
 {
-    PGB_Scene* scene;
+    CB_Scene* scene;
     unsigned idx;
     char** files;
     size_t files_count;
     ConversionState state;
-} PGB_ImageConversionScene;
+} CB_ImageConversionScene;
 
-PGB_ImageConversionScene* PGB_ImageConversionScene_new(void);
+CB_ImageConversionScene* CB_ImageConversionScene_new(void);
 
 // returns true for .png, .jpg, .jpeg, .bmp
 bool filename_has_stbi_extension(const char* fname);

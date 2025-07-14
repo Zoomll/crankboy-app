@@ -197,13 +197,13 @@ typedef int16_t s16;
 
 #define ROM_HEADER_CHECKSUM_LOC 0x014D
 
-#define PGB_HW_BREAKPOINT_OPCODE 0xD3
+#define CB_HW_BREAKPOINT_OPCODE 0xD3
 #define MAX_BREAKPOINTS 0x80
 
 #define PEANUT_GB_ARRAYSIZE(array) (sizeof(array) / sizeof(array[0]))
 
-#define PGB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
-#define PGB_SAVE_STATE_VERSION 0
+#define CB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
+#define CB_SAVE_STATE_VERSION 0
 
 #define IO_PLAYDATE_EXTENSION_CTL 0x57
 #define IO_PLAYDATE_EXTENSION_CRANK_LO 0x58
@@ -595,7 +595,7 @@ struct gb_s
             uint8_t joypad;
         };
 
-#define PGB_IDLE_FRAMES_BEFORE_SAVE 180
+#define CB_IDLE_FRAMES_BEFORE_SAVE 180
         union
         {
             uint16_t peripherals[4];
@@ -647,7 +647,7 @@ struct gb_s
 
 __core unsigned int __gb_step_cpu(struct gb_s* gb);
 
-#ifdef PGB_IMPL
+#ifdef CB_IMPL
 __section__(".rare") bool gb_detect_interrupt(struct gb_s* gb, unsigned addr)
 {
     const uint8_t* rom = gb->gb_rom;
@@ -697,7 +697,7 @@ __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
  * The logic is inspired by SameBoy's RTC implementation.
  *
  */
-__section__(".text.pgb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned int seconds_to_add)
+__section__(".text.cb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned int seconds_to_add)
 {
     if ((gb->rtc_bits.high & 0x40) || seconds_to_add == 0)
     {
@@ -745,7 +745,7 @@ __section__(".text.pgb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned i
  * gb_catch_up_rtc_direct() function. It is kept for reference and potential
  * future use in a cycle-accurate timing model.
  */
-__section__(".text.pgb") void gb_tick_rtc(struct gb_s* gb)
+__section__(".text.cb") void gb_tick_rtc(struct gb_s* gb)
 {
     /* is timer running? */
     if ((gb->cart_rtc[4] & 0x40) == 0)
@@ -781,7 +781,7 @@ __section__(".text.pgb") void gb_tick_rtc(struct gb_s* gb)
  * Set initial values in RTC.
  * Should be called after gb_init().
  */
-__section__(".text.pgb") void gb_set_rtc(struct gb_s* gb, const struct tm* const time)
+__section__(".text.cb") void gb_set_rtc(struct gb_s* gb, const struct tm* const time)
 {
     gb->cart_rtc[0] = time->tm_sec;
     gb->cart_rtc[1] = time->tm_min;
@@ -800,7 +800,7 @@ __section__(".text.pgb") void gb_set_rtc(struct gb_s* gb, const struct tm* const
     memcpy(gb->latched_rtc, gb->cart_rtc, sizeof(gb->latched_rtc));
 }
 
-__section__(".text.pgb") static void __gb_update_tac(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_tac(struct gb_s* gb)
 {
     static const uint8_t TAC_CYCLES[4] = {10, 4, 6, 8};
 
@@ -809,14 +809,14 @@ __section__(".text.pgb") static void __gb_update_tac(struct gb_s* gb)
     gb->gb_reg.tac_cycles = (1 << (int)TAC_CYCLES[gb->gb_reg.tac_rate]) - 1;
 }
 
-__section__(".text.pgb") static void __gb_update_selected_bank_addr(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_selected_bank_addr(struct gb_s* gb)
 {
     int32_t offset = (gb->selected_rom_bank - 1) * ROM_BANK_SIZE;
 
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
 
-__section__(".text.pgb") static void __gb_update_selected_cart_bank_addr(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct gb_s* gb)
 {
     // NULL indicates special access, must do _full version
     gb->selected_cart_bank_addr = NULL;
@@ -858,7 +858,7 @@ static uint8_t gb_original_rom[0x100];
 // extended ram feature offered by crankboy
 static uint8_t xram[0x100 - 0xA0];
 
-__section__(".rare.pgb") static void __gb_rare_write(
+__section__(".rare.cb") static void __gb_rare_write(
     struct gb_s* gb, const uint16_t addr, const uint8_t val
 )
 {
@@ -927,7 +927,7 @@ __section__(".rare.pgb") static void __gb_rare_write(
     (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
-__section__(".rare.pgb") static uint8_t __gb_rare_read(struct gb_s* gb, const uint16_t addr)
+__section__(".rare.cb") static uint8_t __gb_rare_read(struct gb_s* gb, const uint16_t addr)
 {
     if (addr >= 0xFEA0 && addr < 0xFF00)
     {
@@ -1233,7 +1233,7 @@ __core_section("bgdefer") void __gb_update_bgcache_tile_deferred(
 )
 {
     // TODO: use addr_mode field
-    PGB_ASSERT(tmidx < 0x800)
+    CB_ASSERT(tmidx < 0x800)
     int row = tmidx / 32;
     gb->dirty_tile_rows |= (uint64_t)1 << row;
     gb->dirty_tiles[row] |= 1 << (tmidx % 32);
@@ -1272,7 +1272,7 @@ __core_section("bgcache") void __gb_update_bgcache_tile(
         // bgcache format: each 32 bits is a pair of 16 bit low color, 16 bit hi
         // color
         size_t index = (tx / 2) * 4 + y * BGCACHE_STRIDE + (tx % 2);
-        PGB_ASSERT(index + 2 < BGCACHE_SIZE);
+        CB_ASSERT(index + 2 < BGCACHE_SIZE);
         uint8_t* t = &bgcache[index];
 
         t[0] = reverse_bits_u8(t1);
@@ -1319,7 +1319,7 @@ __core_section("bgdefer") void __gb_process_deferred_tile_data_update(struct gb_
             if unlikely (dirty & 1)
             {
                 const unsigned tile = (i * 32) | j;
-                PGB_ASSERT(tile < 0x1800);
+                CB_ASSERT(tile < 0x1800);
                 __gb_update_bgcache_tile_data(gb, tile);
             }
             dirty >>= 1;
@@ -1358,7 +1358,7 @@ __core_section("bgdefer") void __gb_process_deferred_tile_update(struct gb_s* re
 __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr);
 __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const uint8_t val);
 
-#endif /* PGB_IMPL */
+#endif /* CB_IMPL */
 
 void __gb_write_vram(struct gb_s* gb, uint_fast16_t addr, const uint8_t val)
 {
@@ -1384,7 +1384,7 @@ void __gb_write_vram(struct gb_s* gb, uint_fast16_t addr, const uint8_t val)
  * Handles a clock tick for the MBC7 EEPROM.
  * This function is called on the rising edge of the EEPROM's CLK pin.
  */
-__section__(".text.pgb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
+__section__(".text.cb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
 {
     uint8_t di = (gb->mbc7.eeprom_pins & 0x02) >> 1;
 
@@ -1651,7 +1651,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             else if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
             {
                 size_t idx = gb->cart_ram_bank - 0x08;
-                PGB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
+                CB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
                 gb->cart_rtc[idx] = val;
             }
             else if (gb->mbc == 7)
@@ -1696,7 +1696,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
                      gb->cart_ram_bank < gb->num_ram_banks)
             {
                 size_t idx = addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE);
-                PGB_ASSERT(idx < gb->gb_cart_ram_size);
+                CB_ASSERT(idx < gb->gb_cart_ram_size);
                 const u8 prev = gb->gb_cart_ram[idx];
                 gb->gb_cart_ram[idx] = val;
                 gb->direct.sram_updated |= prev != val;
@@ -1704,7 +1704,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             else if (gb->num_ram_banks)
             {
                 size_t idx = addr - CART_RAM_ADDR;
-                PGB_ASSERT(idx < gb->gb_cart_ram_size);
+                CB_ASSERT(idx < gb->gb_cart_ram_size);
                 const u8 prev = gb->gb_cart_ram[idx];
                 gb->gb_cart_ram[idx] = val;
                 gb->direct.sram_updated |= prev != val;
@@ -2012,8 +2012,8 @@ __core_section("short") static void __gb_write(
 __core_section("util") clalign
     void gb_fast_memcpy_64(void* restrict _dst, const void* restrict _src, size_t len)
 {
-    PGB_ASSERT(len % 8 == 0);
-    PGB_ASSERT(len > 0);
+    CB_ASSERT(len % 8 == 0);
+    CB_ASSERT(len > 0);
     uint64_t* dst = _dst;
     const uint64_t* src = _src;
     do
@@ -2238,7 +2238,7 @@ struct sprite_data
 };
 
 #if PEANUT_GB_HIGH_LCD_ACCURACY
-__section__(".text.pgb") static int compare_sprites(const void* in1, const void* in2)
+__section__(".text.cb") static int compare_sprites(const void* in1, const void* in2)
 {
     const struct sprite_data *sd1 = in1, *sd2 = in2;
     int x_res = (int)sd1->x - (int)sd2->x;
@@ -5479,7 +5479,7 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
 #else
     // run once as each, verify
 
-    if (gb->cpu_reg.pc < 0x8000 && __gb_read_full(gb, gb->cpu_reg.pc) == PGB_HW_BREAKPOINT_OPCODE)
+    if (gb->cpu_reg.pc < 0x8000 && __gb_read_full(gb, gb->cpu_reg.pc) == CB_HW_BREAKPOINT_OPCODE)
     {
         // can't validate if breakpoint
         __gb_run_instruction_micro(gb);
@@ -5584,7 +5584,7 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
         }
 
         // assert audio data is final member of gb_s
-        PGB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
+        CB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
         if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
         {
             gb->gb_frame = 1;
@@ -5866,9 +5866,9 @@ __section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
     // header
     struct StateHeader header;
     memset(&header, 0, sizeof(header));
-    PGB_ASSERT(strlen(PGB_SAVE_STATE_MAGIC) == sizeof(header.magic));
-    memcpy(header.magic, PGB_SAVE_STATE_MAGIC, sizeof(header.magic));
-    header.version = PGB_SAVE_STATE_VERSION;
+    CB_ASSERT(strlen(CB_SAVE_STATE_MAGIC) == sizeof(header.magic));
+    memcpy(header.magic, CB_SAVE_STATE_MAGIC, sizeof(header.magic));
+    header.version = CB_SAVE_STATE_VERSION;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     header.big_endian = 1;
 #else
@@ -5930,17 +5930,17 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     struct StateHeader* header = (struct StateHeader*)in;
     in += sizeof(struct StateHeader);
 
-    if (strncmp(header->magic, PGB_SAVE_STATE_MAGIC, sizeof(header->magic)))
+    if (strncmp(header->magic, CB_SAVE_STATE_MAGIC, sizeof(header->magic)))
     {
         return "Not a CrankBoy savestate";
     }
 
-    if (header->version < PGB_SAVE_STATE_VERSION)
+    if (header->version < CB_SAVE_STATE_VERSION)
     {
         return "State comes from an incompatible older version of CrankBoy";
     }
 
-    if (header->version > PGB_SAVE_STATE_VERSION)
+    if (header->version > CB_SAVE_STATE_VERSION)
     {
         return "State comes from an incompatible future version of CrankBoy";
     }
@@ -6386,7 +6386,7 @@ __section__(".rare") int set_hw_breakpoint(struct gb_s* gb, uint32_t rom_addr)
         // found a breakpoint slot to use
         gb->breakpoints[i].rom_addr = rom_addr;
         gb->breakpoints[i].opcode = gb->gb_rom[rom_addr];
-        gb->gb_rom[rom_addr] = PGB_HW_BREAKPOINT_OPCODE;
+        gb->gb_rom[rom_addr] = CB_HW_BREAKPOINT_OPCODE;
         return i;
     }
 
@@ -6415,7 +6415,7 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
             continue;
         // breakpoint found!
 
-        if unlikely (opcode == PGB_HW_BREAKPOINT_OPCODE)
+        if unlikely (opcode == CB_HW_BREAKPOINT_OPCODE)
         {
             // this is pretty messed up, but let's handle it gracefully
             __gb_on_breakpoint(gb, i);
@@ -6441,7 +6441,7 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
 
             // restore breakpoint
             gb->breakpoints[i].opcode = gb->gb_rom[rom_addr];
-            gb->gb_rom[rom_addr] = PGB_HW_BREAKPOINT_OPCODE;
+            gb->gb_rom[rom_addr] = CB_HW_BREAKPOINT_OPCODE;
             return cycles <= 0 ? 4 : cycles;
         }
 
@@ -6474,7 +6474,7 @@ void gb_init_lcd(struct gb_s* gb)
 
 __section__(".rare") static u8 __gb_invalid_instruction(struct gb_s* restrict gb, uint8_t opcode)
 {
-    if (opcode == PGB_HW_BREAKPOINT_OPCODE)
+    if (opcode == CB_HW_BREAKPOINT_OPCODE)
     {
         int rv = __gb_try_breakpoint(gb);
         if (rv > 0)

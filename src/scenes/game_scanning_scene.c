@@ -7,14 +7,14 @@
 #include "library_scene.h"
 #include "pd_api.h"
 
-void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt);
-void PGB_GameScanningScene_free(void* object);
+void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt);
+void CB_GameScanningScene_free(void* object);
 
 static void collect_game_filenames_callback(const char* filename, void* userdata)
 {
-    PGB_Array* filenames_array = userdata;
+    CB_Array* filenames_array = userdata;
     char* extension;
-    char* dot = pgb_strrchr(filename, '.');
+    char* dot = cb_strrchr(filename, '.');
 
     if (!dot || dot == filename)
     {
@@ -25,31 +25,31 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
         extension = dot + 1;
     }
 
-    if ((pgb_strcmp(extension, "gb") == 0 || pgb_strcmp(extension, "gbc") == 0))
+    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0))
     {
         array_push(filenames_array, string_copy(filename));
     }
 }
 
-static void process_one_game(PGB_GameScanningScene* scanScene, const char* filename)
+static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
 {
-    PGB_GameName* newName = pgb_malloc(sizeof(PGB_GameName));
-    memset(newName, 0, sizeof(PGB_GameName));
+    CB_GameName* newName = cb_malloc(sizeof(CB_GameName));
+    memset(newName, 0, sizeof(CB_GameName));
 
     newName->filename = string_copy(filename);
-    newName->name_filename = pgb_basename(filename, true);
+    newName->name_filename = cb_basename(filename, true);
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
 
     char* fullpath;
-    playdate->system->formatString(&fullpath, "%s/%s", PGB_gamesPath, filename);
+    playdate->system->formatString(&fullpath, "%s/%s", CB_gamesPath, filename);
 
     FileStat stat;
     if (playdate->file->stat(fullpath, &stat) != 0)
     {
         playdate->system->logToConsole("Failed to stat file: %s", fullpath);
-        pgb_free(fullpath);
+        cb_free(fullpath);
         free_game_names(newName);
-        pgb_free(newName);
+        cb_free(newName);
         return;
     }
 
@@ -102,17 +102,17 @@ static void process_one_game(PGB_GameScanningScene* scanScene, const char* filen
         }
     }
 
-    PGB_FetchedNames fetched = {NULL, NULL, 0, true};
+    CB_FetchedNames fetched = {NULL, NULL, 0, true};
 
     if (needs_calculation)
     {
-        if (pgb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
+        if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
         {
             fetched.failedToOpenROM = false;
 
             json_value new_entry_val;
             new_entry_val.type = kJSONTable;
-            JsonObject* obj = pgb_calloc(1, sizeof(JsonObject));
+            JsonObject* obj = cb_calloc(1, sizeof(JsonObject));
             new_entry_val.data.tableval = obj;
 
             json_value crc_val = {.type = kJSONInteger, .data.intval = crc};
@@ -134,14 +134,14 @@ static void process_one_game(PGB_GameScanningScene* scanScene, const char* filen
 
     if (!fetched.failedToOpenROM)
     {
-        PGB_FetchedNames names_from_db = pgb_get_titles_from_db_by_crc(crc);
+        CB_FetchedNames names_from_db = cb_get_titles_from_db_by_crc(crc);
         fetched.short_name = names_from_db.short_name;
         fetched.detailed_name = names_from_db.detailed_name;
     }
 
     fetched.crc32 = crc;
     newName->crc32 = fetched.crc32;
-    pgb_free(fullpath);
+    cb_free(fullpath);
 
     newName->name_database = (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
     newName->name_short = (fetched.short_name) ? string_copy(fetched.short_name)
@@ -153,18 +153,18 @@ static void process_one_game(PGB_GameScanningScene* scanScene, const char* filen
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
 
     if (fetched.short_name)
-        pgb_free(fetched.short_name);
+        cb_free(fetched.short_name);
     if (fetched.detailed_name)
-        pgb_free(fetched.detailed_name);
+        cb_free(fetched.detailed_name);
 
     if (!fetched.failedToOpenROM)
     {
-        array_push(PGB_App->gameNameCache, newName);
+        array_push(CB_App->gameNameCache, newName);
     }
     else
     {
         free_game_names(newName);
-        pgb_free(newName);
+        cb_free(newName);
     }
 }
 
@@ -176,26 +176,26 @@ static void checkForPngCallback(const char* filename, void* userdata)
     }
 }
 
-void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
+void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
 
-    PGB_GameScanningScene* scanScene = object;
+    CB_GameScanningScene* scanScene = object;
 
     switch (scanScene->state)
     {
     case kScanningStateInit:
     {
-        pgb_draw_logo_screen_to_buffer("Finding Games…");
+        cb_draw_logo_screen_to_buffer("Finding Games…");
 
         playdate->file->listfiles(
-            PGB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
+            CB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
         );
 
-        array_reserve(PGB_App->gameNameCache, scanScene->game_filenames->length);
+        array_reserve(CB_App->gameNameCache, scanScene->game_filenames->length);
 
         if (scanScene->game_filenames->length == 0)
         {
@@ -219,7 +219,7 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                 progress_message, sizeof(progress_message), "Scanning Games… (%d/%d)",
                 scanScene->current_index + 1, scanScene->game_filenames->length
             );
-            pgb_draw_logo_screen_to_buffer(progress_message);
+            cb_draw_logo_screen_to_buffer(progress_message);
 
             process_one_game(scanScene, filename);
 
@@ -241,53 +241,53 @@ void PGB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             if (path)
             {
                 write_json_to_disk(path, scanScene->crc_cache);
-                pgb_free(path);
+                cb_free(path);
             }
         }
 
         bool png_found = false;
-        playdate->file->listfiles(PGB_coversPath, checkForPngCallback, &png_found, false);
+        playdate->file->listfiles(CB_coversPath, checkForPngCallback, &png_found, false);
 
         if (png_found)
         {
-            PGB_ImageConversionScene* imageConversionScene = PGB_ImageConversionScene_new();
-            PGB_present(imageConversionScene->scene);
+            CB_ImageConversionScene* imageConversionScene = CB_ImageConversionScene_new();
+            CB_present(imageConversionScene->scene);
         }
         else
         {
-            PGB_CoverCacheScene* cacheScene = PGB_CoverCacheScene_new();
-            PGB_present(cacheScene->scene);
+            CB_CoverCacheScene* cacheScene = CB_CoverCacheScene_new();
+            CB_present(cacheScene->scene);
         }
         break;
     }
     }
 }
 
-void PGB_GameScanningScene_free(void* object)
+void CB_GameScanningScene_free(void* object)
 {
-    PGB_GameScanningScene* scanScene = object;
+    CB_GameScanningScene* scanScene = object;
 
     if (scanScene->game_filenames)
     {
         for (int i = 0; i < scanScene->game_filenames->length; i++)
         {
-            pgb_free(scanScene->game_filenames->items[i]);
+            cb_free(scanScene->game_filenames->items[i]);
         }
         array_free(scanScene->game_filenames);
     }
 
     free_json_data(scanScene->crc_cache);
-    pgb_free(scanScene);
+    cb_free(scanScene);
 }
 
-PGB_GameScanningScene* PGB_GameScanningScene_new(void)
+CB_GameScanningScene* CB_GameScanningScene_new(void)
 {
-    PGB_GameScanningScene* scanScene = pgb_calloc(1, sizeof(PGB_GameScanningScene));
+    CB_GameScanningScene* scanScene = cb_calloc(1, sizeof(CB_GameScanningScene));
 
-    scanScene->scene = PGB_Scene_new();
+    scanScene->scene = CB_Scene_new();
     scanScene->scene->managedObject = scanScene;
-    scanScene->scene->update = PGB_GameScanningScene_update;
-    scanScene->scene->free = PGB_GameScanningScene_free;
+    scanScene->scene->update = CB_GameScanningScene_update;
+    scanScene->scene->free = CB_GameScanningScene_free;
     scanScene->scene->use_user_stack = false;
 
     scanScene->game_filenames = array_new();
@@ -313,11 +313,11 @@ PGB_GameScanningScene* PGB_GameScanningScene_new(void)
         else
         {
             scanScene->crc_cache.type = kJSONTable;
-            JsonObject* obj = pgb_malloc(sizeof(JsonObject));
+            JsonObject* obj = cb_malloc(sizeof(JsonObject));
             obj->n = 0;
             scanScene->crc_cache.data.tableval = obj;
         }
-        pgb_free(path);
+        cb_free(path);
     }
 
     return scanScene;

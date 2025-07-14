@@ -48,17 +48,17 @@ static void preferences_set_defaults(void)
 void preferences_init(void)
 {
     // if this fails, increase bitfield to uint64_t
-    PGB_ASSERT(pref_count <= 8 * sizeof(preferences_bitfield_t));
+    CB_ASSERT(pref_count <= 8 * sizeof(preferences_bitfield_t));
 
     preferences_set_defaults();
 
-    if (playdate->file->stat(PGB_globalPrefsPath, NULL) != 0)
+    if (playdate->file->stat(CB_globalPrefsPath, NULL) != 0)
     {
-        preferences_save_to_disk(PGB_globalPrefsPath, 0);
+        preferences_save_to_disk(CB_globalPrefsPath, 0);
     }
     else
     {
-        preferences_read_from_disk(PGB_globalPrefsPath);
+        preferences_read_from_disk(CB_globalPrefsPath);
     }
 
     // paranoia
@@ -110,7 +110,7 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     }
 
     if (preserved_to_write)
-        pgb_free(preserved_to_write);
+        cb_free(preserved_to_write);
 
     union
     {
@@ -135,7 +135,7 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     if (preserved_all)
     {
         preferences_restore_subset(preserved_all);
-        pgb_free(preserved_all);
+        cb_free(preserved_all);
     }
 
     int error = write_json_to_disk(filename, j);
@@ -206,7 +206,7 @@ void* preferences_store_subset(preferences_bitfield_t subset)
     ++i;
 #include "prefs.x"
 
-    void* data = pgb_malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
+    void* data = cb_malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
     if (!data)
         return NULL;
 

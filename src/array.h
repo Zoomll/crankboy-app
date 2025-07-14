@@ -17,14 +17,14 @@ typedef struct
     unsigned int length;
     unsigned int capacity;
     void** items;
-} PGB_Array;
+} CB_Array;
 
-PGB_Array* array_new(void);
+CB_Array* array_new(void);
 
-void array_reserve(PGB_Array* array, unsigned int capacity);
+void array_reserve(CB_Array* array, unsigned int capacity);
 
-void array_push(PGB_Array* array, void* item);
-void array_clear(PGB_Array* array);
-void array_free(PGB_Array* array);
+void array_push(CB_Array* array, void* item);
+void array_clear(CB_Array* array);
+void array_free(CB_Array* array);
 
 #endif /* array_h */

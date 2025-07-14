@@ -7,7 +7,7 @@
 #define MODAL_ANIM_TIME 16
 #define MODAL_DROP_TIME 12
 
-void PGB_Modal_update(PGB_Modal* modal)
+void CB_Modal_update(CB_Modal* modal)
 {
     if (modal->exit)
     {
@@ -15,7 +15,7 @@ void PGB_Modal_update(PGB_Modal* modal)
             modal->droptimer = 0;
         if (modal->timer-- == 0)
         {
-            PGB_dismiss(modal->scene);
+            CB_dismiss(modal->scene);
         }
     }
     else
@@ -25,7 +25,7 @@ void PGB_Modal_update(PGB_Modal* modal)
         if (++modal->droptimer > MODAL_DROP_TIME)
             modal->droptimer = MODAL_DROP_TIME;
     }
-    PDButtons pushed = PGB_App->buttons_pressed;
+    PDButtons pushed = CB_App->buttons_pressed;
 
     if (modal->setup == 0)
     {
@@ -98,7 +98,7 @@ void PGB_Modal_update(PGB_Modal* modal)
     );
 
     int m = 24;  // margin
-    playdate->graphics->setFont(PGB_App->bodyFont);
+    playdate->graphics->setFont(CB_App->bodyFont);
     if (modal->text)
     {
         // Apply a 2px vertical offset only for text-only modals
@@ -154,7 +154,7 @@ void PGB_Modal_update(PGB_Modal* modal)
     }
 }
 
-void PGB_Modal_free(PGB_Modal* modal)
+void CB_Modal_free(CB_Modal* modal)
 {
     if (modal->callback)
         modal->callback(modal->ud, modal->result);
@@ -167,19 +167,17 @@ void PGB_Modal_free(PGB_Modal* modal)
     for (size_t i = 0; i < MODAL_MAX_OPTIONS; ++i)
     {
         if (modal->options[i])
-            pgb_free(modal->options[i]);
+            cb_free(modal->options[i]);
     }
     if (modal->text)
-        pgb_free(modal->text);
-    PGB_Scene_free(modal->scene);
-    pgb_free(modal);
+        cb_free(modal->text);
+    CB_Scene_free(modal->scene);
+    cb_free(modal);
 }
 
-PGB_Modal* PGB_Modal_new(
-    char* text, char const* const* options, PGB_ModalCallback callback, void* ud
-)
+CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback callback, void* ud)
 {
-    PGB_Modal* modal = pgb_malloc(sizeof(PGB_Modal));
+    CB_Modal* modal = cb_malloc(sizeof(CB_Modal));
     memset(modal, 0, sizeof(*modal));
 
     modal->width = 250;
@@ -196,11 +194,11 @@ PGB_Modal* PGB_Modal_new(
     if (text)
         modal->text = string_copy(text);
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
     modal->scene = scene;
     scene->managedObject = modal;
-    scene->update = (void*)PGB_Modal_update;
-    scene->free = (void*)PGB_Modal_free;
+    scene->update = (void*)CB_Modal_update;
+    scene->free = (void*)CB_Modal_free;
 
     modal->callback = callback;
     modal->ud = ud;

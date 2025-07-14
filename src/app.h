@@ -56,16 +56,16 @@ typedef struct
     char* name_short_leading_article;
     char* name_detailed_leading_article;
     char* name_filename_leading_article;
-} PGB_GameName;
+} CB_GameName;
 
-// Note: does not free PGB_GameName struct, only its members.
-void free_game_names(const PGB_GameName* gameNames);
+// Note: does not free CB_GameName struct, only its members.
+void free_game_names(const CB_GameName* gameNames);
 
 typedef struct
 {
-    PGB_LoadedCoverArt art;
+    CB_LoadedCoverArt art;
     char* rom_path;
-} PGB_GlobalCoverCache;
+} CB_GlobalCoverCache;
 
 typedef struct
 {
@@ -77,17 +77,17 @@ typedef struct
     int height;
     int rowbytes;
     bool has_mask;
-} PGB_CoverCacheEntry;
+} CB_CoverCacheEntry;
 
-typedef struct PGB_Application
+typedef struct CB_Application
 {
     float dt;
     float avg_dt;       // for fps calculation
     float avg_dt_mult;  // reciprocal number of emulated frames last frame
     float crankChange;
     uint8_t* bootRomData;
-    PGB_Scene* scene;
-    PGB_Scene* pendingScene;
+    CB_Scene* scene;
+    CB_Scene* pendingScene;
     LCDFont* bodyFont;
     LCDFont* titleFont;
     LCDFont* subheadFont;
@@ -96,10 +96,10 @@ typedef struct PGB_Application
     LCDBitmapTable* selectorBitmapTable;
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
-    PGB_GlobalCoverCache coverArtCache;
-    PGB_Array* gameNameCache;
-    PGB_Array* coverCache;
-    PGB_Array* gameListCache;
+    CB_GlobalCoverCache coverArtCache;
+    CB_Array* gameNameCache;
+    CB_Array* coverCache;
+    CB_Array* gameListCache;
     bool gameListCacheIsSorted;
     struct PDSynth* clickSynth;
     PDButtons buttons_down;
@@ -115,18 +115,18 @@ typedef struct PGB_Application
     // - no per-game/global settings distinction
     // - some settings become inaccessible
     char* bundled_rom;
-} PGB_Application;
+} CB_Application;
 
-extern PGB_Application* PGB_App;
+extern CB_Application* CB_App;
 
-void PGB_init(void);
-void PGB_event(PDSystemEvent event, uint32_t arg);
-void PGB_update(float dt);
-void PGB_present(PGB_Scene* scene);
-void PGB_quit(void);
-void PGB_goToLibrary(void);
-void PGB_presentModal(PGB_Scene* scene);
-void PGB_dismiss(PGB_Scene* scene);
+void CB_init(void);
+void CB_event(PDSystemEvent event, uint32_t arg);
+void CB_update(float dt);
+void CB_present(CB_Scene* scene);
+void CB_quit(void);
+void CB_goToLibrary(void);
+void CB_presentModal(CB_Scene* scene);
+void CB_dismiss(CB_Scene* scene);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.
@@ -161,10 +161,10 @@ void* dtcm_alloc(size_t size);
 #define __shell                                                     \
     __attribute__((long_call)) __attribute((noinline)) __section__( \
         ".text."                                                    \
-        "pgb"                                                       \
+        "cb"                                                        \
     )
 #else
-#define __shell __attribute((noinline)) __section__(".text.pgb")
+#define __shell __attribute((noinline)) __section__(".text.cb")
 #endif
 #endif
 
@@ -207,6 +207,6 @@ void itcm_core_init(void);
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
 
 // for files which should only appear in data unless we're in bundle mode
-#define kFileReadDataOrBundle (PGB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)
+#define kFileReadDataOrBundle (CB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)
 
 #endif /* app_h */

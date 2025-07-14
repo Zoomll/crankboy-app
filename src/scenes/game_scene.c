@@ -6,7 +6,7 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#define PGB_IMPL
+#define CB_IMPL
 #include "game_scene.h"
 
 #include "../../minigb_apu/minigb_apu.h"
@@ -53,17 +53,17 @@
 // WARNING: Performance-intensive. Use for debugging only.
 #define LOG_DIRTY_LINES 0
 
-PGB_GameScene* audioGameScene = NULL;
+CB_GameScene* audioGameScene = NULL;
 
-static void PGB_GameScene_selector_init(PGB_GameScene* gameScene);
-static void PGB_GameScene_update(void* object, uint32_t u32enc_dt);
-static void PGB_GameScene_menu(void* object);
-static void PGB_GameScene_generateBitmask(void);
-static void PGB_GameScene_free(void* object);
-static void PGB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
+static void CB_GameScene_selector_init(CB_GameScene* gameScene);
+static void CB_GameScene_update(void* object, uint32_t u32enc_dt);
+static void CB_GameScene_menu(void* object);
+static void CB_GameScene_generateBitmask(void);
+static void CB_GameScene_free(void* object);
+static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
 
 static uint8_t* read_rom_to_ram(
-    const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size
+    const char* filename, CB_GameSceneError* sceneError, size_t* o_rom_size
 );
 
 // returns 0 if no pre-existing save data;
@@ -89,10 +89,10 @@ LCDColor game_picture_background_color;
 bool game_hide_indicator;
 bool gbScreenRequiresFullRefresh;
 
-static uint8_t PGB_dither_lut_row0[256];
-static uint8_t PGB_dither_lut_row1[256];
+static uint8_t CB_dither_lut_row0[256];
+static uint8_t CB_dither_lut_row1[256];
 
-const uint16_t PGB_dither_lut_c0[] = {
+const uint16_t CB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
 
@@ -105,7 +105,7 @@ const uint16_t PGB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
 };
 
-const uint16_t PGB_dither_lut_c1[] = {
+const uint16_t CB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1101 << 4) | (0b0100 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b1111 << 4) | (0b0000 << 8) | (0b0000 << 12),
 
@@ -120,8 +120,8 @@ const uint16_t PGB_dither_lut_c1[] = {
 
 __section__(".rare") static void generate_dither_luts(void)
 {
-    uint32_t dither_lut = PGB_dither_lut_c0[preferences_dither_pattern] |
-                          ((uint32_t)PGB_dither_lut_c1[preferences_dither_pattern] << 16);
+    uint32_t dither_lut = CB_dither_lut_c0[preferences_dither_pattern] |
+                          ((uint32_t)CB_dither_lut_c1[preferences_dither_pattern] << 16);
 
     // Loop through all 256 possible values of a 4-pixel Game Boy byte.
     for (int orgpixels_int = 0; orgpixels_int < 256; ++orgpixels_int)
@@ -140,7 +140,7 @@ __section__(".rare") static void generate_dither_luts(void)
             p0 |= c0;
             pixels_temp_c0 >>= 2;
         }
-        PGB_dither_lut_row0[orgpixels_int] = p0;
+        CB_dither_lut_row0[orgpixels_int] = p0;
 
         // --- Calculate dithered pattern for the second (bottom) row of pixels ---
         uint8_t pixels_temp_c1 = orgpixels;
@@ -154,7 +154,7 @@ __section__(".rare") static void generate_dither_luts(void)
             p1 |= c1;
             pixels_temp_c1 >>= 2;
         }
-        PGB_dither_lut_row1[orgpixels_int] = p1;
+        CB_dither_lut_row1[orgpixels_int] = p1;
     }
 }
 
@@ -162,8 +162,8 @@ __section__(".rare") static void generate_dither_luts(void)
 static int didOpenMenu = false;
 bool game_menu_button_input_enabled;
 
-static uint8_t PGB_bitmask[4][4][4];
-static bool PGB_GameScene_bitmask_done = false;
+static uint8_t CB_bitmask[4][4][4];
+static bool CB_GameScene_bitmask_done = false;
 
 static PDMenuItem* audioMenuItem;
 static PDMenuItem* fpsMenuItem;
@@ -180,7 +180,7 @@ static const char* buttonMenuOptions[] = {
 static const char* quitGameOptions[] = {"No", "Yes", NULL};
 
 #if ENABLE_RENDER_PROFILER
-static bool PGB_run_profiler_on_next_frame = false;
+static bool CB_run_profiler_on_next_frame = false;
 #endif
 
 #if ITCM_CORE
@@ -226,12 +226,12 @@ void itcm_core_init(void)
 #endif
 
 // Helper function to generate the config file path for a game
-char* pgb_game_config_path(const char* rom_filename)
+char* cb_game_config_path(const char* rom_filename)
 {
-    char* basename = pgb_basename(rom_filename, true);
+    char* basename = cb_basename(rom_filename, true);
     char* path;
-    playdate->system->formatString(&path, "%s/%s.json", PGB_settingsPath, basename);
-    pgb_free(basename);
+    playdate->system->formatString(&path, "%s/%s.json", CB_settingsPath, basename);
+    cb_free(basename);
     return path;
 }
 
@@ -239,7 +239,7 @@ static LCDBitmap* numbers_bmp = NULL;
 static uint32_t last_fps_digits;
 static uint8_t fps_draw_timer;
 
-PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
+CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 {
     playdate->system->logToConsole("ROM: %s", rom_filename);
 
@@ -251,7 +251,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
 
-    game_picture_x_offset = PGB_LCD_X;
+    game_picture_x_offset = CB_LCD_X;
     game_picture_scaling = 3;
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
@@ -259,17 +259,17 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     game_hide_indicator = false;
     game_menu_button_input_enabled = 1;
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
 
-    PGB_GameScene* gameScene = pgb_malloc(sizeof(PGB_GameScene));
+    CB_GameScene* gameScene = cb_malloc(sizeof(CB_GameScene));
     memset(gameScene, 0, sizeof(*gameScene));
     gameScene->scene = scene;
     scene->managedObject = gameScene;
 
-    scene->update = PGB_GameScene_update;
-    scene->menu = PGB_GameScene_menu;
-    scene->free = PGB_GameScene_free;
-    scene->event = PGB_GameScene_event;
+    scene->update = CB_GameScene_update;
+    scene->menu = CB_GameScene_menu;
+    scene->free = CB_GameScene_free;
+    scene->event = CB_GameScene_event;
     scene->use_user_stack = 0;  // user stack is slower
 
     scene->preferredRefreshRate = 30;
@@ -278,13 +278,13 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->name_short = string_copy(name_short);
     gameScene->save_filename = NULL;
 
-    gameScene->state = PGB_GameSceneStateError;
-    gameScene->error = PGB_GameSceneErrorUndefined;
+    gameScene->state = CB_GameSceneStateError;
+    gameScene->error = CB_GameSceneErrorUndefined;
 
-    gameScene->model = (PGB_GameSceneModel){.state = PGB_GameSceneStateError,
-                                            .error = PGB_GameSceneErrorUndefined,
-                                            .selectorIndex = 0,
-                                            .empty = true};
+    gameScene->model = (CB_GameSceneModel){.state = CB_GameSceneStateError,
+                                           .error = CB_GameSceneErrorUndefined,
+                                           .selectorIndex = 0,
+                                           .empty = true};
 
     gameScene->audioEnabled = (preferences_sound_mode > 0);
     gameScene->audioLocked = false;
@@ -311,9 +311,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     prefs_locked_by_script = 0;
 
     // Global settings are loaded by default. Check for a game-specific file.
-    gameScene->settings_filename = pgb_game_config_path(rom_filename);
+    gameScene->settings_filename = cb_game_config_path(rom_filename);
 
-    if (!PGB_App->bundled_rom)
+    if (!CB_App->bundled_rom)
     {
         // Try loading game-specific preferences
         preferences_per_game = 0;
@@ -329,31 +329,31 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
         // load the global preferences file instead.
         if (preferences_per_game == 0)
         {
-            call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+            call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
         }
 
         if (stored_save_slot)
         {
             preferences_restore_subset(stored_save_slot);
-            pgb_free(stored_save_slot);
+            cb_free(stored_save_slot);
         }
     }
     else
     {
         // bundled ROMs always use global preferences
-        call_with_user_stack_1(preferences_read_from_disk, PGB_globalPrefsPath);
+        call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
     }
 
-    PGB_GameScene_generateBitmask();
+    CB_GameScene_generateBitmask();
 
     generate_dither_luts();
 
-    PGB_GameScene_selector_init(gameScene);
+    CB_GameScene_selector_init(gameScene);
 
-#if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
+#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
     int highlightWidth = 10;
     gameScene->debug_highlightFrame = PDRectMake(
-        PGB_LCD_X - 1 - highlightWidth, 0, highlightWidth, playdate->display->getHeight()
+        CB_LCD_X - 1 - highlightWidth, 0, highlightWidth, playdate->display->getHeight()
     );
 #endif
 
@@ -365,7 +365,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
     DTCM_VERIFY();
 
-    PGB_GameSceneContext* context = pgb_malloc(sizeof(PGB_GameSceneContext));
+    CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
     struct gb_s* gb;
     static struct gb_s gb_fallback;  // use this gb struct if dtcm alloc not available
     if (dtcm_enabled())
@@ -384,9 +384,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     memset(gb, 0, sizeof(struct gb_s));
     DTCM_VERIFY();
 
-    if (PGB_App->soundSource == NULL)
+    if (CB_App->soundSource == NULL)
     {
-        PGB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, 0);
+        CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, 0);
     }
     audio_enabled = 1;
     context->gb = gb;
@@ -396,7 +396,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
     gameScene->context = context;
 
-    PGB_GameSceneError romError;
+    CB_GameSceneError romError;
     size_t rom_size;
     uint8_t* rom = read_rom_to_ram(rom_filename, &romError, &rom_size);
     DTCM_VERIFY();
@@ -423,9 +423,9 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
         );
 
-        if (PGB_App->bootRomData && preferences_bios)
+        if (CB_App->bootRomData && preferences_bios)
         {
-            gb_init_boot_rom(context->gb, PGB_App->bootRomData);
+            gb_init_boot_rom(context->gb, CB_App->bootRomData);
         }
 
         gb_reset(context->gb);
@@ -437,10 +437,10 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
         if (gb_ret == GB_INIT_NO_ERROR)
         {
             playdate->system->logToConsole("Initialized gb context.");
-            char* save_filename = pgb_save_filename(rom_filename, false);
+            char* save_filename = cb_save_filename(rom_filename, false);
             gameScene->save_filename = save_filename;
 
-            gameScene->base_filename = pgb_basename(rom_filename, true);
+            gameScene->base_filename = cb_basename(rom_filename, true);
 
             gameScene->cartridge_has_battery = context->gb->cart_battery;
             playdate->system->logToConsole(
@@ -480,23 +480,23 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
                     "will not start."
                 );
 
-                PGB_presentModal(PGB_Modal_new(
-                                     "Error loading save data. To protect your "
-                                     "data, the game will not start.",
-                                     NULL, NULL, NULL
+                CB_presentModal(CB_Modal_new(
+                                    "Error loading save data. To protect your "
+                                    "data, the game will not start.",
+                                    NULL, NULL, NULL
                 )
-                                     ->scene);
+                                    ->scene);
 
                 audioGameScene = NULL;
 
                 if (context->gb && context->gb->gb_cart_ram)
                 {
-                    pgb_free(context->gb->gb_cart_ram);
+                    cb_free(context->gb->gb_cart_ram);
                     context->gb->gb_cart_ram = NULL;
                 }
 
                 // Now, free the scene and context.
-                PGB_GameScene_free(gameScene);
+                CB_GameScene_free(gameScene);
                 return NULL;
             }
             }
@@ -552,7 +552,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
             DTCM_VERIFY();
 
             audio_init(&gb->audio);
-            PGB_GameScene_apply_settings(gameScene, true);
+            CB_GameScene_apply_settings(gameScene, true);
 
             if (gameScene->audioEnabled)
             {
@@ -563,14 +563,14 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
             gb_init_lcd(context->gb);
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-            gameScene->state = PGB_GameSceneStateLoaded;
+            gameScene->state = CB_GameSceneStateLoaded;
 
             playdate->system->logToConsole("gb context initialized.");
         }
         else
         {
-            gameScene->state = PGB_GameSceneStateError;
-            gameScene->error = PGB_GameSceneErrorFatal;
+            gameScene->state = CB_GameSceneStateError;
+            gameScene->error = CB_GameSceneErrorFatal;
 
             playdate->system->logToConsole(
                 "%s:%i: Error initializing gb context", __FILE__, __LINE__
@@ -580,7 +580,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     else
     {
         playdate->system->logToConsole("Failed to open ROM.");
-        gameScene->state = PGB_GameSceneStateError;
+        gameScene->state = CB_GameSceneStateError;
         gameScene->error = romError;
         return gameScene;
     }
@@ -611,16 +611,16 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 #endif
     DTCM_VERIFY();
 
-    PGB_ASSERT(gameScene->context == context);
-    PGB_ASSERT(gameScene->context->scene == gameScene);
-    PGB_ASSERT(gameScene->context->gb->direct.priv == context);
+    CB_ASSERT(gameScene->context == context);
+    CB_ASSERT(gameScene->context->scene == gameScene);
+    CB_ASSERT(gameScene->context->gb->direct.priv == context);
 
     return gameScene;
 }
 
-void PGB_GameScene_apply_settings(PGB_GameScene* gameScene, bool audio_settings_changed)
+void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed)
 {
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameSceneContext* context = gameScene->context;
 
     generate_dither_luts();
 
@@ -650,13 +650,13 @@ void PGB_GameScene_apply_settings(PGB_GameScene* gameScene, bool audio_settings_
     }
 }
 
-static void PGB_GameScene_selector_init(PGB_GameScene* gameScene)
+static void CB_GameScene_selector_init(CB_GameScene* gameScene)
 {
     int startButtonWidth = playdate->graphics->getTextWidth(
-        PGB_App->labelFont, startButtonText, strlen(startButtonText), kUTF8Encoding, 0
+        CB_App->labelFont, startButtonText, strlen(startButtonText), kUTF8Encoding, 0
     );
     int selectButtonWidth = playdate->graphics->getTextWidth(
-        PGB_App->labelFont, selectButtonText, strlen(selectButtonText), kUTF8Encoding, 0
+        CB_App->labelFont, selectButtonText, strlen(selectButtonText), kUTF8Encoding, 0
     );
 
     int width = 18;
@@ -665,13 +665,13 @@ static void PGB_GameScene_selector_init(PGB_GameScene* gameScene)
     int startSpacing = 3;
     int selectSpacing = 6;
 
-    int labelHeight = playdate->graphics->getFontHeight(PGB_App->labelFont);
+    int labelHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
 
     int containerHeight = labelHeight + startSpacing + height + selectSpacing + labelHeight;
 
     int containerWidth = width;
-    containerWidth = PGB_MAX(containerWidth, startButtonWidth);
-    containerWidth = PGB_MAX(containerWidth, selectButtonWidth);
+    containerWidth = CB_MAX(containerWidth, startButtonWidth);
+    containerWidth = CB_MAX(containerWidth, selectButtonWidth);
 
     const int rightBarX = 40 + 320;
     const int rightBarWidth = 40;
@@ -711,10 +711,10 @@ static void PGB_GameScene_selector_init(PGB_GameScene* gameScene)
  * Returns a pointer to the allocated space containing the ROM. Must be freed.
  */
 static uint8_t* read_rom_to_ram(
-    const char* filename, PGB_GameSceneError* sceneError, size_t* o_rom_size
+    const char* filename, CB_GameSceneError* sceneError, size_t* o_rom_size
 )
 {
-    *sceneError = PGB_GameSceneErrorUndefined;
+    *sceneError = CB_GameSceneErrorUndefined;
 
     SDFile* rom_file = playdate->file->open(filename, kFileReadDataOrBundle);
 
@@ -726,16 +726,16 @@ static uint8_t* read_rom_to_ram(
         );
         playdate->system->logToConsole("%s:%i: File error %s", __FILE__, __LINE__, fileError);
 
-        *sceneError = PGB_GameSceneErrorLoadingRom;
+        *sceneError = CB_GameSceneErrorLoadingRom;
 
         if (fileError)
         {
-            char* fsErrorCode = pgb_extract_fs_error_code(fileError);
+            char* fsErrorCode = cb_extract_fs_error_code(fileError);
             if (fsErrorCode)
             {
                 if (strcmp(fsErrorCode, "0709") == 0)
                 {
-                    *sceneError = PGB_GameSceneErrorWrongLocation;
+                    *sceneError = CB_GameSceneErrorWrongLocation;
                 }
             }
         }
@@ -747,7 +747,7 @@ static uint8_t* read_rom_to_ram(
     *o_rom_size = rom_size;
     playdate->file->seek(rom_file, 0, SEEK_SET);
 
-    uint8_t* rom = pgb_malloc(rom_size);
+    uint8_t* rom = cb_malloc(rom_size);
 
     if (playdate->file->read(rom_file, rom, rom_size) != rom_size)
     {
@@ -755,9 +755,9 @@ static uint8_t* read_rom_to_ram(
             "%s:%i: Can't read rom file %s", __FILE__, __LINE__, filename
         );
 
-        pgb_free(rom);
+        cb_free(rom);
         playdate->file->close(rom_file);
-        *sceneError = PGB_GameSceneErrorLoadingRom;
+        *sceneError = CB_GameSceneErrorLoadingRom;
         return NULL;
     }
 
@@ -773,10 +773,10 @@ static int read_cart_ram_file(
 
     const size_t sram_len = gb_get_save_size(gb);
 
-    PGB_GameSceneContext* context = gb->direct.priv;
-    PGB_GameScene* gameScene = context->scene;
+    CB_GameSceneContext* context = gb->direct.priv;
+    CB_GameScene* gameScene = context->scene;
 
-    gb->gb_cart_ram = (sram_len > 0) ? pgb_malloc(sram_len) : NULL;
+    gb->gb_cart_ram = (sram_len > 0) ? cb_malloc(sram_len) : NULL;
     if (gb->gb_cart_ram)
     {
         memset(gb->gb_cart_ram, 0, sram_len);
@@ -822,8 +822,8 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
 {
     // Get the size of the save RAM from the gb context.
     const size_t sram_len = gb_get_save_size(gb);
-    PGB_GameSceneContext* context = gb->direct.priv;
-    PGB_GameScene* gameScene = context->scene;
+    CB_GameSceneContext* context = gb->direct.priv;
+    CB_GameScene* gameScene = context->scene;
 
     // If there is no battery, exit.
     if (!gameScene->cartridge_has_battery)
@@ -833,8 +833,8 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
 
     // Generate .tmp and .bak filenames
     size_t len = strlen(save_filename);
-    char* tmp_filename = pgb_malloc(len + 2);
-    char* bak_filename = pgb_malloc(len + 2);
+    char* tmp_filename = cb_malloc(len + 2);
+    char* bak_filename = cb_malloc(len + 2);
 
     if (!tmp_filename || !bak_filename)
     {
@@ -930,17 +930,17 @@ static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
 
 cleanup:
     if (tmp_filename)
-        pgb_free(tmp_filename);
+        cb_free(tmp_filename);
     if (bak_filename)
-        pgb_free(bak_filename);
+        cb_free(bak_filename);
 }
 
 static void gb_save_to_disk_(struct gb_s* gb)
 {
     DTCM_VERIFY_DEBUG();
 
-    PGB_GameSceneContext* context = gb->direct.priv;
-    PGB_GameScene* gameScene = context->scene;
+    CB_GameSceneContext* context = gb->direct.priv;
+    CB_GameScene* gameScene = context->scene;
 
     if (gameScene->isCurrentlySaving)
     {
@@ -982,7 +982,7 @@ static void gb_save_to_disk(struct gb_s* gb)
  */
 static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
 {
-    PGB_GameSceneContext* context = gb->direct.priv;
+    CB_GameSceneContext* context = gb->direct.priv;
 
     bool is_fatal = false;
 
@@ -1014,17 +1014,17 @@ static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16
         // save a recovery file
         if (context->scene->save_data_loaded_successfully)
         {
-            char* recovery_filename = pgb_save_filename(context->scene->rom_filename, true);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
-            pgb_free(recovery_filename);
+            cb_free(recovery_filename);
         }
 
         // TODO: write recovery savestate
 
-        context->scene->state = PGB_GameSceneStateError;
-        context->scene->error = PGB_GameSceneErrorFatal;
+        context->scene->state = CB_GameSceneStateError;
+        context->scene->error = CB_GameSceneErrorFatal;
 
-        PGB_Scene_refreshMenu(context->scene->scene);
+        CB_Scene_refreshMenu(context->scene->scene);
     }
 
     return;
@@ -1040,7 +1040,7 @@ __core_section("fb") void update_fb_dirty_lines(
 )
 {
     framebuffer += game_picture_x_offset / 8;
-    unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
+    unsigned fb_y_playdate_current_bottom = CB_LCD_Y + CB_LCD_HEIGHT;
     const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
     if (stable_scaling_enabled)
@@ -1205,13 +1205,13 @@ static __section__(".text.tick") void display_fps(void)
         return;
 
     float fps;
-    if (PGB_App->avg_dt <= 1.0f / 98.5f)
+    if (CB_App->avg_dt <= 1.0f / 98.5f)
     {
         fps = 99.9f;
     }
     else
     {
-        fps = 1.0f / PGB_App->avg_dt;
+        fps = 1.0f / CB_App->avg_dt;
     }
 
     // for rounding
@@ -1283,10 +1283,9 @@ static __section__(".text.tick") void display_fps(void)
     playdate->graphics->markUpdatedRows(0, height - 1);
 }
 
-__section__(".text.tick") __space
-    static void crank_update(PGB_GameScene* gameScene, float* progress)
+__section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
 {
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameSceneContext* context = gameScene->context;
 
     float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
 
@@ -1382,10 +1381,10 @@ __section__(".text.tick") __space
     context->gb->direct.crank_docked = 0;
 }
 
-__section__(".text.tick") __space static void PGB_GameScene_update(void* object, uint32_t u32enc_dt)
+__section__(".text.tick") __space static void CB_GameScene_update(void* object, uint32_t u32enc_dt)
 {
     // This prevents flicker when transitioning to the Library Scene.
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
@@ -1396,10 +1395,10 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     );
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
-    PGB_GameScene* gameScene = object;
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameScene* gameScene = object;
+    CB_GameSceneContext* context = gameScene->context;
 
-    PGB_Scene_update(gameScene->scene, dt);
+    CB_Scene_update(gameScene->scene, dt);
 
     float progress = 0.5f;
 
@@ -1638,7 +1637,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         didOpenMenu = 0;
     }
 
-    if (gameScene->state == PGB_GameSceneStateLoaded)
+    if (gameScene->state == CB_GameSceneStateLoaded)
     {
         bool shouldDisplayStartSelectUI = (!playdate->system->isCrankDocked() &&
                                            preferences_crank_mode == CRANK_MODE_START_SELECT) ||
@@ -1658,9 +1657,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             animatedSelectorBitmapNeedsRedraw = true;
         }
 
-        PGB_GameSceneContext* context = gameScene->context;
+        CB_GameSceneContext* context = gameScene->context;
 
-        PDButtons current_pd_buttons = PGB_App->buttons_down;
+        PDButtons current_pd_buttons = CB_App->buttons_down;
 
         bool gb_joypad_start_is_active_low = !(gameScene->selector.startPressed);
         bool gb_joypad_select_is_active_low = !(gameScene->selector.selectPressed);
@@ -1686,7 +1685,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             playdate->graphics->clear(game_picture_background_color);
         }
 
-#if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
+#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
         memset(gameScene->debug_updatedRows, 0, LCD_ROWS);
 #endif
 
@@ -1697,7 +1696,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             script_tick(context->scene->script, gameScene);
         }
 
-        PGB_ASSERT(context == context->gb->direct.priv);
+        CB_ASSERT(context == context->gb->direct.priv);
 
         struct gb_s* tmp_gb = context->gb;
 
@@ -1721,7 +1720,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         }
 
         gameScene->playtime += 1 + preferences_frame_skip;
-        PGB_App->avg_dt_mult =
+        CB_App->avg_dt_mult =
             (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
         for (int frame = 0; frame <= preferences_frame_skip; ++frame)
         {
@@ -1880,9 +1879,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         bool actual_gb_draw_needed = true;
 
 #if ENABLE_RENDER_PROFILER
-        if (PGB_run_profiler_on_next_frame)
+        if (CB_run_profiler_on_next_frame)
         {
-            PGB_run_profiler_on_next_frame = false;
+            CB_run_profiler_on_next_frame = false;
 
             for (int i = 0; i < LCD_HEIGHT / 16; i++)
             {
@@ -1894,7 +1893,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
-                PGB_dither_lut_row0, PGB_dither_lut_row1
+                CB_dither_lut_row0, CB_dither_lut_row1
             );
 
             float endTime = playdate->system->getElapsedTime();
@@ -1929,7 +1928,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
-                PGB_dither_lut_row0, PGB_dither_lut_row1
+                CB_dither_lut_row0, CB_dither_lut_row1
             );
 
             ITCM_CORE_FN(gb_fast_memcpy_64)(
@@ -1988,14 +1987,14 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             // Draw the text labels ("Start/Select") if needed.
             if (shouldDisplayStartSelectUI)
             {
-                playdate->graphics->setFont(PGB_App->labelFont);
+                playdate->graphics->setFont(CB_App->labelFont);
                 playdate->graphics->setDrawMode(kDrawModeFillWhite);
                 playdate->graphics->drawText(
-                    startButtonText, pgb_strlen(startButtonText), kUTF8Encoding,
+                    startButtonText, cb_strlen(startButtonText), kUTF8Encoding,
                     gameScene->selector.startButtonX, gameScene->selector.startButtonY
                 );
                 playdate->graphics->drawText(
-                    selectButtonText, pgb_strlen(selectButtonText), kUTF8Encoding,
+                    selectButtonText, cb_strlen(selectButtonText), kUTF8Encoding,
                     gameScene->selector.selectButtonX, gameScene->selector.selectButtonY
                 );
             }
@@ -2004,21 +2003,21 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
                 preferences_crank_mode == CRANK_MODE_TURBO_CCW)
             {
-                playdate->graphics->setFont(PGB_App->labelFont);
+                playdate->graphics->setFont(CB_App->labelFont);
                 playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
                 const char* line1 = "Turbo";
                 const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
 
-                int fontHeight = playdate->graphics->getFontHeight(PGB_App->labelFont);
+                int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
                 int lineSpacing = 2;
                 int paddingBottom = 6;
 
                 int line1Width = playdate->graphics->getTextWidth(
-                    PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
+                    CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
                 );
                 int line2Width = playdate->graphics->getTextWidth(
-                    PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
+                    CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
                 );
 
                 const int rightBarX = 40 + 320;
@@ -2044,12 +2043,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 LCDBitmap* bitmap;
                 if (gameScene->selector.index < 0)
                 {
-                    bitmap = PGB_App->startSelectBitmap;
+                    bitmap = CB_App->startSelectBitmap;
                 }
                 else
                 {
                     bitmap = playdate->graphics->getTableBitmap(
-                        PGB_App->selectorBitmapTable, gameScene->selector.index
+                        CB_App->selectorBitmapTable, gameScene->selector.index
                     );
                 }
                 playdate->graphics->drawBitmap(
@@ -2073,12 +2072,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             // calculated frame
             if (gameScene->selector.index < 0)
             {
-                bitmap = PGB_App->startSelectBitmap;
+                bitmap = CB_App->startSelectBitmap;
             }
             else
             {
                 bitmap = playdate->graphics->getTableBitmap(
-                    PGB_App->selectorBitmapTable, gameScene->selector.index
+                    CB_App->selectorBitmapTable, gameScene->selector.index
                 );
             }
             playdate->graphics->drawBitmap(
@@ -2090,16 +2089,16 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             );
         }
 
-#if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
+#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
         PDRect highlightFrame = gameScene->debug_highlightFrame;
         playdate->graphics->fillRect(
             highlightFrame.x, highlightFrame.y, highlightFrame.width, highlightFrame.height,
             kColorBlack
         );
 
-        for (int y = 0; y < PGB_LCD_HEIGHT; y++)
+        for (int y = 0; y < CB_LCD_HEIGHT; y++)
         {
-            int absoluteY = PGB_LCD_Y + y;
+            int absoluteY = CB_LCD_Y + y;
 
             if (gameScene->debug_updatedRows[absoluteY])
             {
@@ -2115,7 +2114,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             display_fps();
         }
     }
-    else if (gameScene->state == PGB_GameSceneStateError)
+    else if (gameScene->state == CB_GameSceneStateError)
     {
         // Check for pushed A or B button to return to the library
         PDButtons pushed;
@@ -2123,7 +2122,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
         if ((pushed & kButtonA) || (pushed & kButtonB))
         {
-            PGB_GameScene_didSelectLibrary(gameScene);
+            CB_GameScene_didSelectLibrary(gameScene);
             return;
         }
 
@@ -2138,18 +2137,18 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             errorMessages[0] = "A generic error occurred";
 
-            if (gameScene->error == PGB_GameSceneErrorLoadingRom)
+            if (gameScene->error == CB_GameSceneErrorLoadingRom)
             {
                 errorMessages[0] = "Can't load the selected ROM";
             }
-            else if (gameScene->error == PGB_GameSceneErrorWrongLocation)
+            else if (gameScene->error == CB_GameSceneErrorWrongLocation)
             {
                 errorTitle = "Wrong location";
                 errorMessagesCount = 2;
                 errorMessages[0] = "Please move the ROM to";
                 errorMessages[1] = "/Data/*.crankboy/games/";
             }
-            else if (gameScene->error == PGB_GameSceneErrorFatal)
+            else if (gameScene->error == CB_GameSceneErrorFatal)
             {
                 errorMessages[0] = "A fatal error occurred";
             }
@@ -2161,9 +2160,9 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
             int titleToMessageSpacing = 6;
 
-            int titleHeight = playdate->graphics->getFontHeight(PGB_App->titleFont);
+            int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
             int lineSpacing = 2;
-            int messageHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+            int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
             int messagesHeight =
                 messageHeight * errorMessagesCount + lineSpacing * (errorMessagesCount - 1);
 
@@ -2172,12 +2171,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             int titleX =
                 (float)(playdate->display->getWidth() -
                         playdate->graphics->getTextWidth(
-                            PGB_App->titleFont, errorTitle, strlen(errorTitle), kUTF8Encoding, 0
+                            CB_App->titleFont, errorTitle, strlen(errorTitle), kUTF8Encoding, 0
                         )) /
                 2;
             int titleY = (float)(playdate->display->getHeight() - containerHeight) / 2;
 
-            playdate->graphics->setFont(PGB_App->titleFont);
+            playdate->graphics->setFont(CB_App->titleFont);
             playdate->graphics->drawText(
                 errorTitle, strlen(errorTitle), kUTF8Encoding, titleX, titleY
             );
@@ -2189,12 +2188,12 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 char* errorMessage = errorMessages[i];
                 int messageX = (float)(playdate->display->getWidth() -
                                        playdate->graphics->getTextWidth(
-                                           PGB_App->bodyFont, errorMessage, strlen(errorMessage),
+                                           CB_App->bodyFont, errorMessage, strlen(errorMessage),
                                            kUTF8Encoding, 0
                                        )) /
                                2;
 
-                playdate->graphics->setFont(PGB_App->bodyFont);
+                playdate->graphics->setFont(CB_App->bodyFont);
                 playdate->graphics->drawText(
                     errorMessage, strlen(errorMessage), kUTF8Encoding, messageX, messageY
                 );
@@ -2232,7 +2231,7 @@ __section__(".text.tick") __space static void save_check(struct gb_s* gb)
 
     if (gb->cart_battery && gb->direct.sram_dirty && !gb->direct.sram_updated)
     {
-        if (frames_since_sram_update >= PGB_IDLE_FRAMES_BEFORE_SAVE)
+        if (frames_since_sram_update >= CB_IDLE_FRAMES_BEFORE_SAVE)
         {
             playdate->system->logToConsole("Saving (idle detected)");
             gb_save_to_disk(gb);
@@ -2240,13 +2239,13 @@ __section__(".text.tick") __space static void save_check(struct gb_s* gb)
     }
 }
 
-void PGB_LibraryConfirmModal(void* userdata, int option)
+void CB_LibraryConfirmModal(void* userdata, int option)
 {
-    PGB_GameScene* gameScene = userdata;
+    CB_GameScene* gameScene = userdata;
 
     if (option == 1)
     {
-        call_with_user_stack(PGB_goToLibrary);
+        call_with_user_stack(CB_goToLibrary);
     }
     else
     {
@@ -2256,39 +2255,39 @@ void PGB_LibraryConfirmModal(void* userdata, int option)
     }
 }
 
-__section__(".rare") void PGB_GameScene_didSelectLibrary_(void* userdata)
+__section__(".rare") void CB_GameScene_didSelectLibrary_(void* userdata)
 {
-    PGB_GameScene* gameScene = userdata;
+    CB_GameScene* gameScene = userdata;
     gameScene->audioLocked = true;
 
     // if playing for more than 1 minute, ask confirmation
     if (gameScene->playtime >= 60 * 60)
     {
         const char* options[] = {"No", "Yes", NULL};
-        PGB_presentModal(
-            PGB_Modal_new("Quit game?", quitGameOptions, PGB_LibraryConfirmModal, gameScene)->scene
+        CB_presentModal(
+            CB_Modal_new("Quit game?", quitGameOptions, CB_LibraryConfirmModal, gameScene)->scene
         );
     }
     else
     {
-        call_with_user_stack(PGB_goToLibrary);
+        call_with_user_stack(CB_goToLibrary);
     }
 }
 
-__section__(".rare") void PGB_GameScene_didSelectLibrary(void* userdata)
+__section__(".rare") void CB_GameScene_didSelectLibrary(void* userdata)
 {
     DTCM_VERIFY();
 
-    call_with_user_stack_1(PGB_GameScene_didSelectLibrary_, userdata);
+    call_with_user_stack_1(CB_GameScene_didSelectLibrary_, userdata);
 
     DTCM_VERIFY();
 }
 
-__section__(".rare") static void PGB_GameScene_showSettings(void* userdata)
+__section__(".rare") static void CB_GameScene_showSettings(void* userdata)
 {
-    PGB_GameScene* gameScene = userdata;
-    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(gameScene, NULL);
-    PGB_presentModal(settingsScene->scene);
+    CB_GameScene* gameScene = userdata;
+    CB_SettingsScene* settingsScene = CB_SettingsScene_new(gameScene, NULL);
+    CB_presentModal(settingsScene->scene);
 
     // We need to set this here to None in case the user selected any button.
     // The menu automatically falls back to 0 and the selected button is never
@@ -2297,9 +2296,9 @@ __section__(".rare") static void PGB_GameScene_showSettings(void* userdata)
     gameScene->button_hold_mode = 1;
 }
 
-__section__(".rare") void PGB_GameScene_buttonMenuCallback(void* userdata)
+__section__(".rare") void CB_GameScene_buttonMenuCallback(void* userdata)
 {
-    PGB_GameScene* gameScene = userdata;
+    CB_GameScene* gameScene = userdata;
     if (buttonMenuItem)
     {
         int selected_option = playdate->system->getMenuItemValue(buttonMenuItem);
@@ -2313,10 +2312,10 @@ __section__(".rare") void PGB_GameScene_buttonMenuCallback(void* userdata)
     }
 }
 
-static void PGB_GameScene_menu(void* object)
+static void CB_GameScene_menu(void* object)
 {
     didOpenMenu = true;
-    PGB_GameScene* gameScene = object;
+    CB_GameScene* gameScene = object;
 
     if (gameScene->menuImage != NULL)
     {
@@ -2328,27 +2327,27 @@ static void PGB_GameScene_menu(void* object)
 
     playdate->system->removeAllMenuItems();
 
-    if (gameScene->state == PGB_GameSceneStateError)
+    if (gameScene->state == CB_GameSceneStateError)
     {
-        if (!PGB_App->bundled_rom)
+        if (!CB_App->bundled_rom)
         {
-            playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+            playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
         }
         return;
     }
 
     if (gameScene->menuImage == NULL)
     {
-        PGB_LoadedCoverArt cover_art = {.bitmap = NULL};
+        CB_LoadedCoverArt cover_art = {.bitmap = NULL};
         char* actual_cover_path = NULL;
 
         // --- Get Cover Art ---
 
         bool has_cover_art = false;
-        if (PGB_App->coverArtCache.rom_path &&
-            strcmp(PGB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
-            PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
-            PGB_App->coverArtCache.art.bitmap != NULL)
+        if (CB_App->coverArtCache.rom_path &&
+            strcmp(CB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
+            CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+            CB_App->coverArtCache.art.bitmap != NULL)
         {
             has_cover_art = true;
         }
@@ -2407,7 +2406,7 @@ static void PGB_GameScene_menu(void* object)
                 {
                     playdate->graphics->fillRect(0, 0, 400, 240, kColorBlack);
 
-                    PGB_LoadedCoverArt* cached_art = &PGB_App->coverArtCache.art;
+                    CB_LoadedCoverArt* cached_art = &CB_App->coverArtCache.art;
 
                     const int max_width = 200;
                     const int max_height = 200;
@@ -2459,7 +2458,7 @@ static void PGB_GameScene_menu(void* object)
                 // 2. Draw Save Time if it exists
                 if (show_time_info)
                 {
-                    playdate->graphics->setFont(PGB_App->labelFont);
+                    playdate->graphics->setFont(CB_App->labelFont);
                     const char* line1 = line1_text;
 
                     unsigned current_time = playdate->system->getSecondsSinceEpoch(NULL);
@@ -2510,15 +2509,15 @@ static void PGB_GameScene_menu(void* object)
                     {
                         char* human_time = en_human_time(current_time - final_timestamp);
                         snprintf(line2, sizeof(line2), "%s ago", human_time);
-                        pgb_free(human_time);
+                        cb_free(human_time);
                     }
 
-                    int font_height = playdate->graphics->getFontHeight(PGB_App->labelFont);
+                    int font_height = playdate->graphics->getFontHeight(CB_App->labelFont);
                     int line1_width = playdate->graphics->getTextWidth(
-                        PGB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
+                        CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
                     );
                     int line2_width = playdate->graphics->getTextWidth(
-                        PGB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
+                        CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
                     );
                     int text_spacing = 4;
                     int text_block_height = font_height * 2 + text_spacing;
@@ -2542,7 +2541,7 @@ static void PGB_GameScene_menu(void* object)
                         int black_border_size = 2;
                         int white_border_size = 1;
 
-                        int box_width = PGB_MAX(line1_width, line2_width) + (padding_x * 2);
+                        int box_width = CB_MAX(line1_width, line2_width) + (padding_x * 2);
                         int box_height = text_block_height + (padding_y * 2);
 
                         int total_border_size = black_border_size + white_border_size;
@@ -2587,36 +2586,36 @@ static void PGB_GameScene_menu(void* object)
     }
 
     playdate->system->setMenuImage(gameScene->menuImage, 0);
-    if (!PGB_App->bundled_rom)
+    if (!CB_App->bundled_rom)
     {
-        playdate->system->addMenuItem("Library", PGB_GameScene_didSelectLibrary, gameScene);
+        playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
     }
     if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
     {
-        playdate->system->addMenuItem("Settings", PGB_GameScene_showSettings, gameScene);
+        playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
     }
     else
     {
-        playdate->system->addMenuItem("About", PGB_showCredits, gameScene);
+        playdate->system->addMenuItem("About", CB_showCredits, gameScene);
     }
 
     if (game_menu_button_input_enabled)
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
-            "Button", buttonMenuOptions, 4, PGB_GameScene_buttonMenuCallback, gameScene
+            "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
         );
         playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
     }
 }
 
-static void PGB_GameScene_generateBitmask(void)
+static void CB_GameScene_generateBitmask(void)
 {
-    if (PGB_GameScene_bitmask_done)
+    if (CB_GameScene_bitmask_done)
     {
         return;
     }
 
-    PGB_GameScene_bitmask_done = true;
+    CB_GameScene_bitmask_done = true;
 
     for (int colour = 0; colour < 4; colour++)
     {
@@ -2630,14 +2629,14 @@ static void PGB_GameScene_generateBitmask(void)
 
                 for (int x = 0; x < 2; x++)
                 {
-                    if (PGB_patterns[colour][y][x_offset + x] == 1)
+                    if (CB_patterns[colour][y][x_offset + x] == 1)
                     {
                         int n = i * 2 + x;
                         mask |= (1 << (7 - n));
                     }
                 }
 
-                PGB_bitmask[colour][i][y] = mask;
+                CB_bitmask[colour][i][y] = mask;
 
                 x_offset ^= 2;
             }
@@ -2646,17 +2645,17 @@ static void PGB_GameScene_generateBitmask(void)
 }
 
 __section__(".rare") static unsigned get_save_state_timestamp_(
-    PGB_GameScene* gameScene, unsigned slot
+    CB_GameScene* gameScene, unsigned slot
 )
 {
     char* path;
     playdate->system->formatString(
-        &path, "%s/%s.%u.state", PGB_statesPath, gameScene->base_filename, slot
+        &path, "%s/%s.%u.state", CB_statesPath, gameScene->base_filename, slot
     );
 
     SDFile* file = playdate->file->open(path, kFileReadData);
 
-    pgb_free(path);
+    cb_free(path);
 
     if (!file)
     {
@@ -2676,13 +2675,13 @@ __section__(".rare") static unsigned get_save_state_timestamp_(
     }
 }
 
-__section__(".rare") unsigned get_save_state_timestamp(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") unsigned get_save_state_timestamp(CB_GameScene* gameScene, unsigned slot)
 {
     return (unsigned)call_with_main_stack_2(get_save_state_timestamp_, gameScene, slot);
 }
 
 // returns true if successful
-__section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned slot)
 {
     playdate->system->logToConsole("save state %p", __builtin_frame_address(0));
 
@@ -2694,7 +2693,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
 
     gameScene->isCurrentlySaving = true;
 
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameSceneContext* context = gameScene->context;
     bool success = false;
 
     char* path_prefix = NULL;
@@ -2705,7 +2704,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
     char* buff = NULL;
 
     playdate->system->formatString(
-        &path_prefix, "%s/%s.%u", PGB_statesPath, gameScene->base_filename, slot
+        &path_prefix, "%s/%s.%u", CB_statesPath, gameScene->base_filename, slot
     );
 
     playdate->system->formatString(&state_name, "%s.state", path_prefix);
@@ -2723,7 +2722,7 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
         goto cleanup;
     }
 
-    buff = pgb_malloc(save_size);
+    buff = cb_malloc(save_size);
     if (!buff)
     {
         playdate->system->logToConsole("Failed to allocate buffer for save state");
@@ -2839,41 +2838,41 @@ __section__(".rare") static bool save_state_(PGB_GameScene* gameScene, unsigned 
 
 cleanup:
     if (path_prefix)
-        pgb_free(path_prefix);
+        cb_free(path_prefix);
     if (state_name)
-        pgb_free(state_name);
+        cb_free(state_name);
     if (tmp_name)
-        pgb_free(tmp_name);
+        cb_free(tmp_name);
     if (bak_name)
-        pgb_free(bak_name);
+        cb_free(bak_name);
     if (thumb_name)
-        pgb_free(thumb_name);
+        cb_free(thumb_name);
     if (buff)
-        pgb_free(buff);
+        cb_free(buff);
 
     gameScene->isCurrentlySaving = false;
     return success;
 }
 
 // returns true if successful
-__section__(".rare") bool save_state(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") bool save_state(CB_GameScene* gameScene, unsigned slot)
 {
     return (bool)call_with_main_stack_2(save_state_, gameScene, slot);
     gameScene->playtime = 0;
 }
 
 __section__(".rare") bool load_state_thumbnail_(
-    PGB_GameScene* gameScene, unsigned slot, uint8_t* out
+    CB_GameScene* gameScene, unsigned slot, uint8_t* out
 )
 {
     char* path;
     playdate->system->formatString(
-        &path, "%s/%s.%u.thumb", PGB_statesPath, gameScene->base_filename, slot
+        &path, "%s/%s.%u.thumb", CB_statesPath, gameScene->base_filename, slot
     );
 
     SDFile* file = playdate->file->open(path, kFileReadData);
 
-    pgb_free(path);
+    cb_free(path);
 
     if (!file)
     {
@@ -2888,21 +2887,19 @@ __section__(".rare") bool load_state_thumbnail_(
 }
 
 // returns true if successful
-__section__(".rare") bool load_state_thumbnail(
-    PGB_GameScene* gameScene, unsigned slot, uint8_t* out
-)
+__section__(".rare") bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out)
 {
     return (bool)call_with_main_stack_3(load_state_thumbnail_, gameScene, slot, out);
 }
 
 // returns true if successful
-__section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
+__section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
 {
     gameScene->playtime = 0;
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameSceneContext* context = gameScene->context;
     char* state_name;
     playdate->system->formatString(
-        &state_name, "%s/%s.%u.state", PGB_statesPath, gameScene->base_filename, slot
+        &state_name, "%s/%s.%u.state", CB_statesPath, gameScene->base_filename, slot
     );
     bool success = false;
 
@@ -2931,7 +2928,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
             {
                 success = true;
                 int size_remaining = save_size;
-                char* buff = pgb_malloc(save_size);
+                char* buff = cb_malloc(save_size);
                 if (buff == NULL)
                 {
                     playdate->system->logToConsole("Failed to allocate save state buffer");
@@ -2990,7 +2987,7 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
                         }
                     }
 
-                    pgb_free(buff);
+                    cb_free(buff);
                 }
             }
         }
@@ -3002,16 +2999,14 @@ __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
         playdate->file->close(file);
     }
 
-    pgb_free(state_name);
+    cb_free(state_name);
     return success;
 }
 
-__section__(".rare") static void PGB_GameScene_event(
-    void* object, PDSystemEvent event, uint32_t arg
-)
+__section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
-    PGB_GameScene* gameScene = object;
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameScene* gameScene = object;
+    CB_GameSceneContext* context = gameScene->context;
 
     switch (event)
     {
@@ -3022,7 +3017,7 @@ __section__(".rare") static void PGB_GameScene_event(
         DTCM_VERIFY();
         if (gameScene->cartridge_has_battery)
         {
-            call_with_user_stack_1(PGB_GameScene_menu, gameScene);
+            call_with_user_stack_1(CB_GameScene_menu, gameScene);
         }
         // fallthrough
     case kEventTerminate:
@@ -3045,9 +3040,9 @@ __section__(".rare") static void PGB_GameScene_event(
         if (context->gb->direct.sram_dirty && gameScene->save_data_loaded_successfully)
         {
             // save a recovery file
-            char* recovery_filename = pgb_save_filename(context->scene->rom_filename, true);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
-            pgb_free(recovery_filename);
+            cb_free(recovery_filename);
         }
         break;
     case kEventKeyPressed:
@@ -3078,7 +3073,7 @@ __section__(".rare") static void PGB_GameScene_event(
 #if ENABLE_RENDER_PROFILER
         case 0x39:  // 9
             playdate->system->logToConsole("Profiler triggered. Will run on next frame.");
-            PGB_run_profiler_on_next_frame = true;
+            CB_run_profiler_on_next_frame = true;
             break;
 #endif
         }
@@ -3087,22 +3082,22 @@ __section__(".rare") static void PGB_GameScene_event(
     }
 }
 
-static void PGB_GameScene_free(void* object)
+static void CB_GameScene_free(void* object)
 {
     DTCM_VERIFY();
-    PGB_GameScene* gameScene = object;
-    PGB_GameSceneContext* context = gameScene->context;
+    CB_GameScene* gameScene = object;
+    CB_GameSceneContext* context = gameScene->context;
 
     prefs_locked_by_script = 0;
 
-    preferences_read_from_disk(PGB_globalPrefsPath);
+    preferences_read_from_disk(CB_globalPrefsPath);
     preferences_per_game = 0;
     preferences_save_state_slot = 0;
 
-    if (PGB_App->soundSource != NULL)
+    if (CB_App->soundSource != NULL)
     {
-        playdate->sound->removeSource(PGB_App->soundSource);
-        PGB_App->soundSource = NULL;
+        playdate->sound->removeSource(CB_App->soundSource);
+        CB_App->soundSource = NULL;
     }
 
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
@@ -3117,26 +3112,26 @@ static void PGB_GameScene_free(void* object)
 
     playdate->system->setMenuImage(NULL, 0);
 
-    PGB_Scene_free(gameScene->scene);
+    CB_Scene_free(gameScene->scene);
 
     gb_save_to_disk(context->gb);
 
     gb_reset(context->gb);
 
-    pgb_free(gameScene->rom_filename);
-    pgb_free(gameScene->save_filename);
-    pgb_free(gameScene->base_filename);
-    pgb_free(gameScene->settings_filename);
-    pgb_free(gameScene->name_short);
+    cb_free(gameScene->rom_filename);
+    cb_free(gameScene->save_filename);
+    cb_free(gameScene->base_filename);
+    cb_free(gameScene->settings_filename);
+    cb_free(gameScene->name_short);
 
     if (context->rom)
     {
-        pgb_free(context->rom);
+        cb_free(context->rom);
     }
 
     if (context->cart_ram)
     {
-        pgb_free(context->cart_ram);
+        cb_free(context->cart_ram);
     }
 
     if (preferences_script_support && gameScene->script)
@@ -3145,8 +3140,8 @@ static void PGB_GameScene_free(void* object)
         gameScene->script = NULL;
     }
 
-    pgb_free(context);
-    pgb_free(gameScene);
+    cb_free(context);
+    cb_free(gameScene);
 
     dtcm_deinit();
     DTCM_VERIFY();
@@ -3154,13 +3149,13 @@ static void PGB_GameScene_free(void* object)
 
 __section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_number)
 {
-    PGB_GameSceneContext* context = gb->direct.priv;
-    PGB_GameScene* gameScene = context->scene;
+    CB_GameSceneContext* context = gb->direct.priv;
+    CB_GameScene* gameScene = context->scene;
 
-    PGB_ASSERT(gameScene->context == context);
-    PGB_ASSERT(gameScene->context->scene == gameScene);
-    PGB_ASSERT(gameScene->context->gb->direct.priv == context);
-    PGB_ASSERT(gameScene->context->gb == gb);
+    CB_ASSERT(gameScene->context == context);
+    CB_ASSERT(gameScene->context->scene == gameScene);
+    CB_ASSERT(gameScene->context->gb->direct.priv == context);
+    CB_ASSERT(gameScene->context->gb == gb);
 
     if (preferences_script_support && gameScene->script)
     {
@@ -3185,9 +3180,9 @@ void show_game_script_info(const char* rompath)
     if (!text)
         return;
 
-    PGB_InfoScene* infoScene = PGB_InfoScene_new(text);
+    CB_InfoScene* infoScene = CB_InfoScene_new(text);
 
-    pgb_free(text);
+    cb_free(text);
 
-    PGB_presentModal(infoScene->scene);
+    CB_presentModal(infoScene->scene);
 }

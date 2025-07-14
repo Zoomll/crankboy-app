@@ -17,15 +17,15 @@
 
 typedef enum
 {
-    PGB_LibrarySceneTabList,
-    PGB_LibrarySceneTabEmpty
-} PGB_LibrarySceneTab;
+    CB_LibrarySceneTabList,
+    CB_LibrarySceneTabEmpty
+} CB_LibrarySceneTab;
 
 typedef struct
 {
     bool empty;
-    PGB_LibrarySceneTab tab;
-} PGB_LibrarySceneModel;
+    CB_LibrarySceneTab tab;
+} CB_LibrarySceneModel;
 
 typedef enum
 {
@@ -42,28 +42,28 @@ typedef enum
     kLibraryStateInit,
     kLibraryStateBuildUIList,
     kLibraryStateDone
-} PGB_LibraryState;
+} CB_LibraryState;
 
-typedef struct PGB_Game
+typedef struct CB_Game
 {
     char* fullpath;
     char* coverPath;
 
-    const PGB_GameName* names;
+    const CB_GameName* names;
 
     char* displayName;
     char* sortName;
-} PGB_Game;
+} CB_Game;
 
-typedef struct PGB_LibraryScene
+typedef struct CB_LibraryScene
 {
-    PGB_Scene* scene;
-    PGB_Array* games;
-    PGB_LibrarySceneModel model;
-    PGB_ListView* listView;
-    PGB_LibrarySceneTab tab;
+    CB_Scene* scene;
+    CB_Array* games;
+    CB_LibrarySceneModel model;
+    CB_ListView* listView;
+    CB_LibrarySceneTab tab;
 
-    PGB_LibraryState state;
+    CB_LibraryState state;
     int build_index;
 
     bool firstLoad;
@@ -79,9 +79,9 @@ typedef struct PGB_LibraryScene
 
     bool showCrc;
     bool isReloading;
-} PGB_LibraryScene;
+} CB_LibraryScene;
 
-PGB_LibraryScene* PGB_LibraryScene_new(void);
+CB_LibraryScene* CB_LibraryScene_new(void);
 
-PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers);
-void PGB_Game_free(PGB_Game* game);
+CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
+void CB_Game_free(CB_Game* game);

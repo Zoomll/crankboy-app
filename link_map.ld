@@ -44,8 +44,8 @@ SECTIONS
 		*(.text.tick)
 		
 		. = ALIGN(0x1000); . += 0x720;
-		*(.text.pgb)
-		*(.text.pgb_rare)
+		*(.text.cb)
+		*(.text.cb_rare)
 
 		. = ALIGN(32);
 		build/*(.text)
@@ -80,7 +80,7 @@ SECTIONS
 		
 		. = ALIGN(32);
 		__rare_start__ = .;
-		*(.rare.pgb)
+		*(.rare.cb)
 		*(.rare)
 		*(.rare.*)
         

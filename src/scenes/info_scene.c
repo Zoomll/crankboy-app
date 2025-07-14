@@ -51,15 +51,15 @@ static bool get_list_item_prefix_len(const char* text, int text_len, int* out_pr
     return false;
 }
 
-static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
+static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
 
-    PGB_InfoScene* infoScene = object;
-    LCDFont* font = PGB_App->bodyFont;
+    CB_InfoScene* infoScene = object;
+    LCDFont* font = CB_App->bodyFont;
     playdate->graphics->setFont(font);
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -70,7 +70,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     int extraLeading = 0;
 
     infoScene->scroll += playdate->system->getCrankChange() * CRANK_RATE;
-    int buttonsDown = PGB_App->buttons_down;
+    int buttonsDown = CB_App->buttons_down;
     int scrollDir = !!(buttonsDown & kButtonDown) - !!(buttonsDown & kButtonUp);
     infoScene->scroll += scrollDir * dt * SCROLL_RATE;
 
@@ -156,7 +156,7 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // --- SCROLLBAR LOGIC ---
-    float visible_height = PGB_LCD_HEIGHT - (margin * 2);
+    float visible_height = CB_LCD_HEIGHT - (margin * 2);
     if (total_text_height > visible_height)
     {
         float max_scroll = total_text_height - visible_height;
@@ -239,33 +239,33 @@ static void PGB_InfoScene_update(void* object, uint32_t u32enc_dt)
     {
         if (infoScene->canClose)
         {
-            PGB_dismiss(infoScene->scene);
+            CB_dismiss(infoScene->scene);
         }
     }
 }
 
-static void PGB_InfoScene_free(void* object)
+static void CB_InfoScene_free(void* object)
 {
-    PGB_InfoScene* infoScene = object;
-    pgb_free(infoScene->text);
-    PGB_Scene_free(infoScene->scene);
-    pgb_free(infoScene);
+    CB_InfoScene* infoScene = object;
+    cb_free(infoScene->text);
+    CB_Scene_free(infoScene->scene);
+    cb_free(infoScene);
 }
 
-PGB_InfoScene* PGB_InfoScene_new(char* text)
+CB_InfoScene* CB_InfoScene_new(char* text)
 {
-    PGB_InfoScene* infoScene = pgb_malloc(sizeof(PGB_InfoScene));
+    CB_InfoScene* infoScene = cb_malloc(sizeof(CB_InfoScene));
     if (!infoScene)
         return NULL;
     memset(infoScene, 0, sizeof(*infoScene));
     playdate->system->getCrankChange();
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
     infoScene->scene = scene;
     infoScene->text = text ? string_copy(text) : NULL;
     infoScene->canClose = true;
     scene->managedObject = infoScene;
-    scene->update = (void*)PGB_InfoScene_update;
-    scene->free = (void*)PGB_InfoScene_free;
+    scene->update = (void*)CB_InfoScene_update;
+    scene->free = (void*)CB_InfoScene_free;
     return infoScene;
 }

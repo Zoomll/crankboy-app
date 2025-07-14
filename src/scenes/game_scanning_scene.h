@@ -13,14 +13,14 @@ typedef enum
     kScanningStateDone
 } GameScanningState;
 
-typedef struct PGB_GameScanningScene
+typedef struct CB_GameScanningScene
 {
-    PGB_Scene* scene;
-    PGB_Array* game_filenames;
+    CB_Scene* scene;
+    CB_Array* game_filenames;
     int current_index;
     GameScanningState state;
     json_value crc_cache;
     bool crc_cache_modified;
-} PGB_GameScanningScene;
+} CB_GameScanningScene;
 
-PGB_GameScanningScene* PGB_GameScanningScene_new(void);
+CB_GameScanningScene* CB_GameScanningScene_new(void);

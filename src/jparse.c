@@ -83,21 +83,21 @@ __section__(".rare") void free_json_data(json_value v)
         {
             free_json_data(array->data[i]);
         }
-        pgb_free(array);
+        cb_free(array);
     }
     else if (v.type == kJSONTable)
     {
         JsonObject* obj = (JsonObject*)v.data.tableval;
         for (size_t i = 0; i < obj->n; i++)
         {
-            pgb_free(obj->data[i].key);
+            cb_free(obj->data[i].key);
             free_json_data(obj->data[i].value);
         }
-        pgb_free(obj);
+        cb_free(obj);
     }
     else if (v.type == kJSONString)
     {
-        pgb_free(v.data.stringval);
+        cb_free(v.data.stringval);
     }
 }
 
@@ -169,10 +169,10 @@ bool json_set_table_value(json_value* table, const char* key, json_value value)
         return false;
 
     // add new key
-    obj = pgb_realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
+    obj = cb_realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
     if (!obj)
     {
-        pgb_free(key2);
+        cb_free(key2);
         return false;
     }
 

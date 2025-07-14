@@ -20,16 +20,16 @@
 
 PlaydateAPI* playdate;
 
-const char* PGB_savesPath = "saves";
-const char* PGB_gamesPath = "games";
-const char* PGB_coversPath = "covers";
-const char* PGB_statesPath = "states";
-const char* PGB_settingsPath = "settings";
-const char* PGB_globalPrefsPath = "preferences.json";
-const char* PGB_patchesPath = "patches";
+const char* CB_savesPath = "saves";
+const char* CB_gamesPath = "games";
+const char* CB_coversPath = "covers";
+const char* CB_statesPath = "states";
+const char* CB_settingsPath = "settings";
+const char* CB_globalPrefsPath = "preferences.json";
+const char* CB_patchesPath = "patches";
 
 /* clang-format off */
-const clalign uint8_t PGB_patterns[4][4][4] = {
+const clalign uint8_t CB_patterns[4][4][4] = {
     {
         {1, 1, 1, 1},
         {1, 1, 1, 1},
@@ -62,22 +62,22 @@ char* string_copy(const char* string)
     if (!string)
         return NULL;
 
-    char* copied = pgb_malloc(strlen(string) + 1);
+    char* copied = cb_malloc(strlen(string) + 1);
     strcpy(copied, string);
     return copied;
 }
 
-size_t pgb_strlen(const char* s)
+size_t cb_strlen(const char* s)
 {
     return strlen(s);
 }
 
-char* pgb_strrchr(const char* s, int c)
+char* cb_strrchr(const char* s, int c)
 {
     return strrchr(s, c);
 }
 
-int pgb_strcmp(const char* s1, const char* s2)
+int cb_strcmp(const char* s1, const char* s2)
 {
     return strcmp(s1, s2);
 }
@@ -190,7 +190,7 @@ static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
     return crc;
 }
 
-bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc)
+bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc)
 {
     if (!crc32_table_generated)
     {
@@ -208,7 +208,7 @@ bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_cr
 
     uint32_t crc = 0xffffffffL;
     const int buffer_size = 4096;
-    unsigned char* buffer = pgb_malloc(buffer_size);
+    unsigned char* buffer = cb_malloc(buffer_size);
     if (!buffer)
     {
         playdate->system->logToConsole("CRC Error: Failed to allocate buffer.");
@@ -222,14 +222,14 @@ bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_cr
         crc = update_crc32(crc, buffer, bytes_read);
     }
 
-    pgb_free(buffer);
+    cb_free(buffer);
     playdate->file->close(file);
 
     *o_crc = crc ^ 0xffffffffL;
     return true;
 }
 
-char* pgb_basename(const char* filename, bool stripExtension)
+char* cb_basename(const char* filename, bool stripExtension)
 {
     if (filename == NULL)
     {
@@ -274,7 +274,7 @@ char* pgb_basename(const char* filename, bool stripExtension)
 
     size_t len = end - start;
 
-    char* result = pgb_malloc(len + 1);
+    char* result = cb_malloc(len + 1);
     if (result == NULL)
     {
         return NULL;
@@ -286,7 +286,7 @@ char* pgb_basename(const char* filename, bool stripExtension)
     return result;
 }
 
-char* pgb_save_filename(const char* path, bool isRecovery)
+char* cb_save_filename(const char* path, bool isRecovery)
 {
 
     char* filename;
@@ -313,7 +313,7 @@ char* pgb_save_filename(const char* path, bool isRecovery)
         len = strlen(filename) - strlen(dot);
     }
 
-    char* filenameNoExt = pgb_malloc(len + 1);
+    char* filenameNoExt = cb_malloc(len + 1);
     strcpy(filenameNoExt, "");
     strncat(filenameNoExt, filename, len);
 
@@ -324,14 +324,14 @@ char* pgb_save_filename(const char* path, bool isRecovery)
     }
 
     char* buffer;
-    playdate->system->formatString(&buffer, "%s/%s%s.sav", PGB_savesPath, filenameNoExt, suffix);
+    playdate->system->formatString(&buffer, "%s/%s%s.sav", CB_savesPath, filenameNoExt, suffix);
 
-    pgb_free(filenameNoExt);
+    cb_free(filenameNoExt);
 
     return buffer;
 }
 
-char* pgb_extract_fs_error_code(const char* fileError)
+char* cb_extract_fs_error_code(const char* fileError)
 {
     char* findStr = "uC-FS error: ";
     char* fsErrorPtr = strstr(fileError, findStr);
@@ -342,27 +342,27 @@ char* pgb_extract_fs_error_code(const char* fileError)
     return NULL;
 }
 
-float pgb_easeInOutQuad(float x)
+float cb_easeInOutQuad(float x)
 {
     return (x < 0.5f) ? 2 * x * x : 1 - powf(-2 * x + 2, 2) * 0.5f;
 }
 
-int pgb_compare_games_by_sort_name(const void* a, const void* b)
+int cb_compare_games_by_sort_name(const void* a, const void* b)
 {
-    PGB_Game* gameA = *(PGB_Game**)a;
-    PGB_Game* gameB = *(PGB_Game**)b;
+    CB_Game* gameA = *(CB_Game**)a;
+    CB_Game* gameB = *(CB_Game**)b;
 
     return strcasecmp(gameA->sortName, gameB->sortName);
 }
 
-int pgb_compare_strings(const void* a, const void* b)
+int cb_compare_strings(const void* a, const void* b)
 {
     const char* str_a = *(const char**)a;
     const char* str_b = *(const char**)b;
     return strcmp(str_a, str_b);
 }
 
-void pgb_sanitize_string_for_filename(char* str)
+void cb_sanitize_string_for_filename(char* str)
 {
     if (str == NULL)
     {
@@ -381,19 +381,18 @@ void pgb_sanitize_string_for_filename(char* str)
     }
 }
 
-void pgb_sort_games_array(PGB_Array* games_array)
+void cb_sort_games_array(CB_Array* games_array)
 {
     if (games_array != NULL && games_array->length > 1)
     {
         qsort(
-            games_array->items, games_array->length, sizeof(PGB_Game*),
-            pgb_compare_games_by_sort_name
+            games_array->items, games_array->length, sizeof(CB_Game*), cb_compare_games_by_sort_name
         );
     }
 }
 
-char* pgb_find_cover_art_path_from_list(
-    const PGB_Array* available_covers, const char* rom_basename_no_ext,
+char* cb_find_cover_art_path_from_list(
+    const CB_Array* available_covers, const char* rom_basename_no_ext,
     const char* rom_clean_basename_no_ext
 )
 {
@@ -405,9 +404,7 @@ char* pgb_find_cover_art_path_from_list(
             strcmp(cover_basename, rom_basename_no_ext) == 0)
         {
             char* found_path = NULL;
-            playdate->system->formatString(
-                &found_path, "%s/%s.pdi", PGB_coversPath, cover_basename
-            );
+            playdate->system->formatString(&found_path, "%s/%s.pdi", CB_coversPath, cover_basename);
             return found_path;
         }
     }
@@ -415,29 +412,29 @@ char* pgb_find_cover_art_path_from_list(
     return NULL;
 }
 
-PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
+CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
     const char* cover_path, int max_target_width, int max_target_height
 )
 {
-    PGB_LoadedCoverArt result = {
+    CB_LoadedCoverArt result = {
         .bitmap = NULL,
         .original_width = 0,
         .original_height = 0,
         .scaled_width = 0,
         .scaled_height = 0,
-        .status = PGB_COVER_ART_FILE_NOT_FOUND
+        .status = CB_COVER_ART_FILE_NOT_FOUND
     };
 
     if (!cover_path)
     {
-        result.status = PGB_COVER_ART_FILE_NOT_FOUND;
+        result.status = CB_COVER_ART_FILE_NOT_FOUND;
         return result;
     }
 
     FileStat fileStatCheck;
     if (playdate->file->stat(cover_path, &fileStatCheck) != 0)
     {
-        result.status = PGB_COVER_ART_FILE_NOT_FOUND;
+        result.status = CB_COVER_ART_FILE_NOT_FOUND;
         return result;
     }
 
@@ -453,7 +450,7 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
 
     if (original_image == NULL)
     {
-        result.status = PGB_COVER_ART_ERROR_LOADING;
+        result.status = CB_COVER_ART_ERROR_LOADING;
         playdate->system->logToConsole("Failed to load bitmap: %s", cover_path);
         return result;
     }
@@ -465,7 +462,7 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
     if (result.original_width <= 0 || result.original_height <= 0)
     {
         playdate->graphics->freeBitmap(original_image);
-        result.status = PGB_COVER_ART_INVALID_IMAGE;
+        result.status = CB_COVER_ART_INVALID_IMAGE;
         playdate->system->logToConsole(
             "Invalid image dimensions (%dx%d) for: %s", result.original_width,
             result.original_height, cover_path
@@ -504,7 +501,7 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
                 result.original_height, (double)scale
             );
             playdate->graphics->freeBitmap(original_image);
-            result.status = PGB_COVER_ART_INVALID_IMAGE;
+            result.status = CB_COVER_ART_INVALID_IMAGE;
             return result;
         }
 
@@ -513,7 +510,7 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
         if (scaled_bitmap == NULL)
         {
             playdate->graphics->freeBitmap(original_image);
-            result.status = PGB_COVER_ART_ERROR_LOADING;
+            result.status = CB_COVER_ART_ERROR_LOADING;
             playdate->system->logToConsole(
                 "Failed to create new scaled bitmap (%dx%d) for: %s", result.scaled_width,
                 result.scaled_height, cover_path
@@ -534,11 +531,11 @@ PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
         result.bitmap = original_image;
     }
 
-    result.status = PGB_COVER_ART_SUCCESS;
+    result.status = CB_COVER_ART_SUCCESS;
     return result;
 }
 
-void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result)
+void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result)
 {
     if (art_result && art_result->bitmap)
     {
@@ -547,19 +544,19 @@ void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result)
     }
 }
 
-void pgb_clear_global_cover_cache(void)
+void cb_clear_global_cover_cache(void)
 {
-    if (PGB_App->coverArtCache.rom_path)
+    if (CB_App->coverArtCache.rom_path)
     {
-        pgb_free(PGB_App->coverArtCache.rom_path);
-        PGB_App->coverArtCache.rom_path = NULL;
+        cb_free(CB_App->coverArtCache.rom_path);
+        CB_App->coverArtCache.rom_path = NULL;
     }
-    pgb_free_loaded_cover_art_bitmap(&PGB_App->coverArtCache.art);
+    cb_free_loaded_cover_art_bitmap(&CB_App->coverArtCache.art);
 
-    PGB_App->coverArtCache.art.status = PGB_COVER_ART_FILE_NOT_FOUND;
+    CB_App->coverArtCache.art.status = CB_COVER_ART_FILE_NOT_FOUND;
 }
 
-void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color)
+void cb_fillRoundRect(PDRect rect, int radius, LCDColor color)
 {
     int r2 = radius * 2;
 
@@ -577,7 +574,7 @@ void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color)
     playdate->graphics->fillEllipse(rect.x, rect.y + rect.height - r2, r2, r2, -180, -90, color);
 }
 
-void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
+void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
 {
     int r2 = radius * 2;
 
@@ -607,9 +604,9 @@ void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
  * Use this inside the main game loop; the app's central update will handle the display call.
  * @param message The text to display below the logo.
  */
-void pgb_draw_logo_screen_to_buffer(const char* message)
+void cb_draw_logo_screen_to_buffer(const char* message)
 {
-    LCDBitmap* logoBitmap = PGB_App->logoBitmap;
+    LCDBitmap* logoBitmap = CB_App->logoBitmap;
 
     playdate->graphics->clear(kColorWhite);
 
@@ -617,7 +614,7 @@ void pgb_draw_logo_screen_to_buffer(const char* message)
     {
         int screenWidth = LCD_COLUMNS;
         int screenHeight = LCD_ROWS;
-        LCDFont* font = PGB_App->subheadFont;
+        LCDFont* font = CB_App->subheadFont;
 
         int logoWidth, logoHeight;
         playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
@@ -644,7 +641,7 @@ void pgb_draw_logo_screen_to_buffer(const char* message)
     else
     {
         int textWidth = playdate->graphics->getTextWidth(
-            PGB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+            CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
         );
         playdate->graphics->drawText(
             message, strlen(message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2, LCD_ROWS / 2
@@ -657,29 +654,29 @@ void pgb_draw_logo_screen_to_buffer(const char* message)
  * Use for instant feedback outside the main game loop (e.g., during initialization or file loads).
  * @param message The text to display below the logo.
  */
-void pgb_draw_logo_screen_and_display(const char* message)
+void cb_draw_logo_screen_and_display(const char* message)
 {
-    pgb_draw_logo_screen_to_buffer(message);
+    cb_draw_logo_screen_to_buffer(message);
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
     playdate->graphics->display();
 }
 
-void* pgb_malloc(size_t size)
+void* cb_malloc(size_t size)
 {
     return playdate->system->realloc(NULL, size);
 }
 
-void* pgb_realloc(void* ptr, size_t size)
+void* cb_realloc(void* ptr, size_t size)
 {
     return playdate->system->realloc(ptr, size);
 }
 
-void* pgb_calloc(size_t count, size_t size)
+void* cb_calloc(size_t count, size_t size)
 {
-    return memset(pgb_malloc(count * size), 0, count * size);
+    return memset(cb_malloc(count * size), 0, count * size);
 }
 
-void pgb_free(void* ptr)
+void cb_free(void* ptr)
 {
     if (ptr)
     {
@@ -710,30 +707,30 @@ char* aprintf(const char* fmt, ...)
     return out;
 }
 
-void pgb_play_ui_sound(PGB_UISound sound)
+void cb_play_ui_sound(CB_UISound sound)
 {
-    if (!preferences_ui_sounds || !PGB_App->clickSynth)
+    if (!preferences_ui_sounds || !CB_App->clickSynth)
     {
         return;
     }
 
     switch (sound)
     {
-    case PGB_UISound_Navigate:
+    case CB_UISound_Navigate:
         playdate->sound->synth->playNote(
-            PGB_App->clickSynth, 1760.0f + (rand() % 64), 0.13f, 0.07f, 0
+            CB_App->clickSynth, 1760.0f + (rand() % 64), 0.13f, 0.07f, 0
         );
         break;
 
-    case PGB_UISound_Confirm:
+    case CB_UISound_Confirm:
         playdate->sound->synth->playNote(
-            PGB_App->clickSynth, 1480.0f - (rand() % 32), 0.18f, 0.1f, 0
+            CB_App->clickSynth, 1480.0f - (rand() % 32), 0.18f, 0.1f, 0
         );
         break;
     }
 }
 
-char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
+char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
 {
     SDFile* file = playdate->file->open(path, flags);
     char* dat;
@@ -755,7 +752,7 @@ char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
     if (playdate->file->seek(file, 0, SEEK_SET))
         goto fail;
 
-    dat = pgb_malloc(size + 1);
+    dat = cb_malloc(size + 1);
     if (!dat)
         goto fail;
 
@@ -777,7 +774,7 @@ char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
     return dat;
 
 fail_free_dat:
-    pgb_free(dat);
+    cb_free(dat);
 
 fail:
     playdate->file->close(file);
@@ -795,7 +792,7 @@ void memswap(void* a, void* b, size_t size)
     }
 }
 
-bool pgb_write_entire_file(const char* path, const void* data, size_t size)
+bool cb_write_entire_file(const char* path, const void* data, size_t size)
 {
     SDFile* file = playdate->file->open(path, kFileWrite);
     if (!file)
@@ -875,7 +872,7 @@ bool endswithi(const char* str, const char* suffix)
     return strncasecmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
 }
 
-int pgb_file_exists(const char* path, FileOptions fopts)
+int cb_file_exists(const char* path, FileOptions fopts)
 {
     SDFile* file = playdate->file->open(path, fopts);
 
@@ -902,7 +899,7 @@ static void process_file(const char* path, void* ud)
     char* fullpath = aprintf("%s/%s", lud->path, path);
 
     SDFile* file = playdate->file->open(fullpath, lud->opts);
-    pgb_free(fullpath);
+    cb_free(fullpath);
     if (!file)
         return;
     playdate->file->close(file);
@@ -910,7 +907,7 @@ static void process_file(const char* path, void* ud)
     lud->callback(path, lud->ud);
 }
 
-int pgb_listfiles(
+int cb_listfiles(
     const char* path, void (*callback)(const char* filename, void* userdata), void* ud,
     int showhidden, FileOptions fopts
 )
@@ -935,7 +932,7 @@ char* strltrim(const char* str)
     return (char*)str;
 }
 
-char* pgb_url_encode_for_github_raw(const char* str)
+char* cb_url_encode_for_github_raw(const char* str)
 {
     if (!str)
         return NULL;
@@ -950,7 +947,7 @@ char* pgb_url_encode_for_github_raw(const char* str)
     }
 
     size_t new_len = strlen(str) + space_count * 2;
-    char* encoded = pgb_malloc(new_len + 1);
+    char* encoded = cb_malloc(new_len + 1);
     if (!encoded)
         return NULL;
 
@@ -974,9 +971,9 @@ char* pgb_url_encode_for_github_raw(const char* str)
     return encoded;
 }
 
-PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
+CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
 {
-    PGB_FetchedNames names = {NULL, NULL, 0, false};
+    CB_FetchedNames names = {NULL, NULL, 0, false};
 
     char crc_string_upper[9];
     char crc_string_lower[9];
@@ -987,7 +984,7 @@ PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
     char db_filename[32];
     snprintf(db_filename, sizeof(db_filename), "db/%.2s.json", crc_string_lower);
 
-    char* json_string = pgb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
+    char* json_string = cb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
     if (!json_string)
     {
         return names;
@@ -996,10 +993,10 @@ PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
     json_value db_json;
     if (!parse_json_string(json_string, &db_json))
     {
-        pgb_free(json_string);
+        cb_free(json_string);
         return names;
     }
-    pgb_free(json_string);
+    cb_free(json_string);
 
     if (db_json.type == kJSONTable)
     {
@@ -1024,19 +1021,19 @@ PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc)
     return names;
 }
 
-PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath)
+CB_FetchedNames cb_get_titles_from_db(const char* fullpath)
 {
-    PGB_FetchedNames names = {NULL, NULL, 0, true};
+    CB_FetchedNames names = {NULL, NULL, 0, true};
 
     uint32_t crc;
-    names.failedToOpenROM = !pgb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
+    names.failedToOpenROM = !cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
 
     if (names.failedToOpenROM)
     {
         return names;
     }
 
-    PGB_FetchedNames names_from_db = pgb_get_titles_from_db_by_crc(crc);
+    CB_FetchedNames names_from_db = cb_get_titles_from_db_by_crc(crc);
     names_from_db.crc32 = crc;
     names_from_db.failedToOpenROM = false;
 
@@ -1074,7 +1071,7 @@ char* common_article_form(const char* input)
 
     // split into A and B at split_pos
     size_t a_len = split_pos - input;
-    char* a_part = pgb_malloc(a_len + 1);
+    char* a_part = cb_malloc(a_len + 1);
     if (!a_part)
         return string_copy(input);
 
@@ -1096,10 +1093,10 @@ char* common_article_form(const char* input)
             a_part[new_a_len] = 0;
 
             size_t result_len = (article_len - 2) + 1 + new_a_len + b_len;
-            char* result = pgb_malloc(result_len + 1);
+            char* result = cb_malloc(result_len + 1);
             if (!result)
             {
-                pgb_free(a_part);
+                cb_free(a_part);
                 return string_copy(input);
             }
 
@@ -1113,12 +1110,12 @@ char* common_article_form(const char* input)
             p += b_len;
             *p = '\0';
 
-            pgb_free(a_part);
+            cb_free(a_part);
             return result;
         }
     }
 
-    pgb_free(a_part);
+    cb_free(a_part);
     return string_copy(input);
 }
 
@@ -1141,7 +1138,7 @@ void spoolError(const char* fmt, ...)
     va_end(args);
 
     spoolC++;
-    spoolText = pgb_realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
+    spoolText = cb_realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
     if (!spoolText)
         return;
 
@@ -1160,14 +1157,14 @@ const char* getSpooledErrorMessage(void)
 
 void freeSpool(void)
 {
-    pgb_free(spoolText);
+    cb_free(spoolText);
     spoolText = NULL;
     spoolC = 0;
 }
 
 void* mallocz(size_t size)
 {
-    void* v = pgb_malloc(size);
+    void* v = cb_malloc(size);
     if (!v)
         return NULL;
 

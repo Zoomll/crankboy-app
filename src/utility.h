@@ -18,31 +18,31 @@
 
 extern PlaydateAPI* playdate;
 
-#define PGB_DEBUG false
-#define PGB_DEBUG_UPDATED_ROWS false
+#define CB_DEBUG false
+#define CB_DEBUG_UPDATED_ROWS false
 #define ENABLE_RENDER_PROFILER false
 
-#define PGB_LCD_WIDTH 320
-#define PGB_LCD_HEIGHT 240
-#define PGB_LCD_ROWSIZE 40
+#define CB_LCD_WIDTH 320
+#define CB_LCD_HEIGHT 240
+#define CB_LCD_ROWSIZE 40
 
-#define PGB_LCD_X 40  // multiple of 8
-#define PGB_LCD_Y 0
+#define CB_LCD_X 40  // multiple of 8
+#define CB_LCD_Y 0
 
-#define PGB_MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define PGB_MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define CB_MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define CB_MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 #define CRC_CACHE_FILE "crc_cache.json"
 
-extern const uint8_t PGB_patterns[4][4][4];
+extern const uint8_t CB_patterns[4][4][4];
 
-extern const char* PGB_savesPath;
-extern const char* PGB_gamesPath;
-extern const char* PGB_coversPath;
-extern const char* PGB_statesPath;
-extern const char* PGB_settingsPath;
-extern const char* PGB_globalPrefsPath;
-extern const char* PGB_patchesPath;
+extern const char* CB_savesPath;
+extern const char* CB_gamesPath;
+extern const char* CB_coversPath;
+extern const char* CB_statesPath;
+extern const char* CB_settingsPath;
+extern const char* CB_globalPrefsPath;
+extern const char* CB_patchesPath;
 
 typedef struct
 {
@@ -50,21 +50,21 @@ typedef struct
     char* detailed_name;
     uint32_t crc32;
     bool failedToOpenROM;
-} PGB_FetchedNames;
+} CB_FetchedNames;
 
 typedef enum
 {
-    PGB_UISound_Navigate,  // For up/down movement
-    PGB_UISound_Confirm    // For selection/changing a value
-} PGB_UISound;
+    CB_UISound_Navigate,  // For up/down movement
+    CB_UISound_Confirm    // For selection/changing a value
+} CB_UISound;
 
 typedef enum
 {
-    PGB_COVER_ART_SUCCESS,
-    PGB_COVER_ART_ERROR_LOADING,
-    PGB_COVER_ART_INVALID_IMAGE,
-    PGB_COVER_ART_FILE_NOT_FOUND
-} PGB_CoverArtStatus;
+    CB_COVER_ART_SUCCESS,
+    CB_COVER_ART_ERROR_LOADING,
+    CB_COVER_ART_INVALID_IMAGE,
+    CB_COVER_ART_FILE_NOT_FOUND
+} CB_CoverArtStatus;
 
 typedef struct
 {
@@ -73,64 +73,64 @@ typedef struct
     int original_height;
     int scaled_width;
     int scaled_height;
-    PGB_CoverArtStatus status;
-} PGB_LoadedCoverArt;
+    CB_CoverArtStatus status;
+} CB_LoadedCoverArt;
 
 char* string_copy(const char* string);
 
-char* pgb_basename(const char* filename, bool stripExtension);
-char* pgb_save_filename(const char* filename, bool isRecovery);
-char* pgb_extract_fs_error_code(const char* filename);
+char* cb_basename(const char* filename, bool stripExtension);
+char* cb_save_filename(const char* filename, bool isRecovery);
+char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
 
-float pgb_easeInOutQuad(float x);
+float cb_easeInOutQuad(float x);
 
 // like playdate->file->listfiles, but can filter by file type (pdx/data)
-int pgb_listfiles(
+int cb_listfiles(
     const char* path, void (*callback)(const char* filename, void* userdata), void* userdata,
     int showhidden, FileOptions fopts
 );
 
-int pgb_file_exists(const char* path, FileOptions fopts);
+int cb_file_exists(const char* path, FileOptions fopts);
 
-int pgb_compare_games_by_display_name(const void* a, const void* b);
-int pgb_compare_strings(const void* a, const void* b);
+int cb_compare_games_by_display_name(const void* a, const void* b);
+int cb_compare_strings(const void* a, const void* b);
 
-void pgb_sanitize_string_for_filename(char* str);
-void pgb_sort_games_array(PGB_Array* games_array);
-void pgb_draw_logo_screen_and_display(const char* message);
-void pgb_draw_logo_screen_to_buffer(const char* message);
-void pgb_fillRoundRect(PDRect rect, int radius, LCDColor color);
-void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
+void cb_sanitize_string_for_filename(char* str);
+void cb_sort_games_array(CB_Array* games_array);
+void cb_draw_logo_screen_and_display(const char* message);
+void cb_draw_logo_screen_to_buffer(const char* message);
+void cb_fillRoundRect(PDRect rect, int radius, LCDColor color);
+void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 
 // result must be user-free'd. returns NULL on error.
-char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
+char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
 
 // returns false on error
-bool pgb_write_entire_file(const char* path, const void* data, size_t size);
+bool cb_write_entire_file(const char* path, const void* data, size_t size);
 
-void* pgb_malloc(size_t size);
-void* pgb_realloc(void* ptr, size_t size);
-void* pgb_calloc(size_t count, size_t size);
-void pgb_free(void* ptr);
+void* cb_malloc(size_t size);
+void* cb_realloc(void* ptr, size_t size);
+void* cb_calloc(size_t count, size_t size);
+void cb_free(void* ptr);
 
-size_t pgb_strlen(const char* s);
-char* pgb_strrchr(const char* s, int c);
-int pgb_strcmp(const char* s1, const char* s2);
+size_t cb_strlen(const char* s);
+char* cb_strrchr(const char* s, int c);
+int cb_strcmp(const char* s1, const char* s2);
 
 // returns false on failure
-bool pgb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
+bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
 
-char* pgb_find_cover_art_path_from_list(
-    const PGB_Array* available_covers, const char* rom_basename_no_ext,
+char* cb_find_cover_art_path_from_list(
+    const CB_Array* available_covers, const char* rom_basename_no_ext,
     const char* rom_clean_basename_no_ext
 );
 
-PGB_FetchedNames pgb_get_titles_from_db(const char* fullpath);
-PGB_FetchedNames pgb_get_titles_from_db_by_crc(uint32_t crc);
-char* pgb_url_encode_for_github_raw(const char* str);
+CB_FetchedNames cb_get_titles_from_db(const char* fullpath);
+CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc);
+char* cb_url_encode_for_github_raw(const char* str);
 
-char* pgb_game_config_path(const char* rom_filename);
+char* cb_game_config_path(const char* rom_filename);
 
 // allocate-print-to-string
 char* aprintf(const char* fmt, ...);
@@ -140,14 +140,14 @@ char* en_human_time(unsigned seconds);
 
 bool string_has_descenders(const char* str);
 
-PGB_LoadedCoverArt pgb_load_and_scale_cover_art_from_path(
+CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
     const char* cover_path, int max_target_width, int max_target_height
 );
 
-void pgb_free_loaded_cover_art_bitmap(PGB_LoadedCoverArt* art_result);
-void pgb_clear_global_cover_cache(void);
+void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result);
+void cb_clear_global_cover_cache(void);
 
-void pgb_play_ui_sound(PGB_UISound sound);
+void cb_play_ui_sound(CB_UISound sound);
 
 char* strltrim(const char* str);
 
@@ -192,12 +192,12 @@ static inline float toward(float x, float dst, float step)
 
 #ifdef TARGET_SIMULATOR
 #define CPU_VALIDATE 1
-#define PGB_ASSERT(x) \
-    if (!(x))         \
+#define CB_ASSERT(x) \
+    if (!(x))        \
         playdate->system->error("ASSERTION FAILED: %s", #x);
 #else
 #define CPU_VALIDATE 0
-#define PGB_ASSERT(x)
+#define CB_ASSERT(x)
 #endif
 
 // compute the next highest power of 2 of 32-bit v,

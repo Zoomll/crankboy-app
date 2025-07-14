@@ -44,7 +44,7 @@ typedef struct ScriptData
     uint8_t boss;
 
     uint32_t score;
-    
+
     bool fly_thrust_enabled;
     int fly_thrust;
 
@@ -239,7 +239,7 @@ static void on_end(struct gb_s* gb, ScriptData* data)
     code_replacement_free(data->patch_start_flying);
     code_replacement_free(data->patch_continue_flying);
 
-    pgb_free(data);
+    cb_free(data);
 }
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
@@ -259,7 +259,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     else
     {
         // standard display
-        game_picture_x_offset = PGB_LCD_X;
+        game_picture_x_offset = CB_LCD_X;
         game_picture_scaling = 3;
         game_picture_y_top = 0;
         game_picture_y_bottom = LCD_HEIGHT;

@@ -13,9 +13,9 @@
 
 #include <stdio.h>
 
-typedef struct PGB_CreditsScene
+typedef struct CB_CreditsScene
 {
-    PGB_Scene* scene;
+    CB_Scene* scene;
 
     json_value jcred;
     int* y_advance_by_item;
@@ -24,8 +24,8 @@ typedef struct PGB_CreditsScene
     float initial_wait;
     bool shouldDismiss;
     LCDBitmap* logo;
-} PGB_CreditsScene;
+} CB_CreditsScene;
 
-PGB_CreditsScene* PGB_CreditsScene_new(void);
+CB_CreditsScene* CB_CreditsScene_new(void);
 
-void PGB_showCredits(void* userdata);
+void CB_showCredits(void* userdata);

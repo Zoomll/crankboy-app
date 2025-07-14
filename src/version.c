@@ -37,13 +37,13 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
     json_value jvinfo;
 
     if (oinfo->name)
-        pgb_free(oinfo->name);
+        cb_free(oinfo->name);
     if (oinfo->domain)
-        pgb_free(oinfo->domain);
+        cb_free(oinfo->domain);
     if (oinfo->path)
-        pgb_free(oinfo->path);
+        cb_free(oinfo->path);
     if (oinfo->download)
-        pgb_free(oinfo->download);
+        cb_free(oinfo->download);
 
     int jparse_result = (ispath) ? parse_json(VERSION_INFO_FILE, &jvinfo, kFileRead | kFileReadData)
                                  : parse_json_string(text, &jvinfo);
@@ -80,7 +80,7 @@ static int read_local_version(void)
 {
     if (!localVersionInfo)
     {
-        localVersionInfo = pgb_malloc(sizeof(struct VersionInfo));
+        localVersionInfo = cb_malloc(sizeof(struct VersionInfo));
         if (!localVersionInfo)
         {
             return -1;
@@ -90,7 +90,7 @@ static int read_local_version(void)
         int result;
         if ((result = read_version_info("version.json", true, localVersionInfo)))
         {
-            pgb_free(localVersionInfo);
+            cb_free(localVersionInfo);
             localVersionInfo = NULL;
             return -2;
         }
@@ -98,7 +98,7 @@ static int read_local_version(void)
 
     if (!ignore_version)
     {
-        ignore_version = pgb_read_entire_file(UPDATE_LAST_KNOWN_VERSION, NULL, kFileReadData);
+        ignore_version = cb_read_entire_file(UPDATE_LAST_KNOWN_VERSION, NULL, kFileReadData);
     }
 
     return 1;
@@ -152,17 +152,17 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
         if (!json_start)
         {
             cbud->cb(-651, "Invalid JSON response", cbud->ud);
-            pgb_free(ud);
+            cb_free(ud);
             return;
         }
 
         if (!newVersionInfo)
         {
-            newVersionInfo = pgb_malloc(sizeof(struct VersionInfo));
+            newVersionInfo = cb_malloc(sizeof(struct VersionInfo));
             if (!newVersionInfo)
             {
                 cbud->cb(ERRMEM, STR_ERRMEM, cbud->ud);
-                pgb_free(ud);
+                cb_free(ud);
                 return;
             }
             memset(newVersionInfo, 0, sizeof(*newVersionInfo));
@@ -179,11 +179,11 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             else
             {
                 // update last-seen version
-                pgb_write_entire_file(
+                cb_write_entire_file(
                     UPDATE_LAST_KNOWN_VERSION, newVersionInfo->name, strlen(newVersionInfo->name)
                 );
                 if (ignore_version)
-                    pgb_free(ignore_version);
+                    cb_free(ignore_version);
                 ignore_version = string_copy(newVersionInfo->name);
 
                 if (strcmp(newVersionInfo->name, localVersionInfo->name))
@@ -202,7 +202,7 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             cbud->cb(-650, "Invalid version information receieved", cbud->ud);
         }
     }
-    pgb_free(ud);
+    cb_free(ud);
 }
 
 void check_for_updates(update_result_cb cb, void* ud)
@@ -219,7 +219,7 @@ void check_for_updates(update_result_cb cb, void* ud)
         break;
     }
 
-    struct CB_UserData* cbud = pgb_malloc(sizeof(struct CB_UserData));
+    struct CB_UserData* cbud = cb_malloc(sizeof(struct CB_UserData));
     if (!cbud)
     {
         cb(ERRMEM, STR_ERRMEM, ud);
@@ -293,26 +293,26 @@ void version_quit(void)
 {
     if (localVersionInfo)
     {
-        pgb_free(localVersionInfo->name);
-        pgb_free(localVersionInfo->domain);
-        pgb_free(localVersionInfo->path);
-        pgb_free(localVersionInfo->download);
-        pgb_free(localVersionInfo);
+        cb_free(localVersionInfo->name);
+        cb_free(localVersionInfo->domain);
+        cb_free(localVersionInfo->path);
+        cb_free(localVersionInfo->download);
+        cb_free(localVersionInfo);
         localVersionInfo = NULL;
     }
 
     if (newVersionInfo)
     {
-        pgb_free(newVersionInfo->name);
-        pgb_free(newVersionInfo->domain);
-        pgb_free(newVersionInfo->path);
-        pgb_free(newVersionInfo->download);
-        pgb_free(newVersionInfo);
+        cb_free(newVersionInfo->name);
+        cb_free(newVersionInfo->domain);
+        cb_free(newVersionInfo->path);
+        cb_free(newVersionInfo->download);
+        cb_free(newVersionInfo);
         newVersionInfo = NULL;
     }
     if (ignore_version)
     {
-        pgb_free(ignore_version);
+        cb_free(ignore_version);
         ignore_version = NULL;
     }
 }

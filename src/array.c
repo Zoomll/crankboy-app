@@ -10,30 +10,30 @@
 
 #include "utility.h"
 
-PGB_Array* array_new(void)
+CB_Array* array_new(void)
 {
-    PGB_Array* array = pgb_malloc(sizeof(PGB_Array));
+    CB_Array* array = cb_malloc(sizeof(CB_Array));
     array->length = 0;
     array->capacity = 0;
     array->items = NULL;
     return array;
 }
 
-void array_reserve(PGB_Array* array, unsigned int capacity)
+void array_reserve(CB_Array* array, unsigned int capacity)
 {
     if (array->capacity >= capacity)
     {
         return;
     }
 
-    array->items = pgb_realloc(array->items, capacity * sizeof(void*));
+    array->items = cb_realloc(array->items, capacity * sizeof(void*));
     if (array->items)
     {
         array->capacity = capacity;
     }
 }
 
-void array_push(PGB_Array* array, void* item)
+void array_push(CB_Array* array, void* item)
 {
     if (array->length == array->capacity)
     {
@@ -45,19 +45,19 @@ void array_push(PGB_Array* array, void* item)
     array->length++;
 }
 
-void array_clear(PGB_Array* array)
+void array_clear(CB_Array* array)
 {
-    pgb_free(array->items);
+    cb_free(array->items);
     array->items = NULL;
     array->length = 0;
     array->capacity = 0;
 }
 
-void array_free(PGB_Array* array)
+void array_free(CB_Array* array)
 {
     if (array)
     {
-        pgb_free(array->items);
-        pgb_free(array);
+        cb_free(array->items);
+        cb_free(array);
     }
 }

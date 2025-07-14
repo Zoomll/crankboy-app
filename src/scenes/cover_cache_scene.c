@@ -7,15 +7,15 @@
 
 #define MAX_CACHE_SIZE_BYTES (3072 * 1024)  // 3MB
 
-void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt);
-void PGB_CoverCacheScene_free(void* object);
+void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt);
+void CB_CoverCacheScene_free(void* object);
 
 static void collect_cover_filenames_callback(const char* filename, void* userdata)
 {
     if (endswithi(filename, ".pdi"))
     {
-        PGB_Array* covers_array = userdata;
-        char* basename_no_ext = pgb_basename(filename, true);
+        CB_Array* covers_array = userdata;
+        char* basename_no_ext = cb_basename(filename, true);
         if (basename_no_ext)
         {
             array_push(covers_array, basename_no_ext);
@@ -23,41 +23,41 @@ static void collect_cover_filenames_callback(const char* filename, void* userdat
     }
 }
 
-PGB_CoverCacheScene* PGB_CoverCacheScene_new(void)
+CB_CoverCacheScene* CB_CoverCacheScene_new(void)
 {
-    PGB_CoverCacheScene* cacheScene = pgb_calloc(1, sizeof(PGB_CoverCacheScene));
+    CB_CoverCacheScene* cacheScene = cb_calloc(1, sizeof(CB_CoverCacheScene));
 
-    cacheScene->scene = PGB_Scene_new();
+    cacheScene->scene = CB_Scene_new();
     cacheScene->scene->managedObject = cacheScene;
-    cacheScene->scene->update = PGB_CoverCacheScene_update;
-    cacheScene->scene->free = PGB_CoverCacheScene_free;
+    cacheScene->scene->update = CB_CoverCacheScene_update;
+    cacheScene->scene->free = CB_CoverCacheScene_free;
     cacheScene->scene->use_user_stack = false;
 
     cacheScene->state = kCoverCacheStateInit;
     cacheScene->current_index = 0;
     cacheScene->cache_size_bytes = 0;
 
-    if (PGB_App->coverCache == NULL)
+    if (CB_App->coverCache == NULL)
     {
-        PGB_App->coverCache = array_new();
+        CB_App->coverCache = array_new();
     }
 
     cacheScene->available_covers = array_new();
     cacheScene->games_with_covers = array_new();
 
-    cacheScene->lz4_state = pgb_malloc(LZ4_sizeofState());
+    cacheScene->lz4_state = cb_malloc(LZ4_sizeofState());
 
     return cacheScene;
 }
 
-void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
+void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
 
-    PGB_CoverCacheScene* cacheScene = object;
+    CB_CoverCacheScene* cacheScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     switch (cacheScene->state)
@@ -65,18 +65,18 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
     case kCoverCacheStateInit:
     {
         playdate->file->listfiles(
-            PGB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
+            CB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
         );
 
         if (cacheScene->available_covers->length > 0)
         {
             qsort(
                 cacheScene->available_covers->items, cacheScene->available_covers->length,
-                sizeof(char*), pgb_compare_strings
+                sizeof(char*), cb_compare_strings
             );
         }
 
-        if (PGB_App->gameNameCache->length > 0)
+        if (CB_App->gameNameCache->length > 0)
         {
             cacheScene->state = kCoverCacheStateBuildGameList;
         }
@@ -91,28 +91,28 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
     {
         if (cacheScene->current_index == 0)
         {
-            array_reserve(PGB_App->gameListCache, PGB_App->gameNameCache->length);
+            array_reserve(CB_App->gameListCache, CB_App->gameNameCache->length);
         }
 
-        if (cacheScene->current_index < PGB_App->gameNameCache->length)
+        if (cacheScene->current_index < CB_App->gameNameCache->length)
         {
-            PGB_GameName* cachedName = PGB_App->gameNameCache->items[cacheScene->current_index];
-            PGB_Game* game = PGB_Game_new(cachedName, cacheScene->available_covers);
-            array_push(PGB_App->gameListCache, game);
+            CB_GameName* cachedName = CB_App->gameNameCache->items[cacheScene->current_index];
+            CB_Game* game = CB_Game_new(cachedName, cacheScene->available_covers);
+            array_push(CB_App->gameListCache, game);
 
             char progress_message[100];
-            int total = PGB_App->gameNameCache->length;
+            int total = CB_App->gameNameCache->length;
             int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 100;
             snprintf(
                 progress_message, sizeof(progress_message), "Building Games List… %d%%", percentage
             );
-            pgb_draw_logo_screen_to_buffer(progress_message);
+            cb_draw_logo_screen_to_buffer(progress_message);
 
             cacheScene->current_index++;
         }
         else
         {
-            PGB_App->gameListCacheIsSorted = false;
+            CB_App->gameListCacheIsSorted = false;
             cacheScene->state = kCoverCacheStateSort;
         }
         break;
@@ -120,18 +120,18 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
     case kCoverCacheStateSort:
     {
-        pgb_sort_games_array(PGB_App->gameListCache);
-        PGB_App->gameListCacheIsSorted = true;
+        cb_sort_games_array(CB_App->gameListCache);
+        CB_App->gameListCacheIsSorted = true;
         cacheScene->current_index = 0;
 
         cacheScene->start_time_ms = playdate->system->getCurrentTimeMilliseconds();
 
         array_clear(cacheScene->games_with_covers);
-        array_reserve(cacheScene->games_with_covers, PGB_App->gameListCache->length);
+        array_reserve(cacheScene->games_with_covers, CB_App->gameListCache->length);
 
-        for (int i = 0; i < PGB_App->gameListCache->length; ++i)
+        for (int i = 0; i < CB_App->gameListCache->length; ++i)
         {
-            PGB_Game* game = PGB_App->gameListCache->items[i];
+            CB_Game* game = CB_App->gameListCache->items[i];
             if (game->coverPath)
             {
                 array_push(cacheScene->games_with_covers, game);
@@ -155,7 +155,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         if (cacheScene->current_index < cacheScene->games_with_covers->length &&
             cacheScene->cache_size_bytes < MAX_CACHE_SIZE_BYTES)
         {
-            PGB_Game* game = cacheScene->games_with_covers->items[cacheScene->current_index];
+            CB_Game* game = cacheScene->games_with_covers->items[cacheScene->current_index];
 
             char progress_message[100];
             int total = cacheScene->games_with_covers->length;
@@ -163,7 +163,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             snprintf(
                 progress_message, sizeof(progress_message), "Caching Covers… %d%%", percentage
             );
-            pgb_draw_logo_screen_to_buffer(progress_message);
+            cb_draw_logo_screen_to_buffer(progress_message);
 
             const char* error = NULL;
             LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
@@ -184,11 +184,11 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                 }
 
                 int max_dst_size = LZ4_compressBound(original_size);
-                char* temp_compressed_buffer = pgb_malloc(max_dst_size);
+                char* temp_compressed_buffer = cb_malloc(max_dst_size);
 
                 if (temp_compressed_buffer)
                 {
-                    uint8_t* uncompressed_buffer = pgb_malloc(original_size);
+                    uint8_t* uncompressed_buffer = cb_malloc(original_size);
                     if (uncompressed_buffer)
                     {
                         memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
@@ -205,19 +205,18 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                             temp_compressed_buffer, original_size, max_dst_size, 1
                         );
 
-                        pgb_free(uncompressed_buffer);
+                        cb_free(uncompressed_buffer);
 
                         if (compressed_size > 0 &&
                             (cacheScene->cache_size_bytes + compressed_size <=
                              MAX_CACHE_SIZE_BYTES))
                         {
-                            char* final_buffer = pgb_malloc(compressed_size);
+                            char* final_buffer = cb_malloc(compressed_size);
                             if (final_buffer)
                             {
                                 memcpy(final_buffer, temp_compressed_buffer, compressed_size);
 
-                                PGB_CoverCacheEntry* entry =
-                                    pgb_malloc(sizeof(PGB_CoverCacheEntry));
+                                CB_CoverCacheEntry* entry = cb_malloc(sizeof(CB_CoverCacheEntry));
                                 entry->rom_path = string_copy(game->fullpath);
                                 entry->compressed_data = final_buffer;
                                 entry->compressed_size = compressed_size;
@@ -227,12 +226,12 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                                 entry->rowbytes = rowbytes;
                                 entry->has_mask = has_mask;
 
-                                array_push(PGB_App->coverCache, entry);
+                                array_push(CB_App->coverCache, entry);
                                 cacheScene->cache_size_bytes += compressed_size;
                             }
                         }
 
-                        pgb_free(temp_compressed_buffer);
+                        cb_free(temp_compressed_buffer);
 
                         if (compressed_size > 0 &&
                             (cacheScene->cache_size_bytes >= MAX_CACHE_SIZE_BYTES))
@@ -242,7 +241,7 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                     }
                     else
                     {
-                        pgb_free(temp_compressed_buffer);
+                        cb_free(temp_compressed_buffer);
                     }
                 }
 
@@ -265,26 +264,26 @@ void PGB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
         playdate->system->logToConsole(
             "Cover Caching Complete: %d covers cached, size: %lu bytes, took %.2f seconds.",
-            PGB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes,
+            CB_App->coverCache->length, (unsigned long)cacheScene->cache_size_bytes,
             (double)duration
         );
 
-        PGB_LibraryScene* libraryScene = PGB_LibraryScene_new();
-        PGB_present(libraryScene->scene);
+        CB_LibraryScene* libraryScene = CB_LibraryScene_new();
+        CB_present(libraryScene->scene);
         break;
     }
     }
 }
 
-void PGB_CoverCacheScene_free(void* object)
+void CB_CoverCacheScene_free(void* object)
 {
-    PGB_CoverCacheScene* cacheScene = object;
+    CB_CoverCacheScene* cacheScene = object;
 
     if (cacheScene->available_covers)
     {
         for (int i = 0; i < cacheScene->available_covers->length; i++)
         {
-            pgb_free(cacheScene->available_covers->items[i]);
+            cb_free(cacheScene->available_covers->items[i]);
         }
         array_free(cacheScene->available_covers);
     }
@@ -296,9 +295,9 @@ void PGB_CoverCacheScene_free(void* object)
 
     if (cacheScene->lz4_state)
     {
-        pgb_free(cacheScene->lz4_state);
+        cb_free(cacheScene->lz4_state);
     }
 
-    PGB_Scene_free(cacheScene->scene);
-    pgb_free(cacheScene);
+    CB_Scene_free(cacheScene->scene);
+    cb_free(cacheScene);
 }

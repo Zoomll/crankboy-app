@@ -27,10 +27,10 @@
 
 #define LAST_SELECTED_PATH "library_last_selected.txt"
 
-static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt);
-static void PGB_LibraryScene_free(void* object);
-static void PGB_LibraryScene_reloadList(PGB_LibraryScene* libraryScene);
-static void PGB_LibraryScene_menu(void* object);
+static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
+static void CB_LibraryScene_free(void* object);
+static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
+static void CB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
 static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
@@ -38,19 +38,19 @@ static bool library_was_initialized_once = false;
 
 typedef struct
 {
-    PGB_LibraryScene* libraryScene;
-    PGB_Game* game;
+    CB_LibraryScene* libraryScene;
+    CB_Game* game;
 } CoverDownloadUserdata;
 
 static void save_last_selected_index(const char* rompath)
 {
-    pgb_write_entire_file(LAST_SELECTED_PATH, rompath, strlen(rompath));
+    cb_write_entire_file(LAST_SELECTED_PATH, rompath, strlen(rompath));
     return;
 }
 
-static intptr_t load_last_selected_index(PGB_Array* games)
+static intptr_t load_last_selected_index(CB_Array* games)
 {
-    char* content = pgb_read_entire_file(LAST_SELECTED_PATH, NULL, kFileReadData);
+    char* content = cb_read_entire_file(LAST_SELECTED_PATH, NULL, kFileReadData);
 
     // default -- top of list
     if (!content)
@@ -63,7 +63,7 @@ static intptr_t load_last_selected_index(PGB_Array* games)
     // First, try searching for a ROM whose path matches the given name
     for (int i = 0; i < games->length; ++i)
     {
-        PGB_Game* game = games->items[i];
+        CB_Game* game = games->items[i];
         if (!strcmp(game->fullpath, content))
         {
             found_index = i;
@@ -79,7 +79,7 @@ static intptr_t load_last_selected_index(PGB_Array* games)
     }
 
 cleanup:
-    pgb_free(content);
+    cb_free(content);
     return found_index;
 }
 
@@ -90,13 +90,13 @@ static unsigned combined_display_mode(void)
 }
 
 static void set_download_status(
-    PGB_LibraryScene* self, CoverDownloadState state, const char* message
+    CB_LibraryScene* self, CoverDownloadState state, const char* message
 )
 {
     self->coverDownloadState = state;
     if (self->coverDownloadMessage)
     {
-        pgb_free(self->coverDownloadMessage);
+        cb_free(self->coverDownloadMessage);
     }
     self->coverDownloadMessage = message ? string_copy(message) : NULL;
     self->scene->forceFullRefresh = true;
@@ -105,11 +105,11 @@ static void set_download_status(
 static void on_cover_download_finished(unsigned flags, char* data, size_t data_len, void* ud)
 {
     CoverDownloadUserdata* userdata = ud;
-    PGB_LibraryScene* libraryScene = userdata->libraryScene;
-    PGB_Game* game = userdata->game;
+    CB_LibraryScene* libraryScene = userdata->libraryScene;
+    CB_Game* game = userdata->game;
 
     int currentSelectedIndex = libraryScene->listView->selectedItem;
-    PGB_Game* currentlySelectedGame = NULL;
+    CB_Game* currentlySelectedGame = NULL;
     if (currentSelectedIndex >= 0 && currentSelectedIndex < libraryScene->games->length)
     {
         currentlySelectedGame = libraryScene->games->items[currentSelectedIndex];
@@ -150,7 +150,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     size_t new_data_len = data_len - (actual_data_start - data);
 
-    rom_basename_no_ext = pgb_basename(game->names->filename, true);
+    rom_basename_no_ext = cb_basename(game->names->filename, true);
     if (!rom_basename_no_ext)
     {
         if (stillOnSameGame)
@@ -159,7 +159,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     }
 
     playdate->system->formatString(
-        &cover_dest_path, "%s/%s.pdi", PGB_coversPath, rom_basename_no_ext
+        &cover_dest_path, "%s/%s.pdi", CB_coversPath, rom_basename_no_ext
     );
 
     if (!cover_dest_path)
@@ -169,22 +169,22 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         goto cleanup;
     }
 
-    if (pgb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
+    if (cb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
     {
         if (game->coverPath)
         {
-            pgb_free(game->coverPath);
+            cb_free(game->coverPath);
         }
         game->coverPath = string_copy(cover_dest_path);
 
         if (stillOnSameGame)
         {
-            pgb_clear_global_cover_cache();
+            cb_clear_global_cover_cache();
 
-            PGB_App->coverArtCache.art = pgb_load_and_scale_cover_art_from_path(
+            CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
                 game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
             );
-            PGB_App->coverArtCache.rom_path = string_copy(game->fullpath);
+            CB_App->coverArtCache.rom_path = string_copy(game->fullpath);
 
             set_download_status(libraryScene, COVER_DOWNLOAD_IDLE, NULL);
         }
@@ -198,24 +198,24 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 cleanup:
     if (cover_dest_path)
     {
-        pgb_free(cover_dest_path);
+        cb_free(cover_dest_path);
     }
     if (rom_basename_no_ext)
     {
-        pgb_free(rom_basename_no_ext);
+        cb_free(rom_basename_no_ext);
     }
 
     if (data)
     {
-        pgb_free(data);
+        cb_free(data);
     }
 
     libraryScene->activeCoverDownloadConnection = NULL;
 
-    pgb_free(userdata);
+    cb_free(userdata);
 }
 
-static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
+static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
 {
     int selectedIndex = libraryScene->listView->selectedItem;
     if (selectedIndex < 0 || selectedIndex >= libraryScene->games->length)
@@ -223,7 +223,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         return;
     }
 
-    PGB_Game* game = libraryScene->games->items[selectedIndex];
+    CB_Game* game = libraryScene->games->items[selectedIndex];
 
     set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, "Searching for missing Cover...");
 
@@ -233,7 +233,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         return;
     }
 
-    char* encoded_name = pgb_url_encode_for_github_raw(game->names->name_database);
+    char* encoded_name = cb_url_encode_for_github_raw(game->names->name_database);
     if (!encoded_name)
     {
         set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
@@ -254,7 +254,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         encoded_name
     );
 
-    pgb_free(encoded_name);
+    cb_free(encoded_name);
 
     if (!url_path)
     {
@@ -264,7 +264,7 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
 
     set_download_status(libraryScene, COVER_DOWNLOAD_DOWNLOADING, "Downloading cover...");
 
-    CoverDownloadUserdata* userdata = pgb_malloc(sizeof(CoverDownloadUserdata));
+    CoverDownloadUserdata* userdata = cb_malloc(sizeof(CoverDownloadUserdata));
     userdata->libraryScene = libraryScene;
     userdata->game = game;
 
@@ -273,18 +273,18 @@ static void PGB_LibraryScene_startCoverDownload(PGB_LibraryScene* libraryScene)
         userdata, &libraryScene->activeCoverDownloadConnection
     );
 
-    pgb_free(url_path);
+    cb_free(url_path);
 }
 
 static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
 {
     void* stored = preferences_store_subset(-1);
     bool useGame = false;
-    char* settings_path = pgb_game_config_path(game_path);
+    char* settings_path = cb_game_config_path(game_path);
     if (settings_path)
     {
         call_with_main_stack_1(preferences_merge_from_disk, settings_path);
-        pgb_free(settings_path);
+        cb_free(settings_path);
 
         if (!preferences_per_game && onlyIfPerGameEnabled)
         {
@@ -300,18 +300,18 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     {
         preferences_restore_subset(stored);
     }
-    pgb_free(stored);
+    cb_free(stored);
 }
 
 static void launch_game(void* ud, int option)
 {
-    PGB_Game* game = ud;
+    CB_Game* game = ud;
     switch (option)
     {
     case 0:  // launch w/ scripts enabled
     case 1:  // launch w/ scripts disabled
     {
-        char* settings_path = pgb_game_config_path(game->fullpath);
+        char* settings_path = cb_game_config_path(game->fullpath);
         if (settings_path)
         {
             void* prefs = preferences_store_subset(-1);
@@ -330,8 +330,8 @@ static void launch_game(void* ud, int option)
 
             preferences_restore_subset(prefs);
             if (prefs)
-                pgb_free(prefs);
-            pgb_free(settings_path);
+                cb_free(prefs);
+            cb_free(settings_path);
         }
         goto launch_normal;
     }
@@ -346,11 +346,11 @@ static void launch_game(void* ud, int option)
     case 3:  // launch game
     launch_normal:
     {
-        PGB_GameScene* gameScene =
-            PGB_GameScene_new(game->fullpath, game->names->name_short_leading_article);
+        CB_GameScene* gameScene =
+            CB_GameScene_new(game->fullpath, game->names->name_short_leading_article);
         if (gameScene)
         {
-            PGB_present(gameScene->scene);
+            CB_present(gameScene->scene);
         }
 
         playdate->system->logToConsole("Present gameScene");
@@ -386,23 +386,23 @@ static void CB_updatecheck(int code, const char* text, void* ud)
 
     if (modal_result)
     {
-        PGB_Modal* modal = PGB_Modal_new(modal_result, NULL, NULL, NULL);
-        pgb_free(modal_result);
+        CB_Modal* modal = CB_Modal_new(modal_result, NULL, NULL, NULL);
+        cb_free(modal_result);
 
         modal->width = 300;
         modal->height = 180;
 
-        PGB_presentModal(modal->scene);
+        CB_presentModal(modal->scene);
     }
 }
 
 static int page_advance = 0;
 
-__section__(".rare") static void PGB_LibraryScene_event(
+__section__(".rare") static void CB_LibraryScene_event(
     void* object, PDSystemEvent event, uint32_t arg
 )
 {
-    PGB_LibraryScene* libraryScene = object;
+    CB_LibraryScene* libraryScene = object;
 
     switch (event)
     {
@@ -426,20 +426,20 @@ __section__(".rare") static void PGB_LibraryScene_event(
     }
 }
 
-PGB_LibraryScene* PGB_LibraryScene_new(void)
+CB_LibraryScene* CB_LibraryScene_new(void)
 {
     setCrankSoundsEnabled(true);
 
     if (!has_loaded_initial_index)
     {
         last_selected_game_index =
-            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, PGB_App->gameListCache);
+            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, CB_App->gameListCache);
         has_loaded_initial_index = true;
     }
 
-    PGB_Scene* scene = PGB_Scene_new();
+    CB_Scene* scene = CB_Scene_new();
 
-    PGB_LibraryScene* libraryScene = allocz(PGB_LibraryScene);
+    CB_LibraryScene* libraryScene = allocz(CB_LibraryScene);
 
     libraryScene->state = kLibraryStateInit;
     libraryScene->build_index = 0;
@@ -447,15 +447,15 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->scene = scene;
     scene->managedObject = libraryScene;
 
-    scene->update = PGB_LibraryScene_update;
-    scene->free = PGB_LibraryScene_free;
-    scene->menu = PGB_LibraryScene_menu;
-    scene->event = PGB_LibraryScene_event;
+    scene->update = CB_LibraryScene_update;
+    scene->free = CB_LibraryScene_free;
+    scene->menu = CB_LibraryScene_menu;
+    scene->event = CB_LibraryScene_event;
 
-    libraryScene->model = (PGB_LibrarySceneModel){.empty = true, .tab = PGB_LibrarySceneTabList};
+    libraryScene->model = (CB_LibrarySceneModel){.empty = true, .tab = CB_LibrarySceneTabList};
 
-    libraryScene->games = PGB_App->gameListCache;
-    libraryScene->listView = PGB_ListView_new();
+    libraryScene->games = CB_App->gameListCache;
+    libraryScene->listView = CB_ListView_new();
 
     int selected_item = 0;
     if (preferences_library_remember_selection)
@@ -471,7 +471,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
 
     libraryScene->listView->selectedItem =
         (preferences_library_remember_selection) ? last_selected_game_index : 0;
-    libraryScene->tab = PGB_LibrarySceneTabList;
+    libraryScene->tab = CB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
     libraryScene->last_display_name_mode = combined_display_mode();
     libraryScene->initialLoadComplete = false;
@@ -480,71 +480,71 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     libraryScene->isReloading = library_was_initialized_once;
     library_was_initialized_once = true;
 
-    pgb_clear_global_cover_cache();
+    cb_clear_global_cover_cache();
 
     return libraryScene;
 }
 
-static void set_display_and_sort_name(PGB_Game* game);
-static void PGB_LibraryScene_updateDisplayNames(PGB_LibraryScene* libraryScene)
+static void set_display_and_sort_name(CB_Game* game);
+static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
 {
     char* selectedFilename = NULL;
     if (libraryScene->listView->selectedItem >= 0 &&
         libraryScene->listView->selectedItem < libraryScene->games->length)
     {
-        PGB_Game* selectedGameBefore =
+        CB_Game* selectedGameBefore =
             libraryScene->games->items[libraryScene->listView->selectedItem];
         selectedFilename = string_copy(selectedGameBefore->names->filename);
     }
 
     for (int i = 0; i < libraryScene->games->length; i++)
     {
-        PGB_Game* game = libraryScene->games->items[i];
+        CB_Game* game = libraryScene->games->items[i];
         set_display_and_sort_name(game);
     }
 
-    pgb_sort_games_array(libraryScene->games);
-    PGB_App->gameListCacheIsSorted = true;
+    cb_sort_games_array(libraryScene->games);
+    CB_App->gameListCacheIsSorted = true;
 
     int newSelectedIndex = 0;
     if (selectedFilename)
     {
         for (int i = 0; i < libraryScene->games->length; i++)
         {
-            PGB_Game* currentGame = libraryScene->games->items[i];
+            CB_Game* currentGame = libraryScene->games->items[i];
             if (strcmp(currentGame->names->filename, selectedFilename) == 0)
             {
                 newSelectedIndex = i;
                 break;
             }
         }
-        pgb_free(selectedFilename);
+        cb_free(selectedFilename);
     }
 
     libraryScene->listView->selectedItem = newSelectedIndex;
 
-    PGB_Array* items = libraryScene->listView->items;
+    CB_Array* items = libraryScene->listView->items;
     for (int i = 0; i < items->length; i++)
     {
-        PGB_ListItem* item = items->items[i];
-        PGB_ListItem_free(item);
+        CB_ListItem* item = items->items[i];
+        CB_ListItem_free(item);
     }
     array_clear(items);
     array_reserve(items, libraryScene->games->length);
 
     for (int i = 0; i < libraryScene->games->length; i++)
     {
-        PGB_Game* game = libraryScene->games->items[i];
-        PGB_ListItemButton* itemButton = PGB_ListItemButton_new(game->displayName);
+        CB_Game* game = libraryScene->games->items[i];
+        CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
         array_push(items, itemButton->item);
     }
 
-    PGB_ListView_reload(libraryScene->listView);
+    CB_ListView_reload(libraryScene->listView);
 }
 
-static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
+static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (PGB_App->pendingScene)
+    if (CB_App->pendingScene)
     {
         return;
     }
@@ -555,7 +555,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         const char* spool = getSpooledErrorMessage();
         if (spool)
         {
-            PGB_InfoScene* infoScene = PGB_InfoScene_new(NULL);
+            CB_InfoScene* infoScene = CB_InfoScene_new(NULL);
             if (!infoScene)
             {
                 freeSpool();
@@ -575,7 +575,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 infoScene->text = (char*)spool;
                 infoScene->canClose = false;
             }
-            PGB_presentModal(infoScene->scene);
+            CB_presentModal(infoScene->scene);
         }
         else
         {
@@ -585,7 +585,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    PGB_LibraryScene* libraryScene = object;
+    CB_LibraryScene* libraryScene = object;
 
     if (libraryScene->state != kLibraryStateDone)
     {
@@ -606,8 +606,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 for (int i = 0;
                      i < chunk_size && libraryScene->build_index < libraryScene->games->length; ++i)
                 {
-                    PGB_Game* game = libraryScene->games->items[libraryScene->build_index];
-                    PGB_ListItemButton* itemButton = PGB_ListItemButton_new(game->displayName);
+                    CB_Game* game = libraryScene->games->items[libraryScene->build_index];
+                    CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
                     array_push(libraryScene->listView->items, itemButton->item);
                     libraryScene->build_index++;
                 }
@@ -622,22 +622,22 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
                 if (!libraryScene->isReloading)
                 {
-                    pgb_draw_logo_screen_to_buffer(progress_message);
+                    cb_draw_logo_screen_to_buffer(progress_message);
                 }
             }
             else
             {
                 if (libraryScene->listView->items->length > 0)
                 {
-                    libraryScene->tab = PGB_LibrarySceneTabList;
+                    libraryScene->tab = CB_LibrarySceneTabList;
                 }
                 else
                 {
-                    libraryScene->tab = PGB_LibrarySceneTabEmpty;
+                    libraryScene->tab = CB_LibrarySceneTabEmpty;
                 }
 
                 libraryScene->listView->frame.height = playdate->display->getHeight();
-                PGB_ListView_reload(libraryScene->listView);
+                CB_ListView_reload(libraryScene->listView);
                 libraryScene->state = kLibraryStateDone;
             }
             return;
@@ -650,7 +650,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (libraryScene->last_display_name_mode != combined_display_mode())
     {
         libraryScene->last_display_name_mode = combined_display_mode();
-        PGB_LibraryScene_updateDisplayNames(libraryScene);
+        CB_LibraryScene_updateDisplayNames(libraryScene);
     }
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -661,18 +661,18 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         possibly_check_for_updates(CB_updatecheck, NULL);
     }
 
-    PGB_Scene_update(libraryScene->scene, dt);
+    CB_Scene_update(libraryScene->scene, dt);
 
-    PDButtons pressed = PGB_App->buttons_pressed;
+    PDButtons pressed = CB_App->buttons_pressed;
 
     if (pressed & kButtonA)
     {
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
         {
-            pgb_play_ui_sound(PGB_UISound_Confirm);
+            cb_play_ui_sound(CB_UISound_Confirm);
             last_selected_game_index = selectedItem;
-            PGB_Game* game = libraryScene->games->items[selectedItem];
+            CB_Game* game = libraryScene->games->items[selectedItem];
 
             if (preferences_library_remember_selection)
             {
@@ -690,7 +690,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             load_game_prefs(game->fullpath, false);
             int has_prompted = preferences_script_has_prompted;
             preferences_restore_subset(prefs);
-            pgb_free(prefs);
+            cb_free(prefs);
 
             if (!has_prompted)
             {
@@ -702,7 +702,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         const char* options[] = {"Yes", "No", "About", NULL};
                         if (!info->info)
                             options[2] = NULL;
-                        PGB_Modal* modal = PGB_Modal_new(
+                        CB_Modal* modal = CB_Modal_new(
                             "There is native Playdate support for this game.\n"
                             "Would you like to enable it?",
                             options, launch_game, game
@@ -711,7 +711,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         modal->width = 290;
                         modal->height = 152;
 
-                        PGB_presentModal(modal->scene);
+                        CB_presentModal(modal->scene);
                         launch = false;
                     }
                     script_info_free(info);
@@ -730,23 +730,23 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
-            PGB_Game* selectedGame = libraryScene->games->items[selectedItem];
+            CB_Game* selectedGame = libraryScene->games->items[selectedItem];
             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
             // Only allow download if a cover is missing, a DB match exists,
             // and no download is already in progress.
-            if (PGB_App->coverArtCache.art.status != PGB_COVER_ART_SUCCESS &&
+            if (CB_App->coverArtCache.art.status != CB_COVER_ART_SUCCESS &&
                 libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE && hasDBMatch)
             {
-                pgb_play_ui_sound(PGB_UISound_Confirm);
-                PGB_LibraryScene_startCoverDownload(libraryScene);
+                cb_play_ui_sound(CB_UISound_Confirm);
+                CB_LibraryScene_startCoverDownload(libraryScene);
             }
-            else if ((PGB_App->coverArtCache.art.status != PGB_COVER_ART_SUCCESS && !hasDBMatch) ||
+            else if ((CB_App->coverArtCache.art.status != CB_COVER_ART_SUCCESS && !hasDBMatch) ||
                      libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB)
             {
                 libraryScene->showCrc = !libraryScene->showCrc;
                 libraryScene->scene->forceFullRefresh = true;
-                pgb_play_ui_sound(PGB_UISound_Navigate);
+                cb_play_ui_sound(CB_UISound_Navigate);
             }
         }
     }
@@ -771,9 +771,9 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         playdate->graphics->clear(kColorWhite);
     }
 
-    if (libraryScene->tab == PGB_LibrarySceneTabList)
+    if (libraryScene->tab == CB_LibrarySceneTabList)
     {
-        PGB_ListView_update(libraryScene->listView);
+        CB_ListView_update(libraryScene->listView);
 
         int selectedIndex = libraryScene->listView->selectedItem;
 
@@ -798,30 +798,30 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
                 if (libraryScene->coverDownloadMessage)
                 {
-                    pgb_free(libraryScene->coverDownloadMessage);
+                    cb_free(libraryScene->coverDownloadMessage);
                     libraryScene->coverDownloadMessage = NULL;
                 }
             }
-            pgb_clear_global_cover_cache();
+            cb_clear_global_cover_cache();
 
             if (libraryScene->initialLoadComplete)
             {
-                pgb_play_ui_sound(PGB_UISound_Navigate);
+                cb_play_ui_sound(CB_UISound_Navigate);
             }
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
-                PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
 
                 bool foundInCache = false;
-                if (PGB_App->coverCache)
+                if (CB_App->coverCache)
                 {
-                    for (int i = 0; i < PGB_App->coverCache->length; i++)
+                    for (int i = 0; i < CB_App->coverCache->length; i++)
                     {
-                        PGB_CoverCacheEntry* entry = PGB_App->coverCache->items[i];
+                        CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
                         if (strcmp(entry->rom_path, selectedGame->fullpath) == 0)
                         {
-                            char* decompressed_buffer = pgb_malloc(entry->original_size);
+                            char* decompressed_buffer = cb_malloc(entry->original_size);
                             if (decompressed_buffer)
                             {
                                 int decompressed_size = LZ4_decompress_safe(
@@ -874,13 +874,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                             }
                                         }
 
-                                        PGB_App->coverArtCache.art.bitmap = new_bitmap;
-                                        PGB_App->coverArtCache.art.original_width = entry->width;
-                                        PGB_App->coverArtCache.art.original_height = entry->height;
-                                        PGB_App->coverArtCache.art.scaled_width = entry->width;
-                                        PGB_App->coverArtCache.art.scaled_height = entry->height;
-                                        PGB_App->coverArtCache.art.status = PGB_COVER_ART_SUCCESS;
-                                        PGB_App->coverArtCache.rom_path =
+                                        CB_App->coverArtCache.art.bitmap = new_bitmap;
+                                        CB_App->coverArtCache.art.original_width = entry->width;
+                                        CB_App->coverArtCache.art.original_height = entry->height;
+                                        CB_App->coverArtCache.art.scaled_width = entry->width;
+                                        CB_App->coverArtCache.art.scaled_height = entry->height;
+                                        CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
+                                        CB_App->coverArtCache.rom_path =
                                             string_copy(selectedGame->fullpath);
                                         foundInCache = true;
                                     }
@@ -891,7 +891,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                         "LZ4 decompression failed for %s", entry->rom_path
                                     );
                                 }
-                                pgb_free(decompressed_buffer);
+                                cb_free(decompressed_buffer);
                             }
 
                             if (foundInCache)
@@ -902,10 +902,10 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
                 if (!foundInCache && selectedGame->coverPath != NULL)
                 {
-                    PGB_App->coverArtCache.art = pgb_load_and_scale_cover_art_from_path(
+                    CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
                         selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
                     );
-                    PGB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
+                    CB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
                 }
             }
         }
@@ -916,11 +916,11 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int rightPanelWidth = THUMBNAIL_WIDTH + 1;
 
         // use actual thumbnail width if possible
-        if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
-            PGB_App->coverArtCache.art.bitmap != NULL)
+        if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+            CB_App->coverArtCache.art.bitmap != NULL)
         {
             playdate->graphics->getBitmapData(
-                PGB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL
+                CB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL
             );
             if (rightPanelWidth >= THUMBNAIL_WIDTH - 1)
                 rightPanelWidth = THUMBNAIL_WIDTH;
@@ -936,18 +936,18 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         while (page_advance > 0)
         {
             --page_advance;
-            PGB_App->buttons_pressed = kButtonDown;
-            PGB_ListView_update(libraryScene->listView);
+            CB_App->buttons_pressed = kButtonDown;
+            CB_ListView_update(libraryScene->listView);
         }
         while (page_advance < 0)
         {
             ++page_advance;
-            PGB_App->buttons_pressed = kButtonUp;
-            PGB_ListView_update(libraryScene->listView);
+            CB_App->buttons_pressed = kButtonUp;
+            CB_ListView_update(libraryScene->listView);
         }
 #endif
 
-        PGB_ListView_draw(libraryScene->listView);
+        CB_ListView_draw(libraryScene->listView);
 
         if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
         {
@@ -959,54 +959,53 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
             {
-                if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_SUCCESS &&
-                    PGB_App->coverArtCache.art.bitmap != NULL)
+                if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+                    CB_App->coverArtCache.art.bitmap != NULL)
                 {
                     int panel_content_width = rightPanelWidth - 1;
-                    int coverX =
-                        leftPanelWidth + 1 +
-                        (panel_content_width - PGB_App->coverArtCache.art.scaled_width) / 2;
-                    int coverY = (screenHeight - PGB_App->coverArtCache.art.scaled_height) / 2;
+                    int coverX = leftPanelWidth + 1 +
+                                 (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
+                    int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
 
                     playdate->graphics->fillRect(
                         leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
                     );
                     playdate->graphics->setDrawMode(kDrawModeCopy);
                     playdate->graphics->drawBitmap(
-                        PGB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
+                        CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
                     );
                 }
                 else
                 {
-                    PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                    CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                     bool had_error_loading =
-                        PGB_App->coverArtCache.art.status != PGB_COVER_ART_FILE_NOT_FOUND;
+                        CB_App->coverArtCache.art.status != CB_COVER_ART_FILE_NOT_FOUND;
 
                     if (had_error_loading)
                     {
                         const char* message = "Error";
-                        if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_ERROR_LOADING)
+                        if (CB_App->coverArtCache.art.status == CB_COVER_ART_ERROR_LOADING)
                         {
                             message = "Error loading image";
                         }
-                        else if (PGB_App->coverArtCache.art.status == PGB_COVER_ART_INVALID_IMAGE)
+                        else if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
                         {
                             message = "Invalid image";
                         }
 
-                        playdate->graphics->setFont(PGB_App->bodyFont);
+                        playdate->graphics->setFont(CB_App->bodyFont);
                         int textWidth = playdate->graphics->getTextWidth(
-                            PGB_App->bodyFont, message, pgb_strlen(message), kUTF8Encoding, 0
+                            CB_App->bodyFont, message, cb_strlen(message), kUTF8Encoding, 0
                         );
                         int panel_content_width = rightPanelWidth - 1;
                         int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
                         int textY =
-                            (screenHeight - playdate->graphics->getFontHeight(PGB_App->bodyFont)) /
+                            (screenHeight - playdate->graphics->getFontHeight(CB_App->bodyFont)) /
                             2;
 
                         playdate->graphics->setDrawMode(kDrawModeFillBlack);
                         playdate->graphics->drawText(
-                            message, pgb_strlen(message), kUTF8Encoding, textX, textY
+                            message, cb_strlen(message), kUTF8Encoding, textX, textY
                         );
                     }
                     else
@@ -1019,7 +1018,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             if (libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
                                 libraryScene->showCrc)
                             {
-                                PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                                CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                                 if (selectedGame->names->crc32 != 0)
                                 {
                                     snprintf(
@@ -1041,14 +1040,14 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 snprintf(message, sizeof(message), "%s", defaultMessage);
                             }
 
-                            playdate->graphics->setFont(PGB_App->bodyFont);
+                            playdate->graphics->setFont(CB_App->bodyFont);
                             int textWidth = playdate->graphics->getTextWidth(
-                                PGB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+                                CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
                             );
                             int panel_content_width = rightPanelWidth - 1;
                             int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
                             int textY = (screenHeight -
-                                         playdate->graphics->getFontHeight(PGB_App->bodyFont)) /
+                                         playdate->graphics->getFontHeight(CB_App->bodyFont)) /
                                         2;
                             playdate->graphics->setDrawMode(kDrawModeFillBlack);
                             playdate->graphics->drawText(
@@ -1057,7 +1056,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         }
                         else
                         {
-                            PGB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                            CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
                             static const char* title = "Missing Cover";
@@ -1101,8 +1100,8 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             static const char* message_copy = "and copy cover to:";
                             static const char* message_path = "Data/*crankboy/covers";
 
-                            LCDFont* titleFont = PGB_App->bodyFont;
-                            LCDFont* bodyFont = PGB_App->subheadFont;
+                            LCDFont* titleFont = CB_App->bodyFont;
+                            LCDFont* bodyFont = CB_App->subheadFont;
                             int large_gap = 12;
                             int small_gap = 3;
                             int titleHeight = playdate->graphics->getFontHeight(titleFont);
@@ -1216,7 +1215,7 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
         }
     }
-    else if (libraryScene->tab == PGB_LibrarySceneTabEmpty)
+    else if (libraryScene->tab == CB_LibrarySceneTabEmpty)
     {
         if (needsDisplay)
         {
@@ -1243,37 +1242,37 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             int verticalOffset = 2;
             int textPartSpacing = 5;
 
-            int titleHeight = playdate->graphics->getFontHeight(PGB_App->titleFont);
-            int subheadHeight = playdate->graphics->getFontHeight(PGB_App->subheadFont);
-            int messageHeight = playdate->graphics->getFontHeight(PGB_App->bodyFont);
+            int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
+            int subheadHeight = playdate->graphics->getFontHeight(CB_App->subheadFont);
+            int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
             int compositeLineHeight = (subheadHeight + verticalOffset > messageHeight)
                                           ? (subheadHeight + verticalOffset)
                                           : messageHeight;
 
             int numWidth1 = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message2_num, strlen(message2_num), kUTF8Encoding, 0
+                CB_App->bodyFont, message2_num, strlen(message2_num), kUTF8Encoding, 0
             );
             int numWidth2 = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message3_num, strlen(message3_num), kUTF8Encoding, 0
+                CB_App->bodyFont, message3_num, strlen(message3_num), kUTF8Encoding, 0
             );
             int numWidth3 = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message4_num, strlen(message4_num), kUTF8Encoding, 0
+                CB_App->bodyFont, message4_num, strlen(message4_num), kUTF8Encoding, 0
             );
             int maxNumWidth = (numWidth1 > numWidth2) ? numWidth1 : numWidth2;
             maxNumWidth = (numWidth3 > maxNumWidth) ? numWidth3 : maxNumWidth;
 
             int textWidth4_part1 = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message4_text1, strlen(message4_text1), kUTF8Encoding, 0
+                CB_App->bodyFont, message4_text1, strlen(message4_text1), kUTF8Encoding, 0
             );
             int textWidth4_part2 = playdate->graphics->getTextWidth(
-                PGB_App->subheadFont, message4_text2, strlen(message4_text2), kUTF8Encoding, 0
+                CB_App->subheadFont, message4_text2, strlen(message4_text2), kUTF8Encoding, 0
             );
             int totalInstructionWidth =
                 maxNumWidth + 4 + textWidth4_part1 + textPartSpacing + textWidth4_part2;
 
             int titleX = (playdate->display->getWidth() -
                           playdate->graphics->getTextWidth(
-                              PGB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
+                              CB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
                           )) /
                          2;
             int blockAnchorX = (playdate->display->getWidth() - totalInstructionWidth) / 2;
@@ -1293,10 +1292,10 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             int message4_Y = message3_Y + compositeLineHeight + messageLineSpacing;
             int message5_Y = message4_Y + compositeLineHeight + messageLineSpacing;
 
-            playdate->graphics->setFont(PGB_App->titleFont);
+            playdate->graphics->setFont(CB_App->titleFont);
             playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
 
-            playdate->graphics->setFont(PGB_App->bodyFont);
+            playdate->graphics->setFont(CB_App->bodyFont);
             playdate->graphics->drawText(
                 message1, strlen(message1), kUTF8Encoding, blockAnchorX, message1_Y
             );
@@ -1314,32 +1313,32 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->drawText(
                 message3_text1, strlen(message3_text1), kUTF8Encoding, textColX, message3_Y
             );
-            playdate->graphics->setFont(PGB_App->subheadFont);
+            playdate->graphics->setFont(CB_App->subheadFont);
             int message3_text1_width = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message3_text1, strlen(message3_text1), kUTF8Encoding, 0
+                CB_App->bodyFont, message3_text1, strlen(message3_text1), kUTF8Encoding, 0
             );
             playdate->graphics->drawText(
                 message3_text2, strlen(message3_text2), kUTF8Encoding,
                 textColX + message3_text1_width + textPartSpacing, message3_Y + verticalOffset
             );
 
-            playdate->graphics->setFont(PGB_App->bodyFont);
+            playdate->graphics->setFont(CB_App->bodyFont);
             playdate->graphics->drawText(
                 message4_num, strlen(message4_num), kUTF8Encoding, numColX, message4_Y
             );
             playdate->graphics->drawText(
                 message4_text1, strlen(message4_text1), kUTF8Encoding, textColX, message4_Y
             );
-            playdate->graphics->setFont(PGB_App->subheadFont);
+            playdate->graphics->setFont(CB_App->subheadFont);
             int message4_text1_width = playdate->graphics->getTextWidth(
-                PGB_App->bodyFont, message4_text1, strlen(message4_text1), kUTF8Encoding, 0
+                CB_App->bodyFont, message4_text1, strlen(message4_text1), kUTF8Encoding, 0
             );
             playdate->graphics->drawText(
                 message4_text2, strlen(message4_text2), kUTF8Encoding,
                 textColX + message4_text1_width + textPartSpacing, message4_Y + verticalOffset
             );
 
-            playdate->graphics->setFont(PGB_App->bodyFont);
+            playdate->graphics->setFont(CB_App->bodyFont);
             playdate->graphics->drawText(
                 message5_text, strlen(message5_text), kUTF8Encoding, textColX, message5_Y
             );
@@ -1348,29 +1347,29 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     libraryScene->initialLoadComplete = true;
 }
 
-static void PGB_LibraryScene_showSettings(void* userdata)
+static void CB_LibraryScene_showSettings(void* userdata)
 {
-    PGB_SettingsScene* settingsScene = PGB_SettingsScene_new(NULL, userdata);
-    PGB_presentModal(settingsScene->scene);
+    CB_SettingsScene* settingsScene = CB_SettingsScene_new(NULL, userdata);
+    CB_presentModal(settingsScene->scene);
 }
 
-static void PGB_LibraryScene_menu(void* object)
+static void CB_LibraryScene_menu(void* object)
 {
-    playdate->system->addMenuItem("Credits", PGB_showCredits, object);
-    playdate->system->addMenuItem("Settings", PGB_LibraryScene_showSettings, object);
+    playdate->system->addMenuItem("Credits", CB_showCredits, object);
+    playdate->system->addMenuItem("Settings", CB_LibraryScene_showSettings, object);
 }
 
-static void PGB_LibraryScene_free(void* object)
+static void CB_LibraryScene_free(void* object)
 {
-    PGB_LibraryScene* libraryScene = object;
+    CB_LibraryScene* libraryScene = object;
 
-    PGB_Scene_free(libraryScene->scene);
+    CB_Scene_free(libraryScene->scene);
 
-    PGB_ListView_free(libraryScene->listView);
+    CB_ListView_free(libraryScene->listView);
 
     if (libraryScene->coverDownloadMessage)
     {
-        pgb_free(libraryScene->coverDownloadMessage);
+        cb_free(libraryScene->coverDownloadMessage);
     }
 
     if (libraryScene->activeCoverDownloadConnection)
@@ -1379,10 +1378,10 @@ static void PGB_LibraryScene_free(void* object)
         libraryScene->activeCoverDownloadConnection = NULL;
     }
 
-    pgb_free(libraryScene);
+    cb_free(libraryScene);
 }
 
-static void set_display_and_sort_name(PGB_Game* game)
+static void set_display_and_sort_name(CB_Game* game)
 {
     // set display name
     switch (preferences_display_name_mode)
@@ -1423,41 +1422,41 @@ static void set_display_and_sort_name(PGB_Game* game)
     }
 }
 
-PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers)
+CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
 {
-    PGB_Game* game = pgb_malloc(sizeof(PGB_Game));
-    memset(game, 0, sizeof(PGB_Game));
+    CB_Game* game = cb_malloc(sizeof(CB_Game));
+    memset(game, 0, sizeof(CB_Game));
 
     char* fullpath_str;
-    playdate->system->formatString(&fullpath_str, "%s/%s", PGB_gamesPath, cachedName->filename);
+    playdate->system->formatString(&fullpath_str, "%s/%s", CB_gamesPath, cachedName->filename);
     game->fullpath = fullpath_str;
 
     game->names = cachedName;
     set_display_and_sort_name(game);
 
-    char* basename_no_ext = pgb_basename(cachedName->filename, true);
+    char* basename_no_ext = cb_basename(cachedName->filename, true);
 
     char** found_cover_name_ptr = (char**)bsearch(
         &basename_no_ext, available_covers->items, available_covers->length, sizeof(char*),
-        pgb_compare_strings
+        cb_compare_strings
     );
 
     if (found_cover_name_ptr == NULL)
     {
         char* cleanName_no_ext = string_copy(basename_no_ext);
-        pgb_sanitize_string_for_filename(cleanName_no_ext);
+        cb_sanitize_string_for_filename(cleanName_no_ext);
         found_cover_name_ptr = (char**)bsearch(
             &cleanName_no_ext, available_covers->items, available_covers->length, sizeof(char*),
-            pgb_compare_strings
+            cb_compare_strings
         );
-        pgb_free(cleanName_no_ext);
+        cb_free(cleanName_no_ext);
     }
 
     if (found_cover_name_ptr)
     {
         const char* found_cover_name = *found_cover_name_ptr;
         playdate->system->formatString(
-            &game->coverPath, "%s/%s.pdi", PGB_coversPath, found_cover_name
+            &game->coverPath, "%s/%s.pdi", CB_coversPath, found_cover_name
         );
     }
     else
@@ -1465,14 +1464,14 @@ PGB_Game* PGB_Game_new(PGB_GameName* cachedName, PGB_Array* available_covers)
         game->coverPath = NULL;
     }
 
-    pgb_free(basename_no_ext);
+    cb_free(basename_no_ext);
 
     return game;
 }
 
-void PGB_Game_free(PGB_Game* game)
+void CB_Game_free(CB_Game* game)
 {
-    pgb_free(game->fullpath);
-    pgb_free(game->coverPath);
-    pgb_free(game);
+    cb_free(game->fullpath);
+    cb_free(game->coverPath);
+    cb_free(game);
 }

@@ -20,9 +20,9 @@
 
 extern const uint8_t lcdp_50[16];
 
-static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
+static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 {
-    PGB_PatchesScene* patchesScene = object;
+    CB_PatchesScene* patchesScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     size_t len = 0;
     for (SoftPatch* patch = patchesScene->patches; patch->fullpath; ++patch, ++len)
@@ -30,7 +30,7 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 
     if (patchesScene->dismiss)
     {
-        PGB_dismiss(patchesScene->scene);
+        CB_dismiss(patchesScene->scene);
         return;
     }
 
@@ -39,12 +39,12 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
     // header
     {
         const char* name = patchesScene->game->names->name_short_leading_article;
-        playdate->graphics->setFont(PGB_App->labelFont);
+        playdate->graphics->setFont(CB_App->labelFont);
         int nameWidth = playdate->graphics->getTextWidth(
-            PGB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
+            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
         );
         int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(PGB_App->labelFont);
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
 
         int vertical_offset = string_has_descenders(name) ? 1 : 2;
         int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
@@ -55,11 +55,10 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
         playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
     }
 
-    bool held = !!(PGB_App->buttons_down & kButtonA);
+    bool held = !!(CB_App->buttons_down & kButtonA);
 
     // menu movement
-    int ydir =
-        !!(PGB_App->buttons_pressed & kButtonDown) - !!(PGB_App->buttons_pressed & kButtonUp);
+    int ydir = !!(CB_App->buttons_pressed & kButtonDown) - !!(CB_App->buttons_pressed & kButtonUp);
     if ((ydir < 0 && patchesScene->selected > 0) || (ydir > 0 && patchesScene->selected < len - 1))
     {
         if (held)
@@ -73,7 +72,7 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
         }
 
         patchesScene->selected += ydir;
-        pgb_play_ui_sound(PGB_UISound_Navigate);
+        cb_play_ui_sound(CB_UISound_Navigate);
     }
 
     unsigned scroll = 0;
@@ -88,7 +87,7 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 
     SoftPatch* selectedPatch = &patchesScene->patches[patchesScene->selected];
 
-    if (PGB_App->buttons_released & kButtonA)
+    if (CB_App->buttons_released & kButtonA)
     {
         if (!patchesScene->didDrag)
         {
@@ -100,18 +99,18 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
             {
                 selectedPatch->state = PATCH_ENABLED;
             }
-            pgb_play_ui_sound(PGB_UISound_Confirm);
+            cb_play_ui_sound(CB_UISound_Confirm);
         }
 
         patchesScene->didDrag = false;
     }
-    else if (PGB_App->buttons_pressed & kButtonB)
+    else if (CB_App->buttons_pressed & kButtonB)
     {
         patchesScene->dismiss = true;
     }
 
     // menu
-    LCDFont* font = PGB_App->bodyFont;
+    LCDFont* font = CB_App->bodyFont;
     playdate->graphics->setFont(font);
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
@@ -155,7 +154,7 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-    playdate->graphics->setFont(PGB_App->labelFont);
+    playdate->graphics->setFont(CB_App->labelFont);
 
     const char* info = INFO;
     playdate->graphics->drawTextInRect(
@@ -166,10 +165,10 @@ static void PGB_PatchesScene_update(void* object, uint32_t u32enc_dt)
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
 }
 
-static void PGB_PatchesScene_free(void* object)
+static void CB_PatchesScene_free(void* object)
 {
-    PGB_PatchesScene* patchesScene = object;
-    PGB_Scene_free(patchesScene->scene);
+    CB_PatchesScene* patchesScene = object;
+    CB_Scene_free(patchesScene->scene);
 
     // remove 'unknown'/'new' marker for patches
 
@@ -182,17 +181,17 @@ static void PGB_PatchesScene_free(void* object)
     // save patches
     call_with_main_stack_2(save_patches_state, patchesScene->game->fullpath, patchesScene->patches);
 
-    pgb_free(patchesScene->patches_dir);
+    cb_free(patchesScene->patches_dir);
     free_patches(patchesScene->patches);
-    pgb_free(patchesScene);
+    cb_free(patchesScene);
 }
 
-static void PGB_PatchesScene_menu(void* object)
+static void CB_PatchesScene_menu(void* object)
 {
     // TODO -- "return" button
 }
 
-PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
+CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
 {
     char* patches_dir_path = get_patches_directory(game->fullpath);
 
@@ -206,7 +205,7 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
     if (!patches || !patches[0].fullpath)
     {
         // For the help message, get the ROM's basename to show the user.
-        char* rom_basename = pgb_basename(game->fullpath, true);
+        char* rom_basename = cb_basename(game->fullpath, true);
 
         char* msg = aprintf(
             "No patches found for %s.\n\n"
@@ -219,19 +218,19 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
             game->names->name_short_leading_article
         );
 
-        pgb_free(rom_basename);
-        pgb_free(patches_dir_path);
+        cb_free(rom_basename);
+        cb_free(patches_dir_path);
         if (patches)
         {
             free_patches(patches);
         }
 
-        return (void*)PGB_InfoScene_new(msg);
+        return (void*)CB_InfoScene_new(msg);
     }
 
     // If patches were found, create the patches scene.
-    PGB_Scene* scene = PGB_Scene_new();
-    PGB_PatchesScene* patchesScene = allocz(PGB_PatchesScene);
+    CB_Scene* scene = CB_Scene_new();
+    CB_PatchesScene* patchesScene = allocz(CB_PatchesScene);
     patchesScene->scene = scene;
     scene->managedObject = patchesScene;
 
@@ -239,9 +238,9 @@ PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
     patchesScene->patches = patches;
     patchesScene->patches_dir = patches_dir_path;
 
-    scene->update = PGB_PatchesScene_update;
-    scene->free = PGB_PatchesScene_free;
-    scene->menu = PGB_PatchesScene_menu;
+    scene->update = CB_PatchesScene_update;
+    scene->free = CB_PatchesScene_free;
+    scene->menu = CB_PatchesScene_menu;
 
     // Set selected to first enabled patch, or default to the first item.
     patchesScene->selected = 0;
