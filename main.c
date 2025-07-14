@@ -6,11 +6,11 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include "./src/app.h"
-#include "./src/dtcm.h"
-#include "./src/revcheck.h"
-#include "./src/userstack.h"
 #include "pd_api.h"
+#include "src/app.h"
+#include "src/dtcm.h"
+#include "src/revcheck.h"
+#include "src/userstack.h"
 
 #include <stdio.h>
 #include <time.h>
