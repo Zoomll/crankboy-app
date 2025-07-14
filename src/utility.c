@@ -57,7 +57,7 @@ const clalign uint8_t CB_patterns[4][4][4] = {
 };
 /* clang-format on */
 
-char* string_copy(const char* string)
+char* cb_strdup(const char* string)
 {
     if (!string)
         return NULL;
@@ -258,7 +258,7 @@ char* cb_basename(const char* filename, bool stripExtension)
 
     if (*start == '\0')
     {
-        return string_copy(filename);
+        return cb_strdup(filename);
     }
 
     const char* end = start + strlen(start);
@@ -1006,13 +1006,13 @@ CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
             json_value short_val = json_get_table_value(game_entry, "short");
             if (short_val.type == kJSONString && short_val.data.stringval)
             {
-                names.short_name = string_copy(short_val.data.stringval);
+                names.short_name = cb_strdup(short_val.data.stringval);
             }
 
             json_value long_val = json_get_table_value(game_entry, "long");
             if (long_val.type == kJSONString && long_val.data.stringval)
             {
-                names.detailed_name = string_copy(long_val.data.stringval);
+                names.detailed_name = cb_strdup(long_val.data.stringval);
             }
         }
     }
@@ -1073,7 +1073,7 @@ char* common_article_form(const char* input)
     size_t a_len = split_pos - input;
     char* a_part = cb_malloc(a_len + 1);
     if (!a_part)
-        return string_copy(input);
+        return cb_strdup(input);
 
     strncpy(a_part, input, a_len);
     a_part[a_len] = '\0';
@@ -1097,7 +1097,7 @@ char* common_article_form(const char* input)
             if (!result)
             {
                 cb_free(a_part);
-                return string_copy(input);
+                return cb_strdup(input);
             }
 
             char* p = result;
@@ -1116,7 +1116,7 @@ char* common_article_form(const char* input)
     }
 
     cb_free(a_part);
-    return string_copy(input);
+    return cb_strdup(input);
 }
 
 #define initialSpoolErrorMsg "The following error(s) occurred:"
@@ -1128,7 +1128,7 @@ char* spoolText = NULL;
 void spoolError(const char* fmt, ...)
 {
     if (!spoolText)
-        spoolText = string_copy(initialSpoolErrorMsg);
+        spoolText = cb_strdup(initialSpoolErrorMsg);
 
     va_list args;
     char str[2048];

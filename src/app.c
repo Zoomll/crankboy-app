@@ -122,7 +122,7 @@ static int check_is_bundle(void)
     if (startswith(arg, "rom="))
     {
         arg += strlen("rom=");
-        CB_App->bundled_rom = string_copy(arg);
+        CB_App->bundled_rom = cb_strdup(arg);
         return true;
     }
 
@@ -135,7 +135,7 @@ static int check_is_bundle(void)
     json_value jrom = json_get_table_value(jbundle, "rom");
 
     if (jrom.type == kJSONString)
-        CB_App->bundled_rom = string_copy(jrom.data.stringval);
+        CB_App->bundled_rom = cb_strdup(jrom.data.stringval);
 
     if (CB_App->bundled_rom)
     {
@@ -411,7 +411,7 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
 
     if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0))
     {
-        array_push(filenames_array, string_copy(filename));
+        array_push(filenames_array, cb_strdup(filename));
     }
 }
 

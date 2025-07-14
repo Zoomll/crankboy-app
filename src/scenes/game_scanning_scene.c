@@ -27,7 +27,7 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
 
     if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0))
     {
-        array_push(filenames_array, string_copy(filename));
+        array_push(filenames_array, cb_strdup(filename));
     }
 }
 
@@ -36,7 +36,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     CB_GameName* newName = cb_malloc(sizeof(CB_GameName));
     memset(newName, 0, sizeof(CB_GameName));
 
-    newName->filename = string_copy(filename);
+    newName->filename = cb_strdup(filename);
     newName->name_filename = cb_basename(filename, true);
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
 
@@ -143,11 +143,11 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     newName->crc32 = fetched.crc32;
     cb_free(fullpath);
 
-    newName->name_database = (fetched.detailed_name) ? string_copy(fetched.detailed_name) : NULL;
-    newName->name_short = (fetched.short_name) ? string_copy(fetched.short_name)
-                                               : string_copy(newName->name_filename);
-    newName->name_detailed = (fetched.detailed_name) ? string_copy(fetched.detailed_name)
-                                                     : string_copy(newName->name_filename);
+    newName->name_database = (fetched.detailed_name) ? cb_strdup(fetched.detailed_name) : NULL;
+    newName->name_short =
+        (fetched.short_name) ? cb_strdup(fetched.short_name) : cb_strdup(newName->name_filename);
+    newName->name_detailed = (fetched.detailed_name) ? cb_strdup(fetched.detailed_name)
+                                                     : cb_strdup(newName->name_filename);
 
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);

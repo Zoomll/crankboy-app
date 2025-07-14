@@ -217,7 +217,7 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                                 memcpy(final_buffer, temp_compressed_buffer, compressed_size);
 
                                 CB_CoverCacheEntry* entry = cb_malloc(sizeof(CB_CoverCacheEntry));
-                                entry->rom_path = string_copy(game->fullpath);
+                                entry->rom_path = cb_strdup(game->fullpath);
                                 entry->compressed_data = final_buffer;
                                 entry->compressed_size = compressed_size;
                                 entry->original_size = original_size;

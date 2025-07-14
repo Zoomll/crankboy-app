@@ -549,12 +549,12 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 #ifdef TARGET_SIMULATOR
             char fullpath[1024];
             snprintf(fullpath, sizeof(fullpath), "Source/%s", lua_script_path_from_json);
-            info->lua_script_path = string_copy(fullpath);
+            info->lua_script_path = cb_strdup(fullpath);
 #else
-            info->lua_script_path = string_copy(lua_script_path_from_json);
+            info->lua_script_path = cb_strdup(lua_script_path_from_json);
 #endif
 
-            info->info = script_info_str ? string_copy(strltrim(script_info_str)) : NULL;
+            info->info = script_info_str ? cb_strdup(strltrim(script_info_str)) : NULL;
 
             json_value jexperimental = json_get_table_value(item, "experimental");
             info->experimental = jexperimental.type == kJSONTrue;
@@ -579,7 +579,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
         {
             ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
-            info->info = cinfo->description ? string_copy(strltrim(cinfo->description)) : NULL;
+            info->info = cinfo->description ? cb_strdup(strltrim(cinfo->description)) : NULL;
             info->experimental = cinfo->experimental;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;  // paranoia

@@ -600,7 +600,7 @@ static void on_list_file(const char* fname, void* ud)
         }
 
         convScene->files = new_files;
-        convScene->files[convScene->files_count] = string_copy(fname);
+        convScene->files[convScene->files_count] = cb_strdup(fname);
 
         if (convScene->files[convScene->files_count] == NULL)
         {

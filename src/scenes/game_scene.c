@@ -274,8 +274,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     scene->preferredRefreshRate = 30;
 
-    gameScene->rom_filename = string_copy(rom_filename);
-    gameScene->name_short = string_copy(name_short);
+    gameScene->rom_filename = cb_strdup(rom_filename);
+    gameScene->name_short = cb_strdup(name_short);
     gameScene->save_filename = NULL;
 
     gameScene->state = CB_GameSceneStateError;

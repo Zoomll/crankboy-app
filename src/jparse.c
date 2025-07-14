@@ -33,7 +33,7 @@ __section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos,
     if (value.type == kJSONString)
     {
         // we need to own the string
-        value.data.stringval = string_copy(value.data.stringval);
+        value.data.stringval = cb_strdup(value.data.stringval);
     }
 
     array->data[pos] = value;
@@ -57,10 +57,10 @@ __section__(".rare") void SI_didDecodeTableValue(
     if (value.type == kJSONString)
     {
         // we need to own the string
-        value.data.stringval = string_copy(value.data.stringval);
+        value.data.stringval = cb_strdup(value.data.stringval);
     }
 
-    obj->data[n - 1].key = string_copy(key);
+    obj->data[n - 1].key = cb_strdup(key);
     obj->data[n - 1].value = value;
     obj->n = n;
     decoder->userdata = obj;
@@ -164,7 +164,7 @@ bool json_set_table_value(json_value* table, const char* key, json_value value)
         }
     }
 
-    char* key2 = string_copy(key);
+    char* key2 = cb_strdup(key);
     if (!key2)
         return false;
 

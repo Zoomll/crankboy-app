@@ -75,7 +75,7 @@ static bool parse_url(const char* url, char** domain, char** path)
     strncpy(*domain, domain_start, domain_len);
     (*domain)[domain_len] = '\0';
 
-    *path = string_copy(path_start);
+    *path = cb_strdup(path_start);
 
     return true;
 }
@@ -90,11 +90,11 @@ static void CB_Header(HTTPConnection* connection, const char* key, const char* v
 
     if (strcasecmp(key, "Content-Type") == 0)
     {
-        httpud->contentType = string_copy(value);
+        httpud->contentType = cb_strdup(value);
     }
     else if (strcasecmp(key, "Location") == 0)
     {
-        httpud->location = string_copy(value);
+        httpud->location = cb_strdup(value);
     }
 }
 
@@ -332,8 +332,8 @@ void http_get(
     httpud->cb = cb;
     httpud->ud = ud;
     httpud->timeout = timeout;
-    httpud->domain = string_copy(domain);
-    httpud->path = string_copy(path);
+    httpud->domain = cb_strdup(domain);
+    httpud->path = cb_strdup(path);
     httpud->location = NULL;
     httpud->out_connection_handle = out_connection_handle;
 
@@ -427,8 +427,8 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
 
     _ud = ud;
     _cb = cb;
-    _domain = string_copy(domain);
-    _reason = string_copy(reason);
+    _domain = cb_strdup(domain);
+    _reason = cb_strdup(reason);
 
     playdate->network->setEnabled(true, CB_SetEnabled);
 }

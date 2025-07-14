@@ -187,12 +187,12 @@ CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback 
     if (options)
         for (size_t i = 0; options[i] && i < MODAL_MAX_OPTIONS; ++i)
         {
-            modal->options[i] = string_copy(options[i]);
+            modal->options[i] = cb_strdup(options[i]);
             modal->options_count++;
         }
 
     if (text)
-        modal->text = string_copy(text);
+        modal->text = cb_strdup(text);
 
     CB_Scene* scene = CB_Scene_new();
     modal->scene = scene;

@@ -66,10 +66,10 @@ static int read_version_info(const char* text, bool ispath, struct VersionInfo* 
         return -2;
     }
 
-    oinfo->name = string_copy(jname.data.stringval);
-    oinfo->path = string_copy(jpath.data.stringval);
-    oinfo->domain = string_copy(jdomain.data.stringval);
-    oinfo->download = string_copy(jdownload.data.stringval);
+    oinfo->name = cb_strdup(jname.data.stringval);
+    oinfo->path = cb_strdup(jpath.data.stringval);
+    oinfo->domain = cb_strdup(jdomain.data.stringval);
+    oinfo->download = cb_strdup(jdownload.data.stringval);
 
     free_json_data(jvinfo);
 
@@ -184,7 +184,7 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
                 );
                 if (ignore_version)
                     cb_free(ignore_version);
-                ignore_version = string_copy(newVersionInfo->name);
+                ignore_version = cb_strdup(newVersionInfo->name);
 
                 if (strcmp(newVersionInfo->name, localVersionInfo->name))
                 {

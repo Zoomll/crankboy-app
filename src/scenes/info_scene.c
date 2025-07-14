@@ -262,7 +262,7 @@ CB_InfoScene* CB_InfoScene_new(char* text)
 
     CB_Scene* scene = CB_Scene_new();
     infoScene->scene = scene;
-    infoScene->text = text ? string_copy(text) : NULL;
+    infoScene->text = text ? cb_strdup(text) : NULL;
     infoScene->canClose = true;
     scene->managedObject = infoScene;
     scene->update = (void*)CB_InfoScene_update;

@@ -430,7 +430,7 @@ static void settings_action_load_state(OptionsMenuEntry* e, CB_SettingsScene* se
         char* text;
         if (timestamp == 0 || timestamp > now)
         {
-            text = string_copy("Really load state?");
+            text = cb_strdup("Really load state?");
         }
         else
         {

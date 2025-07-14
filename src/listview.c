@@ -655,7 +655,7 @@ CB_ListItemButton* CB_ListItemButton_new(char* title)
 
     item->height = CB_ListView_rowHeight;
 
-    buttonItem->title = string_copy(title);
+    buttonItem->title = cb_strdup(title);
     buttonItem->coverImage = NULL;
     buttonItem->textScrollOffset = 0.0f;
     buttonItem->needsTextScroll = false;

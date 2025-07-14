@@ -76,7 +76,7 @@ typedef struct
     CB_CoverArtStatus status;
 } CB_LoadedCoverArt;
 
-char* string_copy(const char* string);
+char* cb_strdup(const char* string);
 
 char* cb_basename(const char* filename, bool stripExtension);
 char* cb_save_filename(const char* filename, bool isRecovery);

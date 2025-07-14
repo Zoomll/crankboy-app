@@ -98,7 +98,7 @@ static void set_download_status(
     {
         cb_free(self->coverDownloadMessage);
     }
-    self->coverDownloadMessage = message ? string_copy(message) : NULL;
+    self->coverDownloadMessage = message ? cb_strdup(message) : NULL;
     self->scene->forceFullRefresh = true;
 }
 
@@ -175,7 +175,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         {
             cb_free(game->coverPath);
         }
-        game->coverPath = string_copy(cover_dest_path);
+        game->coverPath = cb_strdup(cover_dest_path);
 
         if (stillOnSameGame)
         {
@@ -184,7 +184,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
                 game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
             );
-            CB_App->coverArtCache.rom_path = string_copy(game->fullpath);
+            CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
 
             set_download_status(libraryScene, COVER_DOWNLOAD_IDLE, NULL);
         }
@@ -494,7 +494,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
     {
         CB_Game* selectedGameBefore =
             libraryScene->games->items[libraryScene->listView->selectedItem];
-        selectedFilename = string_copy(selectedGameBefore->names->filename);
+        selectedFilename = cb_strdup(selectedGameBefore->names->filename);
     }
 
     for (int i = 0; i < libraryScene->games->length; i++)
@@ -562,7 +562,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 goto out_of_memory_error;
             }
 
-            char* spooldup = string_copy(spool);
+            char* spooldup = cb_strdup(spool);
             if (spooldup)
             {
                 infoScene->text = spooldup;
@@ -881,7 +881,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                         CB_App->coverArtCache.art.scaled_height = entry->height;
                                         CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
                                         CB_App->coverArtCache.rom_path =
-                                            string_copy(selectedGame->fullpath);
+                                            cb_strdup(selectedGame->fullpath);
                                         foundInCache = true;
                                     }
                                 }
@@ -905,7 +905,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
                         selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
                     );
-                    CB_App->coverArtCache.rom_path = string_copy(selectedGame->fullpath);
+                    CB_App->coverArtCache.rom_path = cb_strdup(selectedGame->fullpath);
                 }
             }
         }
@@ -1443,7 +1443,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
 
     if (found_cover_name_ptr == NULL)
     {
-        char* cleanName_no_ext = string_copy(basename_no_ext);
+        char* cleanName_no_ext = cb_strdup(basename_no_ext);
         cb_sanitize_string_for_filename(cleanName_no_ext);
         found_cover_name_ptr = (char**)bsearch(
             &cleanName_no_ext, available_covers->items, available_covers->length, sizeof(char*),
