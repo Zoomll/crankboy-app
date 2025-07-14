@@ -1074,7 +1074,10 @@ char* common_article_form(const char* input)
 
     // split into A and B at split_pos
     size_t a_len = split_pos - input;
-    char a_part[a_len + 1];
+    char* a_part = pgb_malloc(a_len + 1);
+    if (!a_part)
+        return string_copy(input);
+
     strncpy(a_part, input, a_len);
     a_part[a_len] = '\0';
 
@@ -1092,25 +1095,30 @@ char* common_article_form(const char* input)
             size_t new_a_len = a_len - article_len;
             a_part[new_a_len] = 0;
 
-            size_t result_len = a_len - 1 + b_len;
-            char result[result_len + 1];
+            size_t result_len = (article_len - 2) + 1 + new_a_len + b_len;
+            char* result = pgb_malloc(result_len + 1);
+            if (!result)
+            {
+                pgb_free(a_part);
+                return string_copy(input);
+            }
 
-            // article (without ", ")
-            memcpy(result, articles[i] + 2, article_len - 2);
-            result[article_len - 2] = ' ';
+            char* p = result;
+            memcpy(p, articles[i] + 2, article_len - 2);
+            p += article_len - 2;
+            *p++ = ' ';
+            memcpy(p, a_part, new_a_len);
+            p += new_a_len;
+            memcpy(p, b_part, b_len);
+            p += b_len;
+            *p = '\0';
 
-            // A
-            memcpy(result + article_len - 1, a_part, new_a_len);
-
-            // B
-            memcpy(result + article_len - 1 + new_a_len, b_part, b_len);
-
-            result[result_len] = 0;
-
-            return string_copy(result);
+            pgb_free(a_part);
+            return result;
         }
     }
 
+    pgb_free(a_part);
     return string_copy(input);
 }
 
