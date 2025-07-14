@@ -40,6 +40,7 @@ static void update_thumbnail(PGB_SettingsScene* settingsScene);
 
 static char* itcm_base_desc = NULL;
 static char* itcm_restart_desc = NULL;
+static char* patches_desc = NULL;
 
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
 #define HOLD_TIME_MARGIN 0.15f
@@ -527,17 +528,19 @@ static OptionsMenuEntry* getOptionsEntries(PGB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
-    
+
     if (libraryScene && selectedGame)
     {
-        static char* desc = NULL;
-        if (desc != NULL) pgb_free(desc);
-        desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
-        
+        if (patches_desc != NULL) {
+            pgb_free(patches_desc);
+        }
+
+        patches_desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
+
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches…",
+            .description = patches_desc,
             .values = NULL,
-            .description = desc,
             .max_value = 0,
             .on_press = open_patches,
             .ud = selectedGame
@@ -1689,10 +1692,17 @@ static void PGB_SettingsScene_free(void* object)
         pgb_free(itcm_base_desc);
         itcm_base_desc = NULL;
     }
+
     if (itcm_restart_desc)
     {
         pgb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
+    }
+
+    if (patches_desc)
+    {
+        pgb_free(patches_desc);
+        patches_desc = NULL;
     }
 
     PGB_Scene_free(settingsScene->scene);
