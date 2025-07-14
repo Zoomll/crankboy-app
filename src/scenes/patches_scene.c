@@ -195,7 +195,10 @@ static void PGB_PatchesScene_menu(void* object)
 PGB_PatchesScene* PGB_PatchesScene_new(PGB_Game* game)
 {
     char* patches_dir_path = get_patches_directory(game->fullpath);
-    playdate->file->mkdir(patches_dir_path);
+
+    // We must run this on the main stack, otherwise it can fail
+    // in unpredictable ways, like truncated paths.
+    call_with_main_stack_1(playdate->file->mkdir, patches_dir_path);
 
     SoftPatch* patches = call_with_main_stack_2(list_patches, game->fullpath, NULL);
 
