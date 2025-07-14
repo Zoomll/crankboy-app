@@ -72,6 +72,17 @@ static char* patch_list_file(const char* patch_dir)
 SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
 {
     char* patch_dir = get_patches_directory(rom_path);
+
+    // Check if the patches directory exists.
+    FileStat stat;
+    if (playdate->file->stat(patch_dir, &stat) != 0 || !stat.isdir)
+    {
+        pgb_free(patch_dir);
+        if (new_patch_count)
+            *new_patch_count = 0;
+        return NULL;
+    }
+
     struct ListPatchAcc acc;
     acc.list = NULL;
     acc.patch_dir = patch_dir;
@@ -279,6 +290,7 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 
             // RLE
             length = read_bigendian(ips, 2);
+            ADVANCE(2);
             rle = true;
         }
 
@@ -301,6 +313,7 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
             // run-length encoded hunk
             CHECKLEN(1);
             unsigned v = read_bigendian(ips, 1);
+            ADVANCE(1);
 
             while (length-- > 0)
             {
