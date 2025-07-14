@@ -128,7 +128,10 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
         if (patch->_order < 0)
         {
             patch->_order = nextorder++;
-            *new_patch_count++;
+            if (new_patch_count)
+            {
+                (*new_patch_count)++;
+            }
         }
         ++len;
     }
