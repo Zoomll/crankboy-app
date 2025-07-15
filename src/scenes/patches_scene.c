@@ -223,7 +223,7 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
             free_patches(patches);
         }
 
-        return (void*)CB_InfoScene_new((char*)game->names->name_short_leading_article, msg);
+        return (void*)CB_InfoScene_new(game->names->name_short_leading_article, msg);
     }
 
     // If patches were found, create the patches scene.

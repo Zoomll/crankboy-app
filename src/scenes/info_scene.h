@@ -15,4 +15,4 @@ typedef struct CB_InfoScene
     bool canClose;
 } CB_InfoScene;
 
-CB_InfoScene* CB_InfoScene_new(char* title, char* text);
+CB_InfoScene* CB_InfoScene_new(const char* title, const char* text);

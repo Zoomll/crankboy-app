@@ -297,7 +297,7 @@ static void CB_InfoScene_free(void* object)
     cb_free(infoScene);
 }
 
-CB_InfoScene* CB_InfoScene_new(char* title, char* text)
+CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
 {
     CB_InfoScene* infoScene = cb_malloc(sizeof(CB_InfoScene));
     if (!infoScene)
