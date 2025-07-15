@@ -424,35 +424,48 @@ static int process_png(const char* fname)
 
     bool success = false;
 
-    if (data)
-    {
-        size_t pdi_len = 0;
-        void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
-        cb_free(data);
+    size_t pdi_len = 0;
+    void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+    cb_free(data);
 
-        if (pdi && pdi_len > 0)
-        {
-            char* basename = cb_basename(fname, true);
-            char* pdi_name = aprintf("%s/%s.pdi", CB_coversPath, basename);
+    if (pdi && pdi_len > 0)
+    {
+        char* basename = cb_basename(fname, true);
+        char* pdi_name = aprintf("%s/%s.pdi", CB_coversPath, basename);
+        if (basename)
             cb_free(basename);
 
+        if (pdi_name)
+        {
             if (cb_write_entire_file(pdi_name, pdi, pdi_len))
             {
-                char* new_fname = aprintf("%s.conv", fname);
-                if (new_fname)
-                {
-                    playdate->file->rename(fname, new_fname);
-                    cb_free(new_fname);
-                }
                 success = true;
             }
-
             cb_free(pdi_name);
         }
+    }
 
-        if (pdi)
+    if (pdi)
+    {
+        cb_free(pdi);
+    }
+
+    if (success)
+    {
+        char* new_fname = aprintf("%s.conv", fname);
+        if (new_fname)
         {
-            cb_free(pdi);
+            playdate->file->rename(fname, new_fname);
+            cb_free(new_fname);
+        }
+    }
+    else
+    {
+        char* new_fname = aprintf("%s.fail", fname);
+        if (new_fname)
+        {
+            playdate->file->rename(fname, new_fname);
+            cb_free(new_fname);
         }
     }
 
