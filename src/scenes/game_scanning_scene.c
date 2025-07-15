@@ -202,7 +202,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         else
         {
             scanScene->progress_max_width = cb_calculate_progress_max_width(
-                PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
+                CB_App->subheadFont, PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
             );
 
             scanScene->state = kScanningStateScanning;
@@ -223,7 +223,8 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             );
 
             cb_draw_logo_screen_centered_split(
-                "Scanning Games... ", progress_message, scanScene->progress_max_width
+                CB_App->subheadFont, "Scanning Games... ", progress_message,
+                scanScene->progress_max_width
             );
 
             process_one_game(scanScene, filename);

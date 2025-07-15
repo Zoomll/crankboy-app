@@ -34,7 +34,7 @@ extern PlaydateAPI* playdate;
 
 #define CRC_CACHE_FILE "crc_cache.json"
 
-#define LOGO_TEXT_VERTICAL_GAP 30
+#define LOGO_TEXT_VERTICAL_GAP 20
 
 extern const uint8_t CB_patterns[4][4][4];
 
@@ -104,15 +104,15 @@ int cb_file_exists(const char* path, FileOptions fopts);
 int cb_compare_games_by_display_name(const void* a, const void* b);
 int cb_compare_strings(const void* a, const void* b);
 
-int cb_calculate_progress_max_width(CB_ProgressStyle style, size_t total_items);
+int cb_calculate_progress_max_width(LCDFont* font, CB_ProgressStyle style, size_t total_items);
 
 void cb_sanitize_string_for_filename(char* str);
 void cb_sort_games_array(CB_Array* games_array);
 
-void cb_draw_logo_screen_and_display(const char* message);
-void cb_draw_logo_screen_to_buffer(const char* message);
+void cb_draw_logo_screen_and_display(LCDFont* font, const char* message);
+void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message);
 void cb_draw_logo_screen_centered_split(
-    const char* static_text, const char* dynamic_text, int dynamic_text_max_width
+    LCDFont* font, const char* static_text, const char* dynamic_text, int dynamic_text_max_width
 );
 
 void cb_fillRoundRect(PDRect rect, int radius, LCDColor color);

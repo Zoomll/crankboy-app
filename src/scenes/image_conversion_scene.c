@@ -486,7 +486,7 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        cb_draw_logo_screen_to_buffer("Scanning for new images...");
+        cb_draw_logo_screen_to_buffer(CB_App->subheadFont, "Scanning for new images...");
 
         playdate->file->listfiles(CB_coversPath, on_list_file, convScene, false);
 
@@ -501,7 +501,7 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 if (cb_file_exists(fpath, kFileReadData))
                 {
                     convScene->progress_max_width = cb_calculate_progress_max_width(
-                        PROGRESS_STYLE_FRACTION, convScene->files_count
+                        CB_App->subheadFont, PROGRESS_STYLE_FRACTION, convScene->files_count
                     );
 
                     convScene->state = kStateConverting;
@@ -527,7 +527,8 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             );
 
             cb_draw_logo_screen_centered_split(
-                "Converting images... ", progress_details, convScene->progress_max_width
+                CB_App->subheadFont, "Converting images... ", progress_details,
+                convScene->progress_max_width
             );
 
             char* fname = convScene->files[convScene->idx];

@@ -92,7 +92,7 @@ static void copy_file_callback(const char* filename, void* userdata)
             if (msg)
             {
                 playdate->system->logToConsole("%s\n", msg);
-                cb_draw_logo_screen_and_display(msg);
+                cb_draw_logo_screen_and_display(CB_App->subheadFont, msg);
                 cb_free(msg);
             }
 
@@ -298,13 +298,12 @@ void CB_init(void)
     CB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     CB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     CB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
-    CB_App->progressFont = playdate->graphics->loadFont("fonts/font-rains-1x", NULL);
-    CB_App->logoBitmap = playdate->graphics->loadBitmap("images/cb_logo.pdi", NULL);
+    CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
 
     check_is_bundle();
 
     if (!CB_App->bundled_rom)
-        cb_draw_logo_screen_and_display("Initializing...");
+        cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
     preferences_init();
 
     CB_App->clickSynth = playdate->sound->synth->newSynth();

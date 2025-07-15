@@ -601,13 +601,17 @@ void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
 
 /**
  * @brief Calculates the maximum pixel width for a progress indicator string.
+ * @param font The font to use for the width measurement.
  * @param style The format of the indicator (percentage or fraction).
  * @param total_items The total number of items (only used for fraction style).
  * @return The calculated maximum pixel width.
  */
 
-int cb_calculate_progress_max_width(CB_ProgressStyle style, size_t total_items)
+int cb_calculate_progress_max_width(LCDFont* font, CB_ProgressStyle style, size_t total_items)
 {
+    if (!font)
+        return 0;
+
     char buffer[40];
     const char* text_to_measure = NULL;
 
@@ -630,17 +634,21 @@ int cb_calculate_progress_max_width(CB_ProgressStyle style, size_t total_items)
         return 0;
 
     return playdate->graphics->getTextWidth(
-        CB_App->progressFont, text_to_measure, strlen(text_to_measure), kUTF8Encoding, 0
+        font, text_to_measure, strlen(text_to_measure), kUTF8Encoding, 0
     );
 }
 
 /**
  * @brief Draws the logo screen to the graphics buffer without updating the display.
  * Use this inside the main game loop; the app's central update will handle the display call.
+ * @param font The font to use for the message text.
  * @param message The text to display below the logo.
  */
-void cb_draw_logo_screen_to_buffer(const char* message)
+void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message)
 {
+    if (!font)
+        return;
+
     LCDBitmap* logoBitmap = CB_App->logoBitmap;
 
     playdate->graphics->clear(kColorWhite);
@@ -649,12 +657,11 @@ void cb_draw_logo_screen_to_buffer(const char* message)
     {
         int screenWidth = LCD_COLUMNS;
         int screenHeight = LCD_ROWS;
-        LCDFont* font = CB_App->progressFont;
+
+        playdate->graphics->setFont(font);
 
         int logoWidth, logoHeight;
         playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
-
-        playdate->graphics->setFont(font);
 
         int textWidth =
             playdate->graphics->getTextWidth(font, message, strlen(message), kUTF8Encoding, 0);
@@ -675,9 +682,8 @@ void cb_draw_logo_screen_to_buffer(const char* message)
     }
     else
     {
-        int textWidth = playdate->graphics->getTextWidth(
-            CB_App->progressFont, message, strlen(message), kUTF8Encoding, 0
-        );
+        int textWidth =
+            playdate->graphics->getTextWidth(font, message, strlen(message), kUTF8Encoding, 0);
         playdate->graphics->drawText(
             message, strlen(message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2, LCD_ROWS / 2
         );
@@ -687,24 +693,25 @@ void cb_draw_logo_screen_to_buffer(const char* message)
 /**
  * @brief Draws the logo screen and forces an immediate display update.
  * Use for instant feedback outside the main game loop (e.g., during initialization or file loads).
+ * @param font The font to use for the message text.
  * @param message The text to display below the logo.
  */
-void cb_draw_logo_screen_and_display(const char* message)
+void cb_draw_logo_screen_and_display(LCDFont* font, const char* message)
 {
-    cb_draw_logo_screen_to_buffer(message);
+    cb_draw_logo_screen_to_buffer(font, message);
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
     playdate->graphics->display();
 }
 
 /**
  * @brief Draws a centered message with a stable static part and a right-aligned dynamic part.
- * Use this to prevent dynamic indicators from 'jiggling' the entire message.
+ * @param font The font to use for the message text.
  * @param static_text The static text part (e.g., "Scanning... ").
  * @param dynamic_text The dynamic text part (e.g., "(10/150)").
  * @param dynamic_text_max_width The pre-calculated maximum pixel width of the dynamic_text.
  */
 void cb_draw_logo_screen_centered_split(
-    const char* static_text, const char* dynamic_text, int dynamic_text_max_width
+    LCDFont* font, const char* static_text, const char* dynamic_text, int dynamic_text_max_width
 )
 {
     LCDBitmap* logoBitmap = CB_App->logoBitmap;
@@ -714,7 +721,7 @@ void cb_draw_logo_screen_centered_split(
     {
         int screenWidth = LCD_COLUMNS;
         int screenHeight = LCD_ROWS;
-        LCDFont* font = CB_App->progressFont;
+
         playdate->graphics->setFont(font);
 
         int logoWidth, logoHeight;
@@ -755,7 +762,7 @@ void cb_draw_logo_screen_centered_split(
     {
         char* full_message = aprintf("%s%s", static_text, dynamic_text ? dynamic_text : "");
         int textWidth = playdate->graphics->getTextWidth(
-            CB_App->progressFont, full_message, strlen(full_message), kUTF8Encoding, 0
+            font, full_message, strlen(full_message), kUTF8Encoding, 0
         );
         playdate->graphics->drawText(
             full_message, strlen(full_message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2,

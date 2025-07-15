@@ -79,7 +79,7 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         if (CB_App->gameNameCache->length > 0)
         {
             cacheScene->progress_max_width =
-                cb_calculate_progress_max_width(PROGRESS_STYLE_PERCENT, 0);
+                cb_calculate_progress_max_width(CB_App->subheadFont, PROGRESS_STYLE_PERCENT, 0);
             cacheScene->state = kCoverCacheStateBuildGameList;
         }
         else
@@ -114,7 +114,8 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
 
             cb_draw_logo_screen_centered_split(
-                "Building Games List...", progress_suffix, cacheScene->progress_max_width
+                CB_App->subheadFont, "Building Games List...", progress_suffix,
+                cacheScene->progress_max_width
             );
 
             cacheScene->current_index++;
@@ -178,7 +179,8 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
 
             cb_draw_logo_screen_centered_split(
-                "Caching Covers...", progress_suffix, cacheScene->progress_max_width
+                CB_App->subheadFont, "Caching Covers...", progress_suffix,
+                cacheScene->progress_max_width
             );
 
             const char* error = NULL;

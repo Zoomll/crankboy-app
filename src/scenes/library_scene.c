@@ -567,7 +567,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             libraryScene->build_index = 0;
             libraryScene->progress_max_width =
-                cb_calculate_progress_max_width(PROGRESS_STYLE_PERCENT, 0);
+                cb_calculate_progress_max_width(CB_App->subheadFont, PROGRESS_STYLE_PERCENT, 0);
             libraryScene->state = kLibraryStateBuildUIList;
             return;
         }
@@ -601,7 +601,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
 
                     cb_draw_logo_screen_centered_split(
-                        "Loading Library... ", progress_suffix, libraryScene->progress_max_width
+                        CB_App->subheadFont, "Loading Library... ", progress_suffix,
+                        libraryScene->progress_max_width
                     );
                 }
             }
