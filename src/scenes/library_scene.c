@@ -566,6 +566,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         case kLibraryStateInit:
         {
             libraryScene->build_index = 0;
+            libraryScene->progress_max_width =
+                cb_calculate_progress_max_width(PROGRESS_STYLE_PERCENT, 0);
             libraryScene->state = kLibraryStateBuildUIList;
             return;
         }
@@ -584,17 +586,23 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     libraryScene->build_index++;
                 }
 
-                char progress_message[100];
-                int total = libraryScene->games->length;
-                int percentage =
-                    (total > 0) ? ((float)libraryScene->build_index / total) * 100 : 100;
-                snprintf(
-                    progress_message, sizeof(progress_message), "Loading Library… %d%%", percentage
-                );
-
                 if (!libraryScene->isReloading)
                 {
-                    cb_draw_logo_screen_to_buffer(progress_message);
+                    int total = libraryScene->games->length;
+                    int percentage =
+                        (total > 0) ? ((float)libraryScene->build_index / total) * 100 : 99;
+
+                    if (percentage >= 100)
+                    {
+                        percentage = 99;
+                    }
+
+                    char progress_suffix[20];
+                    snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
+
+                    cb_draw_logo_screen_centered_split(
+                        "Loading Library... ", progress_suffix, libraryScene->progress_max_width
+                    );
                 }
             }
             else

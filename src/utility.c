@@ -600,6 +600,41 @@ void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color)
 }
 
 /**
+ * @brief Calculates the maximum pixel width for a progress indicator string.
+ * @param style The format of the indicator (percentage or fraction).
+ * @param total_items The total number of items (only used for fraction style).
+ * @return The calculated maximum pixel width.
+ */
+
+int cb_calculate_progress_max_width(CB_ProgressStyle style, size_t total_items)
+{
+    char buffer[40];
+    const char* text_to_measure = NULL;
+
+    switch (style)
+    {
+    case PROGRESS_STYLE_PERCENT:
+        text_to_measure = "100%";
+        break;
+
+    case PROGRESS_STYLE_FRACTION:
+        snprintf(buffer, sizeof(buffer), "%zu/%zu", total_items, total_items);
+        text_to_measure = buffer;
+        break;
+
+    default:
+        return 0;
+    }
+
+    if (!text_to_measure)
+        return 0;
+
+    return playdate->graphics->getTextWidth(
+        CB_App->progressFont, text_to_measure, strlen(text_to_measure), kUTF8Encoding, 0
+    );
+}
+
+/**
  * @brief Draws the logo screen to the graphics buffer without updating the display.
  * Use this inside the main game loop; the app's central update will handle the display call.
  * @param message The text to display below the logo.
@@ -614,7 +649,7 @@ void cb_draw_logo_screen_to_buffer(const char* message)
     {
         int screenWidth = LCD_COLUMNS;
         int screenHeight = LCD_ROWS;
-        LCDFont* font = CB_App->subheadFont;
+        LCDFont* font = CB_App->progressFont;
 
         int logoWidth, logoHeight;
         playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
@@ -625,7 +660,7 @@ void cb_draw_logo_screen_to_buffer(const char* message)
             playdate->graphics->getTextWidth(font, message, strlen(message), kUTF8Encoding, 0);
         int textHeight = playdate->graphics->getFontHeight(font);
 
-        int lineSpacing = textHeight;
+        int lineSpacing = LOGO_TEXT_VERTICAL_GAP;
         int totalBlockHeight = logoHeight + lineSpacing + textHeight;
         int blockY_start = (screenHeight - totalBlockHeight) / 2;
 
@@ -641,7 +676,7 @@ void cb_draw_logo_screen_to_buffer(const char* message)
     else
     {
         int textWidth = playdate->graphics->getTextWidth(
-            CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+            CB_App->progressFont, message, strlen(message), kUTF8Encoding, 0
         );
         playdate->graphics->drawText(
             message, strlen(message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2, LCD_ROWS / 2
@@ -659,6 +694,75 @@ void cb_draw_logo_screen_and_display(const char* message)
     cb_draw_logo_screen_to_buffer(message);
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
     playdate->graphics->display();
+}
+
+/**
+ * @brief Draws a centered message with a stable static part and a right-aligned dynamic part.
+ * Use this to prevent dynamic indicators from 'jiggling' the entire message.
+ * @param static_text The static text part (e.g., "Scanning... ").
+ * @param dynamic_text The dynamic text part (e.g., "(10/150)").
+ * @param dynamic_text_max_width The pre-calculated maximum pixel width of the dynamic_text.
+ */
+void cb_draw_logo_screen_centered_split(
+    const char* static_text, const char* dynamic_text, int dynamic_text_max_width
+)
+{
+    LCDBitmap* logoBitmap = CB_App->logoBitmap;
+    playdate->graphics->clear(kColorWhite);
+
+    if (logoBitmap)
+    {
+        int screenWidth = LCD_COLUMNS;
+        int screenHeight = LCD_ROWS;
+        LCDFont* font = CB_App->progressFont;
+        playdate->graphics->setFont(font);
+
+        int logoWidth, logoHeight;
+        playdate->graphics->getBitmapData(logoBitmap, &logoWidth, &logoHeight, NULL, NULL, NULL);
+
+        int textHeight = playdate->graphics->getFontHeight(font);
+        int lineSpacing = LOGO_TEXT_VERTICAL_GAP;
+        int totalBlockHeight = logoHeight + lineSpacing + textHeight;
+        int blockY_start = (screenHeight - totalBlockHeight) / 2;
+
+        int logoX = (screenWidth - logoWidth) / 2;
+        int logoY = blockY_start;
+        int textY = logoY + logoHeight + lineSpacing;
+
+        playdate->graphics->drawBitmap(logoBitmap, logoX, logoY, kBitmapUnflipped);
+
+        int static_text_width = playdate->graphics->getTextWidth(
+            font, static_text, strlen(static_text), kUTF8Encoding, 0
+        );
+        int total_width = static_text_width + dynamic_text_max_width;
+        int block_start_x = (screenWidth - total_width) / 2;
+
+        playdate->graphics->drawText(
+            static_text, strlen(static_text), kUTF8Encoding, block_start_x, textY
+        );
+
+        int dynamic_text_width = playdate->graphics->getTextWidth(
+            font, dynamic_text, strlen(dynamic_text), kUTF8Encoding, 0
+        );
+        int dynamic_text_x =
+            block_start_x + static_text_width + (dynamic_text_max_width - dynamic_text_width);
+
+        playdate->graphics->drawText(
+            dynamic_text, strlen(dynamic_text), kUTF8Encoding, dynamic_text_x, textY
+        );
+    }
+    else
+    {
+        char* full_message = aprintf("%s%s", static_text, dynamic_text ? dynamic_text : "");
+        int textWidth = playdate->graphics->getTextWidth(
+            CB_App->progressFont, full_message, strlen(full_message), kUTF8Encoding, 0
+        );
+        playdate->graphics->drawText(
+            full_message, strlen(full_message), kUTF8Encoding, LCD_COLUMNS / 2 - textWidth / 2,
+            LCD_ROWS / 2
+        );
+        cb_free(full_message);
+    }
 }
 
 void* cb_malloc(size_t size)

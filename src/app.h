@@ -92,6 +92,7 @@ typedef struct CB_Application
     LCDFont* titleFont;
     LCDFont* subheadFont;
     LCDFont* labelFont;
+    LCDFont* progressFont;
     LCDBitmap* logoBitmap;
     LCDBitmapTable* selectorBitmapTable;
     LCDBitmap* startSelectBitmap;

@@ -21,6 +21,7 @@ typedef struct CB_GameScanningScene
     GameScanningState state;
     json_value crc_cache;
     bool crc_cache_modified;
+    int progress_max_width;
 } CB_GameScanningScene;
 
 CB_GameScanningScene* CB_GameScanningScene_new(void);

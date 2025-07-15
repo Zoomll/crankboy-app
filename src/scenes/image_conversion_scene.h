@@ -26,6 +26,7 @@ typedef struct CB_ImageConversionScene
     unsigned idx;
     char** files;
     size_t files_count;
+    int progress_max_width;
     ConversionState state;
 } CB_ImageConversionScene;
 

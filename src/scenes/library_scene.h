@@ -79,6 +79,7 @@ typedef struct CB_LibraryScene
 
     bool showCrc;
     bool isReloading;
+    int progress_max_width;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);

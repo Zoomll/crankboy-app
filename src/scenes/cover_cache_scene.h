@@ -22,6 +22,7 @@ typedef struct CB_CoverCacheScene
     CB_Array* available_covers;
     CB_Array* games_with_covers;
     uint32_t start_time_ms;
+    int progress_max_width;
     void* lz4_state;
 } CB_CoverCacheScene;
 

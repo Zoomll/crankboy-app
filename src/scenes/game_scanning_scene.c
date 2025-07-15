@@ -189,8 +189,6 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     {
     case kScanningStateInit:
     {
-        cb_draw_logo_screen_to_buffer("Finding Games…");
-
         playdate->file->listfiles(
             CB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
         );
@@ -203,6 +201,10 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
+            scanScene->progress_max_width = cb_calculate_progress_max_width(
+                PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
+            );
+
             scanScene->state = kScanningStateScanning;
         }
         break;
@@ -214,15 +216,17 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         {
             const char* filename = scanScene->game_filenames->items[scanScene->current_index];
 
-            char progress_message[100];
+            char progress_message[32];
             snprintf(
-                progress_message, sizeof(progress_message), "Scanning Games… (%d/%d)",
-                scanScene->current_index + 1, scanScene->game_filenames->length
+                progress_message, sizeof(progress_message), "%d/%d", scanScene->current_index + 1,
+                scanScene->game_filenames->length
             );
-            cb_draw_logo_screen_to_buffer(progress_message);
+
+            cb_draw_logo_screen_centered_split(
+                "Scanning Games... ", progress_message, scanScene->progress_max_width
+            );
 
             process_one_game(scanScene, filename);
-
             scanScene->current_index++;
         }
         else

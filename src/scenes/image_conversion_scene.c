@@ -486,7 +486,7 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
     case kStateListingFiles:
     {
-        cb_draw_logo_screen_to_buffer("Scanning for new images…");
+        cb_draw_logo_screen_to_buffer("Scanning for new images...");
 
         playdate->file->listfiles(CB_coversPath, on_list_file, convScene, false);
 
@@ -500,6 +500,10 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             {
                 if (cb_file_exists(fpath, kFileReadData))
                 {
+                    convScene->progress_max_width = cb_calculate_progress_max_width(
+                        PROGRESS_STYLE_FRACTION, convScene->files_count
+                    );
+
                     convScene->state = kStateConverting;
                     cb_free(fpath);
                     break;
@@ -514,7 +518,19 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
         if (convScene->idx < convScene->files_count)
         {
-            char* fname = convScene->files[convScene->idx++];
+            int current_display_index = convScene->idx + 1;
+
+            char progress_details[50];
+            snprintf(
+                progress_details, sizeof(progress_details), "%d/%zu", current_display_index,
+                convScene->files_count
+            );
+
+            cb_draw_logo_screen_centered_split(
+                "Converting images... ", progress_details, convScene->progress_max_width
+            );
+
+            char* fname = convScene->files[convScene->idx];
 
             size_t len = strlen(fname);
             if (len > 0 && (fname[len - 1] == '\n' || fname[len - 1] == '\r'))
@@ -523,18 +539,6 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             }
 
             char* full_fname = aprintf("%s/%s", CB_coversPath, fname);
-
-            char* progress_msg = aprintf(
-                "Converting image (%d of %d) to .pdi…", (int)convScene->idx,
-                (int)convScene->files_count
-            );
-
-            if (progress_msg)
-            {
-                cb_draw_logo_screen_to_buffer(progress_msg);
-                cb_free(progress_msg);
-            }
-
             int result = process_png(full_fname);
             cb_free(full_fname);
 
@@ -542,6 +546,8 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             {
                 playdate->system->logToConsole("  result: %d\n", (int)result);
             }
+
+            convScene->idx++;
         }
         else
         {

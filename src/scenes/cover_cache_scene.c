@@ -78,6 +78,8 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
 
         if (CB_App->gameNameCache->length > 0)
         {
+            cacheScene->progress_max_width =
+                cb_calculate_progress_max_width(PROGRESS_STYLE_PERCENT, 0);
             cacheScene->state = kCoverCacheStateBuildGameList;
         }
         else
@@ -100,13 +102,20 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             CB_Game* game = CB_Game_new(cachedName, cacheScene->available_covers);
             array_push(CB_App->gameListCache, game);
 
-            char progress_message[100];
+            char progress_suffix[20];
             int total = CB_App->gameNameCache->length;
-            int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 100;
-            snprintf(
-                progress_message, sizeof(progress_message), "Building Games List… %d%%", percentage
+            int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 99;
+
+            if (percentage >= 100)
+            {
+                percentage = 99;
+            }
+
+            snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
+
+            cb_draw_logo_screen_centered_split(
+                "Building Games List...", progress_suffix, cacheScene->progress_max_width
             );
-            cb_draw_logo_screen_to_buffer(progress_message);
 
             cacheScene->current_index++;
         }
@@ -157,13 +166,20 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
         {
             CB_Game* game = cacheScene->games_with_covers->items[cacheScene->current_index];
 
-            char progress_message[100];
+            char progress_suffix[20];
             int total = cacheScene->games_with_covers->length;
-            int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 100;
-            snprintf(
-                progress_message, sizeof(progress_message), "Caching Covers… %d%%", percentage
+            int percentage = (total > 0) ? ((float)cacheScene->current_index / total) * 100 : 99;
+
+            if (percentage >= 100)
+            {
+                percentage = 99;
+            }
+
+            snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
+
+            cb_draw_logo_screen_centered_split(
+                "Caching Covers...", progress_suffix, cacheScene->progress_max_width
             );
-            cb_draw_logo_screen_to_buffer(progress_message);
 
             const char* error = NULL;
             LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
