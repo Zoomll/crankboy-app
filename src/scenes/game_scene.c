@@ -3180,19 +3180,19 @@ void show_game_script_info(const char* rompath, const char* name_short)
     // Check if name_short was provided and is not an empty string
     if (name_short && name_short[0] != '\0')
     {
-        text = aprintf("%s\nScript information:\n\n%s", name_short, info->info);
+        text = aprintf("Script information:\n\n%s", info->info);
     }
     else
     {
         // Fallback to just the rom_name if name_short is not available
-        text = aprintf("%s\nScript information:\n\n%s", info->rom_name, info->info);
+        text = aprintf("Script information:\n\n%s", info->info);
     }
 
     script_info_free(info);
     if (!text)
         return;
 
-    CB_InfoScene* infoScene = CB_InfoScene_new(text);
+    CB_InfoScene* infoScene = CB_InfoScene_new(name_short, text);
 
     cb_free(text);
 

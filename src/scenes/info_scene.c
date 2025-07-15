@@ -18,6 +18,9 @@
 // Extra vertical space to add after a list item.
 #define BULLET_POINT_SPACING 5
 
+// Height of the header bar
+#define HEADER_HEIGHT 18
+
 // Helper to detect if a line is a list item and return its prefix length
 static bool get_list_item_prefix_len(const char* text, int text_len, int* out_prefix_len)
 {
@@ -62,9 +65,17 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     LCDFont* font = CB_App->bodyFont;
     playdate->graphics->setFont(font);
 
+    // Header height is 0 if no title is provided
+    int header_height = 0;
+    if (infoScene->title && *infoScene->title)
+    {
+        header_height = HEADER_HEIGHT;
+    }
+
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     int margin = 14;
+    int top_margin = margin + header_height;
     int width = LCD_COLUMNS - margin * 2;
     int tracking = 0;
     int extraLeading = 0;
@@ -156,7 +167,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // --- SCROLLBAR LOGIC ---
-    float visible_height = CB_LCD_HEIGHT - (margin * 2);
+    float visible_height = CB_LCD_HEIGHT - (top_margin + margin);
     if (total_text_height > visible_height)
     {
         float max_scroll = total_text_height - visible_height;
@@ -172,7 +183,35 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 
     // --- Draw everything ---
     playdate->graphics->clear(kColorWhite);
-    float current_y = margin - infoScene->scroll;
+
+    // --- Draw Header (only if title exists) ---
+    if (header_height > 0)
+    {
+        const char* name = infoScene->title;
+        playdate->graphics->setFont(CB_App->labelFont);
+        int nameWidth = playdate->graphics->getTextWidth(
+            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
+        );
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
+
+        int vertical_offset = string_has_descenders(name) ? 1 : 2;
+        int textY = ((header_height - fontHeight) / 2) + vertical_offset;
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_height, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+    }
+
+    if (header_height > 0)
+    {
+        playdate->graphics->setClipRect(0, header_height, LCD_COLUMNS, LCD_ROWS - header_height);
+    }
+
+    // --- Draw Text Content ---
+    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->setFont(font);
+    float current_y = top_margin - infoScene->scroll;
     text_ptr = infoScene->text;
 
     while (*text_ptr)
@@ -233,6 +272,11 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
+    if (header_height > 0)
+    {
+        playdate->graphics->clearClipRect();
+    }
+
     playdate->graphics->display();
 
     if (buttonsDown & (kButtonB | kButtonA))
@@ -247,12 +291,13 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 static void CB_InfoScene_free(void* object)
 {
     CB_InfoScene* infoScene = object;
+    cb_free(infoScene->title);
     cb_free(infoScene->text);
     CB_Scene_free(infoScene->scene);
     cb_free(infoScene);
 }
 
-CB_InfoScene* CB_InfoScene_new(char* text)
+CB_InfoScene* CB_InfoScene_new(char* title, char* text)
 {
     CB_InfoScene* infoScene = cb_malloc(sizeof(CB_InfoScene));
     if (!infoScene)
@@ -262,6 +307,7 @@ CB_InfoScene* CB_InfoScene_new(char* text)
 
     CB_Scene* scene = CB_Scene_new();
     infoScene->scene = scene;
+    infoScene->title = title ? cb_strdup(title) : NULL;
     infoScene->text = text ? cb_strdup(text) : NULL;
     infoScene->canClose = true;
     scene->managedObject = infoScene;

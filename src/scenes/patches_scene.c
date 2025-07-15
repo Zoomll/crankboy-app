@@ -208,14 +208,12 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
         char* rom_basename = cb_basename(game->fullpath, true);
 
         char* msg = aprintf(
-            "No patches found for %s.\n\n"
+            "No patches found, add them by:\n\n"
             "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
             "2. Via your computer, add .ips patches to: Data/*crankboy/patches/%s\n"
             "3. Finally, enable them from this screen (settings > Patches).\n\n"
-            "You may be able to find .ips patches for %s by searching on romhacking.net or "
-            "romhack.ing",
-            game->names->name_short_leading_article, rom_basename,
-            game->names->name_short_leading_article
+            "You may find patches on romhacking.net or romhack.ing",
+            rom_basename
         );
 
         cb_free(rom_basename);
@@ -225,7 +223,7 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
             free_patches(patches);
         }
 
-        return (void*)CB_InfoScene_new(msg);
+        return (void*)CB_InfoScene_new((char*)game->names->name_short_leading_article, msg);
     }
 
     // If patches were found, create the patches scene.

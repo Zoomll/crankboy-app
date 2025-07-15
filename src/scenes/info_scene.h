@@ -9,10 +9,10 @@
 typedef struct CB_InfoScene
 {
     CB_Scene* scene;
-
+    char* title;
     char* text;
     float scroll;
     bool canClose;
 } CB_InfoScene;
 
-CB_InfoScene* CB_InfoScene_new(char* text);
+CB_InfoScene* CB_InfoScene_new(char* title, char* text);

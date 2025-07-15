@@ -23,6 +23,8 @@
 #include "userstack.h"
 #include "version.h"
 
+#include <string.h>
+
 CB_Application* CB_App;
 
 #if defined(TARGET_SIMULATOR)
@@ -148,6 +150,7 @@ static int check_is_bundle(void)
             if (strstr(pdxinfo, "bundleID=" PDX_BUNDLE_ID))
             {
                 CB_InfoScene* infoScene = CB_InfoScene_new(
+                    NULL,
                     "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_BUNDLE_ID
                     "\".\n"
                 );

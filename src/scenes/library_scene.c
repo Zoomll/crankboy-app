@@ -563,7 +563,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         const char* spool = getSpooledErrorMessage();
         if (spool)
         {
-            CB_InfoScene* infoScene = CB_InfoScene_new(NULL);
+            CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
             if (!infoScene)
             {
                 freeSpool();
