@@ -9,9 +9,9 @@
 #include "app.h"
 
 #include "../minigb_apu/minigb_apu.h"
+#include "../pdnewlib.h"
 #include "dtcm.h"
 #include "jparse.h"
-#include "pdnewlib.h"
 #include "preferences.h"
 #include "scenes/credits_scene.h"
 #include "scenes/game_scanning_scene.h"
