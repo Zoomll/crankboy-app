@@ -334,6 +334,7 @@ static const char* settings_scope_labels[] = {"Global", "Game"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
 static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
 static const char* article_labels[] = {"Leading", "As-is"};
+static const char* next_scene[] = {">"};
 
 static void update_thumbnail(CB_SettingsScene* settingsScene)
 {
@@ -538,9 +539,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         patches_desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
 
         entries[++i] = (OptionsMenuEntry){
-            .name = "Patches…",
+            .name = "Patches",
             .description = patches_desc,
-            .values = NULL,
+            .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
             .ud = selectedGame
@@ -1401,10 +1402,19 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         int y = initialY + i * rowHeight;
         const char* name = current_entry->name;
-        const char* stateText =
-            (current_entry->values && *current_entry->pref_var < current_entry->max_value)
-                ? current_entry->values[*current_entry->pref_var]
-                : "";
+        const char* stateText = "";
+        if (current_entry->values)
+        {
+            if (current_entry->pref_var && *current_entry->pref_var < current_entry->max_value)
+            {
+                stateText = current_entry->values[*current_entry->pref_var];
+            }
+            else if (current_entry->pref_var == NULL)
+            {
+                stateText = current_entry->values[0];
+            }
+        }
+
         if (current_entry->show_value_only_on_hover && itemIndex != settingsScene->cursorIndex)
             stateText = "";
 
