@@ -292,7 +292,12 @@ static void CB_InfoScene_free(void* object)
 {
     CB_InfoScene* infoScene = object;
     cb_free(infoScene->title);
-    cb_free(infoScene->text);
+
+    if (infoScene->text && !infoScene->textIsStatic)
+    {
+        cb_free(infoScene->text);
+    }
+
     CB_Scene_free(infoScene->scene);
     cb_free(infoScene);
 }
@@ -310,6 +315,7 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
     infoScene->title = title ? cb_strdup(title) : NULL;
     infoScene->text = text ? cb_strdup(text) : NULL;
     infoScene->canClose = true;
+    infoScene->textIsStatic = false;
     scene->managedObject = infoScene;
     scene->update = (void*)CB_InfoScene_update;
     scene->free = (void*)CB_InfoScene_free;

@@ -557,42 +557,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    // display errors to user if needed
-    if (getSpooledErrors() > 0)
-    {
-        const char* spool = getSpooledErrorMessage();
-        if (spool)
-        {
-            CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
-            if (!infoScene)
-            {
-                freeSpool();
-                goto out_of_memory_error;
-            }
-
-            char* spooldup = cb_strdup(spool);
-            if (spooldup)
-            {
-                infoScene->text = spooldup;
-                freeSpool();
-            }
-            else
-            {
-                // this is not safe, but we need to show the error message.
-                // can force user to quit afterward to recover memory.
-                infoScene->text = (char*)spool;
-                infoScene->canClose = false;
-            }
-            CB_presentModal(infoScene->scene);
-        }
-        else
-        {
-        out_of_memory_error:
-            playdate->system->error("Out of memory -- unable to list errors.");
-        }
-        return;
-    }
-
     CB_LibraryScene* libraryScene = object;
 
     if (libraryScene->state != kLibraryStateDone)
@@ -1386,6 +1350,43 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             );
         }
     }
+
+    // display errors to user if needed
+    if (getSpooledErrors() > 0)
+    {
+        const char* spool = getSpooledErrorMessage();
+        if (spool)
+        {
+            CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
+            if (!infoScene)
+            {
+                freeSpool();
+                playdate->system->error("Fatal: Out of memory");
+                return;
+            }
+
+            char* spooldup = cb_strdup(spool);
+            if (spooldup)
+            {
+                infoScene->text = spooldup;
+                infoScene->textIsStatic = false;
+                freeSpool();
+            }
+            else
+            {
+                freeSpool();
+
+                infoScene->text =
+                    "A critical error occurred:\n\nOut of Memory\n\nPlease restart CrankBoy.";
+                infoScene->textIsStatic = true;
+
+                infoScene->canClose = true;
+            }
+            CB_presentModal(infoScene->scene);
+        }
+        return;
+    }
+
     libraryScene->initialLoadComplete = true;
 }
 

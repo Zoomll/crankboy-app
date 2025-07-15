@@ -13,6 +13,7 @@ typedef struct CB_InfoScene
     char* text;
     float scroll;
     bool canClose;
+    bool textIsStatic;
 } CB_InfoScene;
 
 CB_InfoScene* CB_InfoScene_new(const char* title, const char* text);
