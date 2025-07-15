@@ -438,7 +438,12 @@ static int process_png(const char* fname)
 
             if (cb_write_entire_file(pdi_name, pdi, pdi_len))
             {
-                playdate->file->unlink(fname, false);
+                char* new_fname = aprintf("%s.conv", fname);
+                if (new_fname)
+                {
+                    playdate->file->rename(fname, new_fname);
+                    cb_free(new_fname);
+                }
                 success = true;
             }
 
@@ -482,37 +487,13 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
             {
                 if (cb_file_exists(fpath, kFileReadData))
                 {
-                    convScene->state = kStatePrompt;
+                    convScene->state = kStateConverting;
                     cb_free(fpath);
                     break;
                 }
                 cb_free(fpath);
             }
         }
-        break;
-    }
-
-    case kStatePrompt:
-    {
-        playdate->graphics->clear(kColorWhite);
-
-        int margin = 16;
-        int width = LCD_COLUMNS - 2 * margin;
-
-        const char* msg =
-            "One or more image files need to be converted to PDI format.\n\nThe original image "
-            "files will then be deleted.\n\nPress Ⓐ to confirm.";
-
-        playdate->graphics->setFont(CB_App->bodyFont);
-        playdate->graphics->drawTextInRect(
-            msg, strlen(msg), kUTF8Encoding, margin, 50, width, 300, kWrapWord, kAlignTextCenter
-        );
-
-        if (CB_App->buttons_pressed & kButtonA)
-        {
-            convScene->state = kStateConverting;
-        }
-
         break;
     }
 
