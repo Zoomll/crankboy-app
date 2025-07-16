@@ -244,6 +244,7 @@ static void CB_RequestComplete(HTTPConnection* connection)
     {
         httpud->cb(httpud->flags, httpud->data, httpud->data_len, httpud->ud);
         httpud->cb = NULL;
+        httpud->data = NULL;
     }
 
     http_cleanup(connection);
@@ -446,5 +447,5 @@ void http_cancel_and_cleanup(HTTPConnection* connection)
         httpud->cb = NULL;
     }
 
-    http_cleanup(connection);
+    playdate->network->http->close(connection);
 }
