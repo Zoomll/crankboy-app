@@ -26,6 +26,7 @@
 #include "settings_scene.h"
 
 #define LAST_SELECTED_PATH "library_last_selected.txt"
+#define HOLD_TIME 1.09f
 
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void CB_LibraryScene_free(void* object);
@@ -636,6 +637,27 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
+    // B-button long press detection for showing CRC
+    PDButtons current_buttons;
+    playdate->system->getButtonState(&current_buttons, NULL, NULL);
+    if (current_buttons & kButtonB)
+    {
+        libraryScene->bButtonHoldTimer += dt;
+        if (libraryScene->bButtonHoldTimer >= HOLD_TIME && !libraryScene->showCrc)
+        {
+            if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS)
+            {
+                libraryScene->showCrc = true;
+                libraryScene->scene->forceFullRefresh = true;
+                cb_play_ui_sound(CB_UISound_Confirm);
+            }
+        }
+    }
+    else
+    {
+        libraryScene->bButtonHoldTimer = 0.0f;
+    }
+
     if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
     {
         coverDownloadAnimationTimer += dt;
@@ -723,17 +745,26 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
             CB_Game* selectedGame = libraryScene->games->items[selectedItem];
+            bool hasCover = (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS);
             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
-            // Only allow download if a cover is missing, a DB match exists,
-            // and no download is already in progress.
-            if (CB_App->coverArtCache.art.status != CB_COVER_ART_SUCCESS &&
-                libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE && hasDBMatch)
+            // A cover is present and we're showing the CRC
+            // A short press restorex the cover.
+            if (hasCover && libraryScene->showCrc)
+            {
+                libraryScene->showCrc = false;
+                libraryScene->scene->forceFullRefresh = true;
+                cb_play_ui_sound(CB_UISound_Navigate);
+            }
+            // A cover is missing, but we can download it.
+            else if (!hasCover && hasDBMatch &&
+                     libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE)
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
                 CB_LibraryScene_startCoverDownload(libraryScene);
             }
-            else if ((CB_App->coverArtCache.art.status != CB_COVER_ART_SUCCESS && !hasDBMatch) ||
+            // No cover and no DB match. Toggle CRC display.
+            else if ((!hasCover && !hasDBMatch) ||
                      libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB)
             {
                 libraryScene->showCrc = !libraryScene->showCrc;
@@ -954,22 +985,60 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
                     CB_App->coverArtCache.art.bitmap != NULL)
                 {
-                    int panel_content_width = rightPanelWidth - 1;
-                    int coverX = leftPanelWidth + 1 +
-                                 (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
-                    int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
+                    CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                    playdate->graphics->setFont(CB_App->bodyFont);
 
-                    playdate->graphics->fillRect(
-                        leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
-                    );
-                    playdate->graphics->setDrawMode(kDrawModeCopy);
-                    playdate->graphics->drawBitmap(
-                        CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
-                    );
+                    if (libraryScene->showCrc)
+                    {
+                        char message[32];
+                        if (selectedGame->names->crc32 != 0)
+                        {
+                            snprintf(
+                                message, sizeof(message), "%08lX",
+                                (unsigned long)selectedGame->names->crc32
+                            );
+                        }
+                        else
+                        {
+                            snprintf(message, sizeof(message), "No CRC found");
+                        }
+
+                        int panel_content_width = rightPanelWidth - 1;
+                        int textWidth = playdate->graphics->getTextWidth(
+                            CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
+                        );
+                        int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
+                        int textY =
+                            (screenHeight - playdate->graphics->getFontHeight(CB_App->bodyFont)) /
+                            2;
+
+                        playdate->graphics->fillRect(
+                            leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorWhite
+                        );
+                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                        playdate->graphics->drawText(
+                            message, strlen(message), kUTF8Encoding, textX, textY
+                        );
+                    }
+                    else
+                    {
+                        int panel_content_width = rightPanelWidth - 1;
+                        int coverX =
+                            leftPanelWidth + 1 +
+                            (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
+                        int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
+
+                        playdate->graphics->fillRect(
+                            leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
+                        );
+                        playdate->graphics->setDrawMode(kDrawModeCopy);
+                        playdate->graphics->drawBitmap(
+                            CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
+                        );
+                    }
                 }
                 else
                 {
-                    CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                     bool had_error_loading =
                         CB_App->coverArtCache.art.status != CB_COVER_ART_FILE_NOT_FOUND;
 

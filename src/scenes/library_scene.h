@@ -80,6 +80,7 @@ typedef struct CB_LibraryScene
     bool showCrc;
     bool isReloading;
     int progress_max_width;
+    float bButtonHoldTimer;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);
