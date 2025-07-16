@@ -3,6 +3,7 @@
 #include "../app.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,6 +12,8 @@
 
 // pixels per second
 #define SCROLL_RATE 80.3f
+#define SCROLL_INDICATOR_WIDTH 2
+#define SCROLL_INDICATOR_MIN_HEIGHT 10
 
 // The height of a blank line in pixels.
 #define EMPTY_LINE_HEIGHT 15
@@ -167,7 +170,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // --- SCROLLBAR LOGIC ---
-    float visible_height = CB_LCD_HEIGHT - (top_margin + margin);
+    float visible_height = LCD_ROWS - (top_margin + margin);
     if (total_text_height > visible_height)
     {
         float max_scroll = total_text_height - visible_height;
@@ -275,6 +278,29 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     if (header_height > 0)
     {
         playdate->graphics->clearClipRect();
+    }
+
+    // --- Draw Scrollbar ---
+    if (total_text_height > visible_height)
+    {
+        int scrollAreaY = top_margin;
+        int scrollAreaHeight = (int)visible_height;
+
+        float handleHeight_f = (float)scrollAreaHeight * (visible_height / total_text_height);
+        int handleHeight = (int)fmaxf(handleHeight_f, SCROLL_INDICATOR_MIN_HEIGHT);
+
+        int handleY =
+            scrollAreaY + (int)((float)scrollAreaHeight * (infoScene->scroll / total_text_height));
+
+        int indicatorX = LCD_COLUMNS - SCROLL_INDICATOR_WIDTH - 2;  // 2px inset
+
+        playdate->graphics->fillRect(
+            indicatorX - 1, handleY - 1, SCROLL_INDICATOR_WIDTH + 2, handleHeight + 2, kColorWhite
+        );
+
+        playdate->graphics->fillRect(
+            indicatorX, handleY, SCROLL_INDICATOR_WIDTH, handleHeight, kColorBlack
+        );
     }
 
     playdate->graphics->display();
