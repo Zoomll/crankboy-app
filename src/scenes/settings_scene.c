@@ -84,6 +84,7 @@ void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsS
 
 void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
+    cb_play_ui_sound(CB_UISound_Confirm);
     CB_GameScene* gameScene = settingsScene->gameScene;
     if (gameScene && gameScene->script_info_available)
     {
@@ -93,6 +94,7 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
 
 static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
+    cb_play_ui_sound(CB_UISound_Confirm);
     CB_PatchesScene* patchesScene = CB_PatchesScene_new(option->ud);
     CB_presentModal(patchesScene->scene);
 }
