@@ -829,13 +829,13 @@ void cb_play_ui_sound(CB_UISound sound)
     {
     case CB_UISound_Navigate:
         playdate->sound->synth->playNote(
-            CB_App->clickSynth, 1760.0f + (rand() % 64), 0.13f, 0.07f, 0
+            CB_App->clickSynth, 1480.0f - (rand() % 32), 0.13f, 0.07f, 0
         );
         break;
 
     case CB_UISound_Confirm:
         playdate->sound->synth->playNote(
-            CB_App->clickSynth, 1480.0f - (rand() % 32), 0.18f, 0.1f, 0
+            CB_App->clickSynth, 880.0f + (rand() % 32), 0.18f, 0.1f, 0
         );
         break;
     }
