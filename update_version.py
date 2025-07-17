@@ -3,6 +3,7 @@
 import sys
 import json
 import os
+from datetime import datetime
 
 def load_pdxinfo(filename):
     """
@@ -119,14 +120,10 @@ def main():
         new_version = version_from_json
         print(f"\nVersion mismatch. Updating pdxinfo to match version.json: {new_version}")
 
-    # --- Increment Build Number ---
-    try:
-        current_build = int(pdxinfo.get('buildNumber', '0'))
-        new_build = current_build + 1
-        print(f"Incrementing build number from {current_build} to {new_build}.")
-    except ValueError:
-        print(f"Warning: Could not parse buildNumber '{pdxinfo.get('buildNumber')}'. Resetting to 1.")
-        new_build = 1
+    # --- Set Build Number based on Date ---
+    new_build = datetime.now().strftime('%Y%m%d')
+    current_build_number = pdxinfo.get('buildNumber', 'not set')
+    print(f"Setting build number from {current_build_number} to {new_build}.")
 
     # --- Update pdxinfo Dictionary ---
     pdxinfo['version'] = new_version
