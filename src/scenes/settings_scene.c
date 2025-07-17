@@ -388,6 +388,7 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
 
 static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
 {
+    cb_play_ui_sound(CB_UISound_Confirm);
     CB_GameScene* gameScene = e->ud;
     int slot = preferences_save_state_slot;
 
@@ -417,6 +418,7 @@ static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* se
 
 static void settings_action_load_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
 {
+    cb_play_ui_sound(CB_UISound_Confirm);
     CB_GameScene* gameScene = e->ud;
     int slot = preferences_save_state_slot;
 
