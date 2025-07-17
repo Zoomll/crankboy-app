@@ -40,7 +40,7 @@
 
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
-#include <stdlib.h> /* Required for qsort */
+#include <stdlib.h> /* Required for abort */
 #include <string.h> /* Required for memset */
 #include <time.h>   /* Required for tm struct */
 
@@ -66,11 +66,6 @@ typedef int16_t s16;
 /* Enable LCD drawing. On by default. May be turned off for testing purposes. */
 #ifndef ENABLE_LCD
 #define ENABLE_LCD 1
-#endif
-
-/* Adds more code to improve LCD rendering accuracy. */
-#ifndef PEANUT_GB_HIGH_LCD_ACCURACY
-#define PEANUT_GB_HIGH_LCD_ACCURACY 0
 #endif
 
 /* Interrupt masks */
@@ -2245,17 +2240,18 @@ struct sprite_data
     uint8_t x;
 };
 
-#if PEANUT_GB_HIGH_LCD_ACCURACY
-__section__(".text.cb") static int compare_sprites(const void* in1, const void* in2)
+__section__(".text.cb") static int compare_sprites(
+    const struct sprite_data* const sd1, const struct sprite_data* const sd2
+)
 {
-    const struct sprite_data *sd1 = in1, *sd2 = in2;
+    /* Smaller X-coordinate has higher priority. */
     int x_res = (int)sd1->x - (int)sd2->x;
     if (x_res != 0)
         return x_res;
 
+    /* If X is the same, smaller OAM index has higher priority. */
     return (int)sd1->sprite_number - (int)sd2->sprite_number;
 }
-#endif
 
 __core_section("draw") static void __gb_draw_pixel(uint8_t* line, u8 x, u8 v)
 {
@@ -2557,89 +2553,76 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-#if PEANUT_GB_HIGH_LCD_ACCURACY
         uint8_t number_of_sprites = 0;
-        struct sprite_data sprites_to_render[NUM_SPRITES];
+        struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
 
-        /* Record number of sprites on the line being rendered, limited
-         * to the maximum number sprites that the Game Boy is able to
-         * render on each line (10 sprites). */
-        for (uint8_t sprite_number = 0; sprite_number < PEANUT_GB_ARRAYSIZE(sprites_to_render);
-             sprite_number++)
+        /* Find up to 10 sprites on this line, sorted by priority.
+         * Lower X-coordinate has higher priority. If X is the same,
+         * lower OAM index has higher priority. */
+        for (uint8_t sprite_number = 0; sprite_number < NUM_SPRITES; sprite_number++)
         {
-            /* Sprite Y position. */
-            uint8_t OY = gb->oam[4 * sprite_number + 0];
-            /* Sprite X position. */
-            uint8_t OX = gb->oam[4 * sprite_number + 1];
-
-            /* If sprite isn't on this line, continue. */
-            if (gb->gb_reg.LY + (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0 : 8) >= OY ||
-                gb->gb_reg.LY + 16 < OY)
-                continue;
-
-            sprites_to_render[number_of_sprites].sprite_number = sprite_number;
-            sprites_to_render[number_of_sprites].x = OX;
-            number_of_sprites++;
-        }
-
-        /* If maximum number of sprites reached, prioritise X
-         * coordinate and object location in OAM. */
-        qsort(
-            &sprites_to_render[0], number_of_sprites, sizeof(sprites_to_render[0]), compare_sprites
-        );
-        if (number_of_sprites > MAX_SPRITES_LINE)
-            number_of_sprites = MAX_SPRITES_LINE;
-#endif
-
-        const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
-
-        /* Render each sprite, from low priority to high priority. */
-#if PEANUT_GB_HIGH_LCD_ACCURACY
-        /* Render the top ten prioritised sprites on this scanline. */
-        for (uint8_t sprite_number = number_of_sprites - 1; sprite_number != 0xFF; sprite_number--)
-        {
-            uint8_t s = sprites_to_render[sprite_number].sprite_number;
-#else
-        for (uint8_t sprite_number = NUM_SPRITES - 1; sprite_number != 0xFF; sprite_number--)
-        {
-#endif
             uint8_t s_4 = sprite_number * 4;
+            uint8_t OY = gb->oam[s_4 + 0];
+            uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
 
-            /* Sprite Y position. */
-            uint8_t OY = gb->oam[s_4];
-            /* Sprite X position. */
-            uint8_t OX = gb->oam[s_4 + 1];
-            /* Sprite Tile/Pattern Number. */
-            uint8_t OT = gb->oam[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
-            /* Additional attributes. */
-            uint8_t OF = gb->oam[s_4 + 3];
-
-#if !PEANUT_GB_HIGH_LCD_ACCURACY
             /* If sprite isn't on this line, continue. */
-            if (gb->gb_reg.LY + (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0 : 8) >= OY ||
-                gb->gb_reg.LY + 16 < OY)
+            if (gb->gb_reg.LY + 16 < OY || gb->gb_reg.LY + 16 >= OY + sprite_height)
                 continue;
-#endif
 
-            /* Continue if sprite not visible. */
+            uint8_t OX = gb->oam[s_4 + 1];
             if (OX == 0 || OX >= 168)
                 continue;
 
-            // y flip
-            uint8_t py = gb->gb_reg.LY - OY + 16;
+            struct sprite_data current;
+            current.sprite_number = sprite_number;
+            current.x = OX;
+
+            uint8_t place;
+            for (place = number_of_sprites; place > 0; place--)
+            {
+                if (compare_sprites(&sprites_to_render[place - 1], &current) < 0)
+                    break;
+            }
+
+            if (place >= MAX_SPRITES_LINE)
+                continue;
+
+            /* Manually shift elements to the right to make space. */
+            for (int i = number_of_sprites; i > place; i--)
+            {
+                if (i < MAX_SPRITES_LINE)
+                    sprites_to_render[i] = sprites_to_render[i - 1];
+            }
+
+            sprites_to_render[place] = current;
+
+            if (number_of_sprites < MAX_SPRITES_LINE)
+                number_of_sprites++;
+        }
+
+        const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
+
+        /* Render sprites from lowest priority to highest priority. */
+        for (int8_t i = number_of_sprites - 1; i >= 0; i--)
+        {
+            uint8_t s_idx = sprites_to_render[i].sprite_number;
+            uint8_t s_4 = s_idx * 4;
+
+            uint8_t OY = gb->oam[s_4 + 0];
+            uint8_t OX = gb->oam[s_4 + 1];
+            uint8_t OT = gb->oam[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
+            uint8_t OF = gb->oam[s_4 + 3];
+
+            uint8_t py = gb->gb_reg.LY - (OY - 16);
 
             if (OF & OBJ_FLIP_Y)
                 py = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 15 : 7) - py;
 
             uint16_t t1_i = VRAM_TILES_1 + OT * 0x10 + 2 * py;
-
-            // fetch the tile
             uint8_t t1 = gb->vram[t1_i];
             uint8_t t2 = gb->vram[t1_i + 1];
 
-            // handle x flip
             int dir, start, end;
-
             if (OF & OBJ_FLIP_X)
             {
                 dir = 1;
@@ -2659,42 +2642,23 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
             {
                 if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
                     goto next_loop;
-#if ENABLE_BGCACHE
-                uint8_t c = ((t1 & 0x1) << 1) | ((t2 & 0x1) << 2);
-#else
+
                 uint8_t c = ((t1 & 0x80) >> 6) | ((t2 & 0x80) >> 5);
-#endif
-                // check transparency / sprite overlap / background overlap
-                if (c != 0)  // Sprite palette index 0 is transparent
+                if (c != 0)
                 {
                     int P_segment_index = disp_x / 32;
                     int P_bit_in_segment = disp_x % 32;
+                    uint8_t bg_is_transparent =
+                        (line_priority[P_segment_index] >> P_bit_in_segment) & 1;
 
-                    uint8_t background_pixel_is_transparent = 0;
-                    if (P_segment_index >= 0 && P_segment_index < line_priority_len)
-                    {
-                        background_pixel_is_transparent =
-                            (line_priority[P_segment_index] >> P_bit_in_segment) & 1;
-                    }
-
-                    bool sprite_has_behind_bg_attr = (OF & OBJ_PRIORITY);
-                    bool should_hide_sprite_pixel =
-                        sprite_has_behind_bg_attr && !background_pixel_is_transparent;
-
-                    if (!should_hide_sprite_pixel)
+                    if (!((OF & OBJ_PRIORITY) && !bg_is_transparent))
                     {
                         __gb_draw_pixel(pixels, disp_x, (OBP >> (c | c_add)) & 3);
                     }
                 }
-
             next_loop:
-#if ENABLE_BGCACHE
-                t1 >>= 1;
-                t2 >>= 1;
-#else
                 t1 <<= 1;
                 t2 <<= 1;
-#endif
             }
         }
     }
