@@ -137,20 +137,31 @@ void CB_Modal_update(CB_Modal* modal)
     {
         modal->exit = 1;
         modal->result = -1;
+        cb_play_ui_sound(CB_UISound_Navigate);
     }
     else if (pushed & kButtonA)
     {
         modal->exit = 1;
         modal->result = modal->option_selected;
+        cb_play_ui_sound(CB_UISound_Confirm);
     }
     else
     {
         int d = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
-        modal->option_selected += d;
-        if (modal->option_selected >= modal->options_count)
-            modal->option_selected = modal->options_count - 1;
-        if (modal->option_selected < 0)
-            modal->option_selected = 0;
+        if (d != 0)
+        {
+            int old_selection = modal->option_selected;
+            modal->option_selected += d;
+            if (modal->option_selected >= modal->options_count)
+                modal->option_selected = modal->options_count - 1;
+            if (modal->option_selected < 0)
+                modal->option_selected = 0;
+
+            if (modal->option_selected != old_selection)
+            {
+                cb_play_ui_sound(CB_UISound_Navigate);
+            }
+        }
     }
 }
 
