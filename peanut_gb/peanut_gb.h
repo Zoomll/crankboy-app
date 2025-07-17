@@ -145,17 +145,20 @@ typedef int16_t s16;
 #define LCDC_BG_ENABLE 0x01
 
 /* LCD characteristics */
-#define LCD_LINE_CYCLES 456
-#define LCD_MODE_0_CYCLES 0
-#define LCD_MODE_2_CYCLES 204
-#define LCD_MODE_3_CYCLES 284
 #define LCD_VERT_LINES 154
+#define LCD_LINE_CYCLES 456
+#define LCD_FRAME_CYCLES (LCD_LINE_CYCLES * LCD_VERT_LINES)
 #define LCD_WIDTH 160
 #define LCD_PACKING 4 /* pixels per byte */
 #define LCD_BITS_PER_PIXEL (8 / LCD_PACKING)
 #define LCD_WIDTH_PACKED (LCD_WIDTH / LCD_PACKING)
 #define LCD_HEIGHT 144
 #define LCD_FRAME_CYCLES (LCD_LINE_CYCLES * LCD_VERT_LINES)
+
+/* Simplified PPU timing model for performance */
+#define PPU_MODE_2_OAM_CYCLES 80
+#define PPU_MODE_3_VRAM_CYCLES 168
+#define PPU_MODE_0_HBLANK_CYCLES 208 /* 456 - 80 - 168 */
 
 // FIXME -- do we need *2? Was intended for front buffer / back buffer
 #define LCD_SIZE (LCD_HEIGHT * LCD_WIDTH_PACKED * 2)
@@ -5406,11 +5409,11 @@ __shell static uint16_t __gb_calc_halt_cycles(struct gb_s* gb)
     src[2] = LCD_LINE_CYCLES - gb->counter.lcd_count;
     if (gb->lcd_mode == LCD_HBLANK)
     {
-        src[2] = LCD_MODE_2_CYCLES - gb->counter.lcd_count;
+        src[2] = PPU_MODE_0_HBLANK_CYCLES - gb->counter.lcd_count;
     }
     else if (gb->lcd_mode == LCD_SEARCH_OAM)
     {
-        src[2] = LCD_MODE_3_CYCLES - gb->counter.lcd_count;
+        src[2] = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
     }
 
     // return max{16, min(src...)}
@@ -5694,9 +5697,9 @@ done_instr:
         // Mode 2: OAM Search (80 cycles)
         // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current line.
         case LCD_SEARCH_OAM:
-            if (gb->counter.lcd_count >= 80)
+            if (gb->counter.lcd_count >= PPU_MODE_2_OAM_CYCLES)
             {
-                gb->counter.lcd_count -= 80;
+                gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
             }
@@ -5704,9 +5707,9 @@ done_instr:
 
         // Mode 3: Pixel Transfer (variable, avg. ~168-172 cycles)
         case LCD_TRANSFER:
-            if (gb->counter.lcd_count >= 168)
+            if (gb->counter.lcd_count >= PPU_MODE_3_VRAM_CYCLES)
             {
-                gb->counter.lcd_count -= 168;
+                gb->counter.lcd_count -= PPU_MODE_3_VRAM_CYCLES;
 
 #if ENABLE_LCD
                 if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip)
@@ -5724,14 +5727,14 @@ done_instr:
         // Mode 0: H-Blank (remaining cycles of the 456 total)
         // The PPU is idle until the end of the scanline.
         case LCD_HBLANK:
-            if (gb->counter.lcd_count >= 208)  // 80 + 168 + 208 = 456 total cycles
+            if (gb->counter.lcd_count >= PPU_MODE_0_HBLANK_CYCLES)
             {
-                gb->counter.lcd_count -= 208;
+                gb->counter.lcd_count -= PPU_MODE_0_HBLANK_CYCLES;
                 gb->gb_reg.LY++;
 
                 __gb_check_lyc(gb);
 
-                if (gb->gb_reg.LY == 144)
+                if (gb->gb_reg.LY == LCD_HEIGHT)
                 {
                     gb->lcd_mode = LCD_VBLANK;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
@@ -5756,12 +5759,12 @@ done_instr:
         // Mode 1: V-Blank (10 lines, 4560 cycles total)
         // The PPU is idle, giving the CPU time to update VRAM.
         case LCD_VBLANK:
-            if (gb->counter.lcd_count >= 456)
+            if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
             {
-                gb->counter.lcd_count -= 456;
+                gb->counter.lcd_count -= LCD_LINE_CYCLES;
 
                 // LY continues to increment during V-Blank from 144 up to 153.
-                if (gb->gb_reg.LY == 153)
+                if (gb->gb_reg.LY == (LCD_VERT_LINES - 1))
                 {
                     gb->gb_reg.LY = 0;
                 }
