@@ -318,6 +318,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         // Try loading game-specific preferences
         preferences_per_game = 0;
 
+        // Store the global UI sound setting so it isn't overwritten by game-specific settings.
+        void* stored_ui_sounds = preferences_store_subset(PREFBIT_ui_sounds);
+
         // FIXME: shouldn't we be using call_with_main_stack for these?
         call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
 
@@ -336,6 +339,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         {
             preferences_restore_subset(stored_save_slot);
             cb_free(stored_save_slot);
+        }
+
+        // Restore the global UI sound setting after loading any other preferences.
+        if (stored_ui_sounds)
+        {
+            preferences_restore_subset(stored_ui_sounds);
+            cb_free(stored_ui_sounds);
         }
     }
     else
