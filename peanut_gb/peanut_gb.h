@@ -160,6 +160,7 @@ typedef int16_t s16;
 #define LCD_BITS_PER_PIXEL (8 / LCD_PACKING)
 #define LCD_WIDTH_PACKED (LCD_WIDTH / LCD_PACKING)
 #define LCD_HEIGHT 144
+#define LCD_FRAME_CYCLES (LCD_LINE_CYCLES * LCD_VERT_LINES)
 
 // FIXME -- do we need *2? Was intended for front buffer / back buffer
 #define LCD_SIZE (LCD_HEIGHT * LCD_WIDTH_PACKED * 2)
@@ -285,10 +286,11 @@ struct cpu_registers_s
 
 struct count_s
 {
-    uint_fast16_t lcd_count;    /* LCD Timing */
-    uint_fast16_t div_count;    /* Divider Register Counter */
-    uint_fast16_t tima_count;   /* Timer Counter */
-    uint_fast16_t serial_count; /* Serial Counter */
+    uint_fast16_t lcd_count;     /* LCD Timing */
+    uint_fast16_t div_count;     /* Divider Register Counter */
+    uint_fast16_t tima_count;    /* Timer Counter */
+    uint_fast16_t serial_count;  /* Serial Counter */
+    uint_fast32_t lcd_off_count; /* Cycles LCD has been disabled */
 };
 
 struct gb_registers_s
@@ -427,7 +429,12 @@ struct gb_s
         uint8_t gb_halt : 1;
         uint8_t gb_ime : 1;
         uint8_t gb_bios_enable : 1;
-        uint8_t gb_frame : 1; /* New frame drawn. */
+
+        /* gb_frame is set when the equivalent time of a frame has
+         * passed. It is likely that a new frame has been drawn,
+         * but it is also possible that the LCD was off. */
+
+        uint8_t gb_frame : 1;
 
 #define LCD_HBLANK 0
 #define LCD_VBLANK 1
@@ -1849,6 +1856,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
             if (was_enabled && !is_enabled)
             {
+                gb->counter.lcd_off_count += gb->counter.lcd_count;
                 gb->gb_reg.LY = 0;
                 gb->counter.lcd_count = 0;
                 gb->lcd_mode = LCD_HBLANK;
@@ -5703,7 +5711,16 @@ done_instr:
     gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
     gb->counter.div_count %= DIV_CYCLES;
 
-    if (gb->gb_reg.LCDC & LCDC_ENABLE)
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+    {
+        gb->counter.lcd_off_count += inst_cycles;
+        if (gb->counter.lcd_off_count >= LCD_FRAME_CYCLES)
+        {
+            gb->counter.lcd_off_count -= LCD_FRAME_CYCLES;
+            gb->gb_frame = 1;
+        }
+    }
+    else
     {
         /* LCD Timing */
         gb->counter.lcd_count += inst_cycles;
@@ -6188,6 +6205,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     gb->counter.div_count = 0;
     gb->counter.tima_count = 0;
     gb->counter.serial_count = 0;
+    gb->counter.lcd_off_count = 0;
 
     gb->gb_reg.TIMA = 0x00;
     gb->gb_reg.TMA = 0x00;
