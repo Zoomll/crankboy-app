@@ -1280,8 +1280,8 @@ __core_section("bgcache") void __gb_update_bgcache_tile(
         CB_ASSERT(index + 2 < BGCACHE_SIZE);
         uint8_t* t = &bgcache[index];
 
-        t[0] = reverse_bits_u8(t1);
-        t[2] = reverse_bits_u8(t2);
+        t[0] = t1;
+        t[2] = t2;
     }
 }
 
@@ -1368,16 +1368,22 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 void __gb_write_vram(struct gb_s* gb, uint_fast16_t addr, const uint8_t val)
 {
     addr -= 0x8000;
-    if (gb->vram[addr] == val)
-        return;
-    gb->vram[addr] = val;
     if (addr < 0x1800)
     {
+        uint8_t reversed_val = reverse_bits_u8(val);
+        if (gb->vram[addr] == reversed_val)
+            return;
+        gb->vram[addr] = reversed_val;
+
         unsigned tile = (addr / 16);
         __gb_update_bgcache_tile_data_deferred(gb, tile);
     }
     else
     {
+        if (gb->vram[addr] == val)
+            return;
+        gb->vram[addr] = val;
+
         int tmidx = addr - 0x1800;
         __gb_update_bgcache_tile_deferred(gb, 0, tmidx, val);
         __gb_update_bgcache_tile_deferred(gb, 1, tmidx, val);
