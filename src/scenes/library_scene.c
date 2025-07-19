@@ -37,6 +37,9 @@ static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
 static bool library_was_initialized_once = false;
 
+// Stores the update message if we are not in the library scene.
+static char* pending_update_message = NULL;
+
 // Animation state for the "Downloading cover..." text
 static float coverDownloadAnimationTimer = 0.0f;
 static int coverDownloadAnimationStep = 0;
@@ -395,13 +398,27 @@ static void CB_updatecheck(int code, const char* text, void* ud)
 
     if (modal_result)
     {
-        CB_Modal* modal = CB_Modal_new(modal_result, NULL, NULL, NULL);
-        cb_free(modal_result);
+        // Check if the current scene is the library scene
+        if (CB_App->scene && CB_App->scene->update == CB_LibraryScene_update)
+        {
+            CB_Modal* modal = CB_Modal_new(modal_result, NULL, NULL, NULL);
+            cb_free(modal_result);
 
-        modal->width = 300;
-        modal->height = 180;
+            modal->width = 300;
+            modal->height = 180;
 
-        CB_presentModal(modal->scene);
+            CB_presentModal(modal->scene);
+        }
+        else
+        {
+            // If not in the library, store the message to show later, to avoid interrupting the
+            // users gaming session.
+            if (pending_update_message)
+            {
+                cb_free(pending_update_message);
+            }
+            pending_update_message = modal_result;
+        }
     }
 }
 
@@ -627,6 +644,20 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         case kLibraryStateDone:
             break;
         }
+    }
+
+    // Check for a pending update message when the library is active.
+    if (pending_update_message)
+    {
+        CB_Modal* modal = CB_Modal_new(pending_update_message, NULL, NULL, NULL);
+        cb_free(pending_update_message);
+        pending_update_message = NULL;
+
+        modal->width = 300;
+        modal->height = 180;
+
+        CB_presentModal(modal->scene);
+        return;
     }
 
     if (libraryScene->last_display_name_mode != combined_display_mode())
