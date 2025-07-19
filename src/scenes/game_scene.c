@@ -1118,19 +1118,36 @@ __core_section("fb") void update_fb_dirty_lines(
                 dither_lut_bottom = use_lut0_first ? dither_lut1 : dither_lut0;
             }
 
-            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
+            uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
+            uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
+
+            for (int i = 0; i < LCD_WIDTH_PACKED / 4; i++)
             {
-                uint8_t orgpixels = gb_line_data[x_packed_gb];
-                pd_fb_line_top_ptr[x_packed_gb] = dither_lut_top[orgpixels];
+                uint32_t org_pixels32 = gb_line_data32[i];
+
+                uint8_t p0 = org_pixels32 & 0xFF;
+                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
+                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
+                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+
+                uint32_t dithered_top_row = dither_lut_top[p0] | (dither_lut_top[p1] << 8) |
+                                            (dither_lut_top[p2] << 16) | (dither_lut_top[p3] << 24);
+
+                pd_fb_line_top_ptr32[i] = dithered_top_row;
+
                 if (row_height_on_playdate == 2)
                 {
-                    uint8_t* restrict pd_fb_line_bottom_ptr =
-                        pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
-                    pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut_bottom[orgpixels];
+                    uint32_t* restrict pd_fb_line_bottom_ptr32 =
+                        (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
+
+                    uint32_t dithered_bottom_row =
+                        dither_lut_bottom[p0] | (dither_lut_bottom[p1] << 8) |
+                        (dither_lut_bottom[p2] << 16) | (dither_lut_bottom[p3] << 24);
+
+                    pd_fb_line_bottom_ptr32[i] = dithered_bottom_row;
                 }
             }
 
-            // For the static logic, flip phase on short rows.
             if (row_height_on_playdate == 1)
             {
                 dither_phase_flipped = !dither_phase_flipped;
@@ -1180,20 +1197,34 @@ __core_section("fb") void update_fb_dirty_lines(
             uint8_t* restrict pd_fb_line_top_ptr =
                 &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
 
-            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED; x_packed_gb++)
-            {
-                uint8_t orgpixels = gb_line_data[x_packed_gb];
+            uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
+            uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
 
-                // Get the pre-calculated dithered byte for the top row.
-                pd_fb_line_top_ptr[x_packed_gb] = dither_lut0_ptr[orgpixels];
+            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
+            {
+                uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
+
+                uint8_t p0 = org_pixels32 & 0xFF;
+                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
+                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
+                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+
+                uint32_t dithered_top_row = dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
+                                            (dither_lut0_ptr[p2] << 16) |
+                                            (dither_lut0_ptr[p3] << 24);
+
+                pd_fb_line_top_ptr32[x_packed_gb] = dithered_top_row;
 
                 if (row_height_on_playdate == 2)
                 {
-                    uint8_t* restrict pd_fb_line_bottom_ptr =
-                        pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE;
+                    uint32_t* restrict pd_fb_line_bottom_ptr32 =
+                        (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
 
-                    // Get the pre-calculated dithered byte for the bottom row.
-                    pd_fb_line_bottom_ptr[x_packed_gb] = dither_lut1_ptr[orgpixels];
+                    uint32_t dithered_bottom_row =
+                        dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
+                        (dither_lut1_ptr[p2] << 16) | (dither_lut1_ptr[p3] << 24);
+
+                    pd_fb_line_bottom_ptr32[x_packed_gb] = dithered_bottom_row;
                 }
             }
 
