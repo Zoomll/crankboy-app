@@ -2568,45 +2568,41 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         /* Find up to 10 sprites on this line, sorted by priority.
          * Lower X-coordinate has higher priority. If X is the same,
          * lower OAM index has higher priority. */
-        for (uint8_t sprite_number = 0; sprite_number < NUM_SPRITES; sprite_number++)
+
+        // Gather all visible sprites for this scanline (LY).
+        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+        const int16_t current_ly = gb->gb_reg.LY;
+
+        for (uint8_t s = 0; s < NUM_SPRITES && number_of_sprites < MAX_SPRITES_LINE; s++)
         {
-            uint8_t s_4 = sprite_number * 4;
-            uint8_t OY = gb->oam[s_4 + 0];
-            uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+            const uint8_t* oam = &gb->oam[s * 4];
+            const uint8_t oam_y = oam[0];
+            const uint8_t oam_x = oam[1];
 
-            /* If sprite isn't on this line, continue. */
-            if (gb->gb_reg.LY + 16 < OY || gb->gb_reg.LY + 16 >= OY + sprite_height)
-                continue;
-
-            uint8_t OX = gb->oam[s_4 + 1];
-            if (OX == 0 || OX >= 168)
-                continue;
-
-            struct sprite_data current;
-            current.sprite_number = sprite_number;
-            current.x = OX;
-
-            uint8_t place;
-            for (place = number_of_sprites; place > 0; place--)
+            if (oam_x > 0 && (current_ly + 16 >= oam_y) &&
+                (current_ly + 16 < oam_y + sprite_height))
             {
-                if (compare_sprites(&sprites_to_render[place - 1], &current) < 0)
-                    break;
-            }
-
-            if (place >= MAX_SPRITES_LINE)
-                continue;
-
-            /* Manually shift elements to the right to make space. */
-            for (int i = number_of_sprites; i > place; i--)
-            {
-                if (i < MAX_SPRITES_LINE)
-                    sprites_to_render[i] = sprites_to_render[i - 1];
-            }
-
-            sprites_to_render[place] = current;
-
-            if (number_of_sprites < MAX_SPRITES_LINE)
+                sprites_to_render[number_of_sprites].sprite_number = s;
+                sprites_to_render[number_of_sprites].x = oam_x;
                 number_of_sprites++;
+            }
+        }
+
+        // Sort the small list of found sprites.
+        if (number_of_sprites > 1)
+        {
+            for (int i = 0; i < number_of_sprites - 1; i++)
+            {
+                for (int j = 0; j < number_of_sprites - i - 1; j++)
+                {
+                    if (compare_sprites(&sprites_to_render[j], &sprites_to_render[j + 1]) > 0)
+                    {
+                        struct sprite_data temp = sprites_to_render[j];
+                        sprites_to_render[j] = sprites_to_render[j + 1];
+                        sprites_to_render[j + 1] = temp;
+                    }
+                }
+            }
         }
 
         const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
