@@ -2591,17 +2591,17 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         // Sort the small list of found sprites.
         if (number_of_sprites > 1)
         {
-            for (int i = 0; i < number_of_sprites - 1; i++)
+            for (int i = 1; i < number_of_sprites; i++)
             {
-                for (int j = 0; j < number_of_sprites - i - 1; j++)
+                struct sprite_data key = sprites_to_render[i];
+                int j = i - 1;
+
+                while (j >= 0 && compare_sprites(&sprites_to_render[j], &key) > 0)
                 {
-                    if (compare_sprites(&sprites_to_render[j], &sprites_to_render[j + 1]) > 0)
-                    {
-                        struct sprite_data temp = sprites_to_render[j];
-                        sprites_to_render[j] = sprites_to_render[j + 1];
-                        sprites_to_render[j + 1] = temp;
-                    }
+                    sprites_to_render[j + 1] = sprites_to_render[j];
+                    j = j - 1;
                 }
+                sprites_to_render[j + 1] = key;
             }
         }
 
