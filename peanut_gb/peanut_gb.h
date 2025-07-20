@@ -2551,7 +2551,10 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         uint16_t* p = (uint16_t*)(void*)pixels + (2 * i);
         uint16_t t0 = p[0];
         uint16_t t1 = p[1];
-        uint32_t rm = 0;  // FIXME: no need to assign 0, but compiler complains otherwise
+
+        // Initialize rm to 0. This is required because the BG_REMAP macro reads
+        // from the variable before it is fully written to.
+        uint32_t rm = 0;
 #pragma GCC unroll 16
         BG_REMAP(pal, t0, t1, rm);
         *(uint32_t*)p = rm;
