@@ -4712,12 +4712,14 @@ _0xE7:
 _0xE8:
 { /* ADD SP, imm */
     int8_t offset = (int8_t)__gb_read_full(gb, gb->cpu_reg.pc++);
-    /* TODO: Move flag assignments for optimisation. */
+    uint16_t old_sp = gb->cpu_reg.sp;  // Store the original SP for flag calcs
+
+    gb->cpu_reg.sp += offset;
     gb->cpu_reg.f_bits.z = 0;
     gb->cpu_reg.f_bits.n = 0;
-    gb->cpu_reg.f_bits.h = ((gb->cpu_reg.sp & 0xF) + (offset & 0xF) > 0xF) ? 1 : 0;
-    gb->cpu_reg.f_bits.c = ((gb->cpu_reg.sp & 0xFF) + (offset & 0xFF) > 0xFF);
-    gb->cpu_reg.sp += offset;
+    gb->cpu_reg.f_bits.h = ((old_sp & 0xF) + (offset & 0xF) > 0xF) ? 1 : 0;
+    gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
+
     goto exit;
 }
 
