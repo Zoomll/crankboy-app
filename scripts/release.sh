@@ -1,16 +1,19 @@
 #!/bin/bash
 
-# --- Configuration ---
+# --- Configuration --
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
+
+# All subsequent commands will run from the correct location.
+cd "$PROJECT_ROOT"
+
 PDX_DIR="./CrankBoy.pdx"
 ZIP_FILE="${PDX_DIR%.pdx}.zip"
 
 # --- Helper Function ---
 # A function that prints a command and then executes it.
-# This gives us a clean, manual trace of the script's actions.
 run() {
-    # Print the command in a clean, readable format.
     echo "$@"
-    # Execute the command, passing all arguments exactly as received.
     "$@"
 }
 

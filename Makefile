@@ -106,7 +106,7 @@ PYTHON := $(shell command -v python3b 2>/dev/null)
 
 ifneq ("$(wildcard Source/bundle.json)","")
 ifdef PYTHON
-    $(shell python3 ./pdxinfo.py Source/pdxinfo Source/version.json Source/pdxinfo)
+    $(shell python3 scripts/update_version.py Source/pdxinfo Source/version.json Source/pdxinfo)
 else
     $(info WARNING: python3 required to update pdxinfo from version.json)
 endif

@@ -6,6 +6,9 @@ import re
 import json
 import os
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
 def create_split_game_json_256():
     """
     Downloads and processes game DAT files, integrates a local homebrew JSON,
@@ -78,7 +81,7 @@ def create_split_game_json_256():
 
     # --- HOMEBREW JSON INTEGRATION ---
 
-    homebrew_file = "homebrew.json"
+    homebrew_file = os.path.join(SCRIPT_DIR, "homebrew.json")
     print(f"\nLooking for '{homebrew_file}'...")
 
     if os.path.exists(homebrew_file):
@@ -86,7 +89,7 @@ def create_split_game_json_256():
             with open(homebrew_file, 'r', encoding='utf-8') as f:
                 homebrew_data = json.load(f)
 
-            print(f"  -> Found '{homebrew_file}'. Integrating entries...")
+            print(f"  -> Found '{os.path.basename(homebrew_file)}'. Integrating entries...")
             homebrew_added_count = 0
             for crc, data in homebrew_data.items():
                 if crc.upper() != 'XXXXXXXX':
@@ -98,15 +101,15 @@ def create_split_game_json_256():
             print(f"  -> Integrated {homebrew_added_count} homebrew games.")
 
         except json.JSONDecodeError as e:
-            print(f"Error: Could not parse '{homebrew_file}'. It might not be valid JSON. Details: {e}")
+            print(f"Error: Could not parse '{os.path.basename(homebrew_file)}'. It might not be valid JSON. Details: {e}")
         except Exception as e:
-            print(f"Error: An unexpected error occurred while processing '{homebrew_file}'. Details: {e}")
+            print(f"Error: An unexpected error occurred while processing '{os.path.basename(homebrew_file)}'. Details: {e}")
     else:
-        print(f"  -> '{homebrew_file}' not found. Skipping integration.")
+        print(f"  -> '{os.path.basename(homebrew_file)}' not found. Skipping integration.")
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 
-    output_dir = os.path.join("Source", "db")
+    output_dir = os.path.join(PROJECT_ROOT, "Source", "db")
 
     hex_chars = "0123456789ABCDEF"
     prefixes = [f"{i}{j}" for i in hex_chars for j in hex_chars]

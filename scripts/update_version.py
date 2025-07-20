@@ -5,6 +5,9 @@ import json
 import os
 from datetime import datetime
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
 def load_pdxinfo(filename):
     """
     Loads key-value pairs from a pdxinfo file, preserving the original key order.
@@ -59,15 +62,16 @@ def main():
 
     # Case 1: No arguments provided, use default paths
     if len(sys.argv) == 1:
-        print("No paths provided. Looking for default files in 'Source/'...")
-        default_dir = "Source"
+        print("No paths provided. Looking for default files...")
+        # Changed: Default directory is now based on project root
+        default_dir = os.path.join(PROJECT_ROOT, "Source")
         pdxinfo_path = os.path.join(default_dir, "pdxinfo")
         version_json_path = os.path.join(default_dir, "version.json")
 
         if not os.path.exists(pdxinfo_path) or not os.path.exists(version_json_path):
             print(f"\nError: Could not find 'pdxinfo' and/or 'version.json' in the '{default_dir}/' directory.")
             print(f"\nUsage: {sys.argv[0]} [pdxinfo_path] [version_json_path] [output_path]")
-            print("If no paths are provided, the script automatically looks in the 'Source/' directory.")
+            print("If no paths are provided, the script automatically looks in the 'Source/' directory relative to the project root.")
             sys.exit(1)
         print("Found default files. Proceeding...")
 
@@ -79,7 +83,7 @@ def main():
     # Case 3: Incorrect number of arguments
     else:
         print(f"Usage: {sys.argv[0]} [pdxinfo_path] [version_json_path] [output_path]")
-        print("Please provide both paths or no paths to use the default 'Source/' directory.")
+        print("Please provide both paths or no paths to use the default behavior.")
         sys.exit(1)
 
     output_path = sys.argv[3] if len(sys.argv) > 3 else pdxinfo_path
