@@ -631,12 +631,12 @@ struct gb_s
     bool dirty_tile_data_master : 1;
     uint32_t dirty_tile_data[0x180 / 32];
 
-    // invariant: bit n is 1 iff dirty_tiles[addr_mode][n] nonzero.
-    uint64_t dirty_tile_rows[2];
+    // invariant: bit n is 1 iff dirty_tiles[n] nonzero.
+    uint64_t dirty_tile_rows;
 
     // any tiles in the tilemap that are dirty
-    // dirty_tiles[addr_mode][tile_row]
-    uint32_t dirty_tiles[2][64];
+    // (screen 2 at indices >= 32)
+    uint32_t dirty_tiles[64];
 #endif
 #endif
 
@@ -1236,11 +1236,11 @@ __core_section("bgdefer") void __gb_update_bgcache_tile_deferred(
     struct gb_s* restrict gb, int addr_mode, const int tmidx, const uint8_t tile
 )
 {
+    // TODO: use addr_mode field
     CB_ASSERT(tmidx < 0x800)
-    CB_ASSERT(addr_mode == 0 || addr_mode == 1)
     int row = tmidx / 32;
-    gb->dirty_tile_rows[addr_mode] |= (uint64_t)1 << row;
-    gb->dirty_tiles[addr_mode][row] |= 1 << (tmidx % 32);
+    gb->dirty_tile_rows |= (uint64_t)1 << row;
+    gb->dirty_tiles[row] |= 1 << (tmidx % 32);
 }
 
 __core_section("bgdefer") void __gb_update_bgcache_tile_data_deferred(
@@ -1335,30 +1335,28 @@ __core_section("bgdefer") void __gb_process_deferred_tile_data_update(struct gb_
 
 __core_section("bgdefer") void __gb_process_deferred_tile_update(struct gb_s* restrict gb)
 {
-    // Loop through each addressing mode (0 and 1)
-    for (int addr_mode = 0; addr_mode < 2; ++addr_mode)
+    uint64_t d = gb->dirty_tile_rows;
+    for (int row = 0; d; ++row, d >>= 1)
     {
-        uint64_t d = gb->dirty_tile_rows[addr_mode];
-        for (int row = 0; d; ++row, d >>= 1)
-        {
-            if likely (!(d & 1))
-                continue;
+        if likely (!(d & 1))
+            continue;
 
-            // some dirty tile exists on this row for this specific addr_mode
-            uint32_t dirty_tiles = gb->dirty_tiles[addr_mode][row];
-            for (int x = 0; dirty_tiles; ++x, dirty_tiles >>= 1)
+        // some dirty tile exists on this row
+        uint32_t dirty_tiles = gb->dirty_tiles[row];
+        for (int x = 0; dirty_tiles; ++x, dirty_tiles >>= 1)
+        {
+            if unlikely (dirty_tiles & 1)
             {
-                if unlikely (dirty_tiles & 1)
-                {
-                    int tmidx = (row * 32) | x;
-                    int tile = gb->vram[0x1800 + tmidx];
-                    __gb_update_bgcache_tile(gb, addr_mode, tmidx, tile);
-                }
+                int tmidx = (row * 32) | x;
+                int tile = gb->vram[0x1800 + tmidx];
+                __gb_update_bgcache_tile(gb, 0, tmidx, tile);
+                __gb_update_bgcache_tile(gb, 1, tmidx, tile);
             }
-            gb->dirty_tiles[addr_mode][row] = 0;
         }
-        gb->dirty_tile_rows[addr_mode] = 0;
+        gb->dirty_tiles[row] = 0;
     }
+
+    gb->dirty_tile_rows = 0;
 }
 
 __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr);
