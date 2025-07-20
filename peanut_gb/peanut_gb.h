@@ -36,7 +36,6 @@
 #include "../src/app.h"
 #include "../src/preferences.h"
 #include "../src/utility.h"
-#include "version.all" /* Version information */
 
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
