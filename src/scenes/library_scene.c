@@ -8,8 +8,8 @@
 
 #include "library_scene.h"
 
-#include "../../lz4/lz4.h"
-#include "../../minigb_apu/minigb_apu.h"
+#include "../../libs/lz4/lz4.h"
+#include "../../libs/minigb_apu/minigb_apu.h"
 #include "../app.h"
 #include "../dtcm.h"
 #include "../http.h"

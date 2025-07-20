@@ -6,7 +6,7 @@
 //
 #include "settings_scene.h"
 
-#include "../../minigb_apu/minigb_apu.h"
+#include "../../libs/minigb_apu/minigb_apu.h"
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"

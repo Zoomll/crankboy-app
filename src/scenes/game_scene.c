@@ -9,8 +9,8 @@
 #define CB_IMPL
 #include "game_scene.h"
 
-#include "../../minigb_apu/minigb_apu.h"
-#include "../../peanut_gb/peanut_gb.h"
+#include "../../libs/minigb_apu/minigb_apu.h"
+#include "../../libs/peanut_gb.h"
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"

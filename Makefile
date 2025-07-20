@@ -24,9 +24,11 @@ COPY_LUA_SCRIPTS := $(shell \
 )
 
 VPATH += src
-VPATH += peanut_gb
-VPATH += minigb_apu
-VPATH += lz4
+VPATH += libs/minigb_apu
+VPATH += libs/lz4
+VPATH += libs/lua-5.4.7
+VPATH += libs/pdnewlib
+VPATH += libs
 
 # collect C scripts
 SRC += $(wildcard src/cscripts/*.c)
@@ -59,23 +61,22 @@ SRC += src/listview.c
 SRC += src/preferences.c
 SRC += src/scenes/settings_scene.c
 
-SRC += minigb_apu/minigb_apu.c
+SRC += libs/minigb_apu/minigb_apu.c
+SRC += libs/pdnewlib/pdnewlib.c
 SRC += main.c
-SRC += pdnewlib.c
 
-SRC += lua-5.4.7/onelua.c
-SRC += lz4/lz4.c
+SRC += libs/lua-5.4.7/onelua.c
+SRC += libs/lz4/lz4.c
 
 ASRC = setup.s
 
 # List all user directories here
 UINCDIR += src
-UINCDIR += peanut_gb
-UINCDIR += minigb_apu
-UINCDIR += lcd
-UINCDIR += lz4
-UINCDIR += lua-5.4.7
-
+UINCDIR += libs
+UINCDIR += libs/minigb_apu
+UINCDIR += libs/lz4
+UINCDIR += libs/lua-5.4.7
+UINCDIR += libs/pdnewlib
 
 # Note: if there are unexplained crashes, try disabling these.
 # LUA: enable lua scripting (uses embedded lua engine)

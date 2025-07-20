@@ -15,7 +15,7 @@
 #define STBI_ONLY_JPG
 #define STBI_ONLY_JPEG
 #define STBI_NO_THREAD_LOCALS
-#include "../../stb_image.h"
+#include "../../libs/stb_image.h"
 #pragma GCC diagnostic pop
 
 // apparently these are standard weights.

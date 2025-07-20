@@ -8,8 +8,8 @@
 
 #include "app.h"
 
-#include "../minigb_apu/minigb_apu.h"
-#include "../pdnewlib.h"
+#include "../libs/minigb_apu/minigb_apu.h"
+#include "../libs/pdnewlib/pdnewlib.h"
 #include "dtcm.h"
 #include "jparse.h"
 #include "preferences.h"

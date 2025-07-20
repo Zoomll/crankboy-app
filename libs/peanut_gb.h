@@ -32,7 +32,7 @@
 #ifndef PEANUT_GB_H
 #define PEANUT_GB_H
 
-#include "../minigb_apu/minigb_apu.h"
+#include "../libs/minigb_apu/minigb_apu.h"
 #include "../src/app.h"
 #include "../src/preferences.h"
 #include "../src/utility.h"

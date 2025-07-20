@@ -3,46 +3,46 @@ GROUP(libgcc.a libc.a libm.a)
 
 /* Forces a particular cache-line alignment, for stability
 	(reduce impact of "performance lottery")
-	
+
 	The particular values used were just ones that seem to
 	give good performance, but further tinkering may be desirable.
-	
+
 	. = ALIGN(32);
 	. += (OFFSET);
-	
+
 	The emulator's performance seems very sensitive to the location of
 	some functions, so we specify their alignment precisely simply for
 	stability.
-	
-	The performance loterry is also influenced by branch prediction.
+
+	The performance lottery is also influenced by branch prediction.
 	Branch prediction seems to be based on bits modulo 0x1000, so this
 	provides extra stability:
-	
+
 	. = ALIGN(0x1000);
 */
 
 SECTIONS
 {
 	.text :
-	{        	
+	{
 		__text_start__ = .;
 		*(.entry)
-		build/pdnewlib.o(.text)
-		
+		build/libs/pdnewlib/pdnewlib.o(.text)
+
 		. = ALIGN(32);
-		build/lua-5.4.7/*(.text)
-		build/lua-5.4.7/*(.text.*)
-		
+		build/libs/lua-5.4.7/*(.text)
+		build/libs/lua-5.4.7/*(.text.*)
+
 		. = ALIGN(32);
 		build/src/script.o(.text)
 		build/src/script.o(.text.*)
-		
+
 		. = ALIGN(0x1000); . += 0x5A0;
 		*(.text.main)
-		
+
 		. = ALIGN(32);
 		*(.text.tick)
-		
+
 		. = ALIGN(0x1000); . += 0x720;
 		*(.text.cb)
 		*(.text.cb_rare)
@@ -50,12 +50,12 @@ SECTIONS
 		. = ALIGN(32);
 		build/*(.text)
 		build/*(.text.*)
-		
+
 		. = ALIGN(32);
 		/* libc */
 		*(.text)
 		*(.text.*)
-		
+
 		/* code to copy to TCM, seemingly runs faster */
 		. = ALIGN(0x1000);
 		. += 0xDE6;
@@ -72,18 +72,18 @@ SECTIONS
 		*(.itcm.micro)
 	    *(.itcm.*)
         __itcm_end = .;
-		
+
 		. = ALIGN(0x1000);
 		__audio_start__ = .;
 		*(.audio)
 		*(.audio.*)
-		
+
 		. = ALIGN(32);
 		__rare_start__ = .;
 		*(.rare.cb)
 		*(.rare)
 		*(.rare.*)
-        
+
 		KEEP(*(.init))
 		KEEP(*(.fini))
 
@@ -100,9 +100,9 @@ SECTIONS
  		*(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
  		*(SORT(.dtors.*))
  		*(.dtors)
-		
+
 		. = ALIGN(32);
-		
+
 		__rodata_start__ = .;
 		/* separate the audio rodata for stability */
 		build/minigb_apu/*(.rodata*)
@@ -115,7 +115,7 @@ SECTIONS
 	.data :
 	{
 		__etext = .;
-		
+
 		. = ALIGN(32);
 
 		__data_start__ = .;

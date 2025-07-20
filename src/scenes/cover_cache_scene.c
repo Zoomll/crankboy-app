@@ -1,6 +1,6 @@
 #include "cover_cache_scene.h"
 
-#include "../../lz4/lz4.h"
+#include "../../libs/lz4/lz4.h"
 #include "../app.h"
 #include "../utility.h"
 #include "library_scene.h"

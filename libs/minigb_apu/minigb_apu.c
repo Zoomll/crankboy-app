@@ -7,7 +7,7 @@
 
 #include "minigb_apu.h"
 
-#include "../peanut_gb/peanut_gb.h"
+#include "../peanut_gb.h"
 #include "../src/app.h"
 #include "../src/dtcm.h"
 #include "../src/preferences.h"

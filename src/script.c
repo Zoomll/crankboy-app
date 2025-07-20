@@ -4,11 +4,11 @@
 #undef lua_State
 #undef lua_CFunction
 
-#include "../lua-5.4.7/lauxlib.h"
-#include "../lua-5.4.7/lua.h"
-#include "../lua-5.4.7/lualib.h"
-#include "../minigb_apu/minigb_apu.h"
-#include "../peanut_gb/peanut_gb.h"
+#include "../libs/lua-5.4.7/lauxlib.h"
+#include "../libs/lua-5.4.7/lua.h"
+#include "../libs/lua-5.4.7/lualib.h"
+#include "../libs/minigb_apu/minigb_apu.h"
+#include "../libs/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"
 #include "jparse.h"

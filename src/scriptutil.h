@@ -2,7 +2,7 @@
 
 // convenient import for scripts
 
-#include "../peanut_gb/peanut_gb.h"
+#include "../libs/peanut_gb.h"
 #include "app.h"
 #include "preferences.h"
 #include "scenes/game_scene.h"
