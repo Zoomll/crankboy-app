@@ -694,8 +694,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Stabilization",
         .values = off_on_labels,
         .description =
-            "If enabled, distortions\n(caused by the 5:3 ratio\nbetween the GB's and\nPlaydate's vertical size)\nwill track with the camera\nas it scrolls vertically.\n \nMay slightly reduce\nperformance in games\nthat scroll up and down\nvery often."
-        ,
+            "Stabilizes scaling artifacts\nby making them scroll with\nthe camera.\n \n"
+            "This prevents textures\nfrom shimmering, but may\n"
+            "reduce performance\nslightly in scroll-heavy\ngames.\n \n"
+            "Works best with Dither\nset to \"Staggered\".",
         .pref_var = &preferences_dither_stable,
         .max_value = 2,
         .on_press = NULL
