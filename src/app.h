@@ -31,8 +31,11 @@ extern pthread_mutex_t audio_mutex;
 #undef DTCM_ALLOC
 #endif
 
-// TODO: is this safe? should we lower it?
-#define PLAYDATE_STACK_SIZE 0x2300
+// Defines the main stack size. This value provides a necessary safety
+// margin to prevent intermittent crashes. It was increased to 0x2380
+// specifically to ensure stability in games like Pokemon Gold/Silver,
+// which have a higher runtime stack requirement.
+#define PLAYDATE_STACK_SIZE 0x2380
 
 #define FPS_AVG_DECAY 0.8f
 
