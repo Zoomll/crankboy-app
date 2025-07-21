@@ -84,6 +84,7 @@ UINCDIR += libs/pdnewlib
 # ITCM_CORE (requires DTCM_ALLOC, and special link_map.ld): run core interpreter from ITCM.
 # NOLUA: disable lua support
 # Note: DTCM only active on Rev A regardless.
+# -fstack-usage: Add this to measure the stack usage (only for debugging)
 UDEFS = -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
 
 # Define ASM defines here
