@@ -6,6 +6,8 @@
 #include "userstack.h"
 #include "utility.h"
 
+#include <stdint.h>
+
 char* get_patches_directory(const char* rom_path)
 {
     char* bn = cb_basename(rom_path, true);
@@ -46,8 +48,9 @@ void list_patch_cb(const char* filename, void* ud)
 
     bool ips = endswithi(filename, ".ips");
     bool bps = endswithi(filename, ".bps");
+    bool ups = endswithi(filename, ".ups");
 
-    if (ips || bps)
+    if (ips || bps || ups)
     {
         // add new one
         acc->list = playdate->system->realloc(acc->list, sizeof(SoftPatch) * (n + 2));
@@ -59,6 +62,7 @@ void list_patch_cb(const char* filename, void* ud)
         patch->basename = cb_basename(filename, true);
         patch->ips = ips;
         patch->bps = bps;
+        patch->ups = ups;
         patch->state = PATCH_UNKNOWN;
         patch->_order = -1;
     }
@@ -344,6 +348,203 @@ err:
     return false;
 }
 
+/*
+ * ============================================================================
+ * UPS Patching Implementation
+ * ============================================================================
+ * The logic for parsing and applying UPS patches, particularly the handling
+ * of the non-standard VLQ and checksums, is based on the JavaScript
+ * implementation by Marc Robledo.
+ *
+ * Original Project: RomPatcher.js
+ * Author: Marc Robledo
+ * Source: https://github.com/marcrobledo/RomPatcher.js
+ * ============================================================================
+ */
+
+#define UPS_MAGIC "UPS1"
+
+static uint64_t read_ups_vlq(const uint8_t** data, size_t* size)
+{
+    uint64_t result = 0;
+    uint64_t shift = 0;
+    while (*size > 0)
+    {
+        uint8_t byte = **data;
+        (*data)++;
+        (*size)--;
+
+        uint64_t part = byte & 0x7F;
+        result += part << shift;
+
+        if (byte & 0x80)
+        {
+            return result;
+        }
+
+        shift += 7;
+        result += (1ULL << shift);
+    }
+    return (uint64_t)-1;
+}
+
+static uint32_t read_littleendian_u32(const uint8_t* p)
+{
+    return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+}
+
+static bool apply_ups_patch(void** rom, size_t* romsize, const SoftPatch* patch)
+{
+    size_t ups_len;
+    uint8_t* ups_data = (uint8_t*)call_with_main_stack_3(
+        cb_read_entire_file, patch->fullpath, &ups_len, kFileReadData
+    );
+    if (!ups_data)
+    {
+        playdate->system->error("Unable to open UPS patch \"%s\"", patch->fullpath);
+        return false;
+    }
+
+    const uint8_t* ups_ptr = ups_data;
+    size_t ups_remaining = ups_len;
+    uint8_t* new_rom = NULL;
+    bool success = false;
+
+    if (ups_remaining < 16)
+        goto err_corrupt;
+
+    // Verify patch
+    uint32_t patch_checksum_from_file = read_littleendian_u32(ups_data + ups_len - 4);
+    uint32_t calculated_patch_checksum = crc32_for_buffer(ups_data, ups_len - 4);
+    if (patch_checksum_from_file != calculated_patch_checksum)
+    {
+        goto err_corrupt;
+    }
+
+    if (memcmp(ups_ptr, UPS_MAGIC, 4) != 0)
+        goto err_corrupt;
+    ups_ptr += 4;
+    ups_remaining -= 4;
+
+    uint64_t input_size_from_patch = read_ups_vlq(&ups_ptr, &ups_remaining);
+    uint64_t output_size_from_patch = read_ups_vlq(&ups_ptr, &ups_remaining);
+
+    if (input_size_from_patch == (uint64_t)-1 || output_size_from_patch == (uint64_t)-1)
+        goto err_corrupt;
+
+    // Verify input ROM
+    size_t effective_rom_size = *romsize;
+    if (input_size_from_patch != *romsize)
+    {
+        if (input_size_from_patch < *romsize)
+        {
+            playdate->system->logToConsole(
+                "UPS warning: Patch expects size %llu, ROM is %zu. Treating as overdump/headered.",
+                input_size_from_patch, *romsize
+            );
+            effective_rom_size = input_size_from_patch;
+        }
+        else
+        {
+            playdate->system->error(
+                "UPS error: Patch expects ROM of size %llu, but current ROM is size %zu.",
+                input_size_from_patch, *romsize
+            );
+            goto cleanup;
+        }
+    }
+
+    uint32_t input_checksum_from_patch = read_littleendian_u32(ups_data + ups_len - 12);
+    uint32_t calculated_input_checksum = crc32_for_buffer(*rom, effective_rom_size);
+
+    if (input_checksum_from_patch != calculated_input_checksum)
+    {
+        playdate->system->error("Input ROM checksum mismatch. The patch is not for this ROM.");
+        goto cleanup;
+    }
+
+    new_rom = cb_malloc(output_size_from_patch);
+    if (!new_rom)
+    {
+        playdate->system->error("Failed to allocate memory for patched ROM.");
+        goto cleanup;
+    }
+
+    size_t copy_len = (*romsize < output_size_from_patch) ? *romsize : output_size_from_patch;
+    memcpy(new_rom, *rom, copy_len);
+    if (output_size_from_patch > *romsize)
+    {
+        memset(new_rom + *romsize, 0, output_size_from_patch - *romsize);
+    }
+
+    size_t current_pos = 0;
+
+    while (ups_remaining > 12)
+    {
+        uint64_t relative_offset = read_ups_vlq(&ups_ptr, &ups_remaining);
+        current_pos += relative_offset;
+
+        while (ups_remaining > 12)
+        {
+            uint8_t xor_byte = *ups_ptr++;
+            ups_remaining--;
+
+            if (xor_byte == 0)
+            {
+                current_pos++;
+                break;
+            }
+
+            if (current_pos >= output_size_from_patch)
+                goto err_bounds;
+
+            new_rom[current_pos] ^= xor_byte;
+            current_pos++;
+        }
+    }
+
+    // Verify output ROM
+    uint32_t output_checksum_from_patch = read_littleendian_u32(ups_data + ups_len - 8);
+    uint32_t calculated_output_checksum = crc32_for_buffer(new_rom, output_size_from_patch);
+
+    if (output_checksum_from_patch != calculated_output_checksum)
+    {
+        playdate->system->logToConsole("--- UPS Checksum Verification ---");
+        playdate->system->logToConsole(
+            "Expected Output CRC32: %08lX", (unsigned long)output_checksum_from_patch
+        );
+        playdate->system->logToConsole(
+            "Calculated Output CRC32: %08lX", (unsigned long)calculated_output_checksum
+        );
+
+        playdate->system->error("Output ROM checksum mismatch. Patching failed.");
+        cb_free(new_rom);
+        goto cleanup;
+    }
+
+    cb_free(*rom);
+    *rom = new_rom;
+    *romsize = output_size_from_patch;
+    success = true;
+    goto cleanup;
+
+err_bounds:
+    playdate->system->error("UPS error: Patch tried to write out of bounds.");
+    if (new_rom)
+        cb_free(new_rom);
+    goto cleanup;
+
+err_corrupt:
+    playdate->system->error("UPS error: Patch file is corrupt or invalid.");
+    if (new_rom)
+        cb_free(new_rom);
+
+cleanup:
+    if (ups_data)
+        cb_free(ups_data);
+    return success;
+}
+
 bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
 {
     bool success = true;
@@ -358,12 +559,15 @@ bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
         {
             success = success && apply_ips_patch(rom, romsize, patch);
         }
+        else if (patch->ups)
+        {
+            success = success && apply_ups_patch(rom, romsize, patch);
+        }
         else
         {
             success = false;
             playdate->system->error("BPS patches are currently unsupported.");
         }
     }
-
     return success;
 }
