@@ -71,6 +71,10 @@ def create_split_game_json_256():
                         long_title = long_title.replace("Butt-head", "Butt-Head")
                         short_title = short_title.replace("Butt-head", "Butt-Head")
 
+                    if "Pokemon" in long_title:
+                        long_title = long_title.replace("Pokemon", "Pokémon")
+                        short_title = short_title.replace("Pokemon", "Pokémon")
+
                     all_games_dict[crc] = {
                         "long": long_title,
                         "short": short_title
