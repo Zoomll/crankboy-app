@@ -240,6 +240,11 @@ unsigned read_bigendian(void* src, int bytes)
     return x;
 }
 
+static uint32_t read_littleendian_u32(const uint8_t* p)
+{
+    return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+}
+
 #define IPS_MAGIC "PATCH"
 #define IPS_EOF 0x454F46 /* "EOF" */
 
@@ -401,11 +406,6 @@ static uint64_t read_ups_vlq(const uint8_t** data, size_t* size)
     return (uint64_t)-1;
 }
 
-static uint32_t read_littleendian_u32(const uint8_t* p)
-{
-    return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
-}
-
 static bool apply_ups_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 {
     size_t ups_len;
@@ -522,15 +522,7 @@ static bool apply_ups_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 
     if (output_checksum_from_patch != calculated_output_checksum)
     {
-        playdate->system->logToConsole("--- UPS Checksum Verification ---");
-        playdate->system->logToConsole(
-            "Expected Output CRC32: %08lX", (unsigned long)output_checksum_from_patch
-        );
-        playdate->system->logToConsole(
-            "Calculated Output CRC32: %08lX", (unsigned long)calculated_output_checksum
-        );
-
-        playdate->system->error("Output ROM checksum mismatch. Patching failed.");
+        playdate->system->error("UPS error: Output ROM checksum mismatch. Patching failed.");
         cb_free(new_rom);
         goto cleanup;
     }
@@ -558,6 +550,208 @@ cleanup:
     return success;
 }
 
+/*
+ * ============================================================================
+ * BPS Patching Implementation
+ * ============================================================================
+ * Implementation based on the official BPS specification by byuu
+ * and the JavaScript implementation by Marc Robledo.
+ *
+ * Original Project: RomPatcher.js
+ * Author: Marc Robledo
+ * Source: https://github.com/marcrobledo/RomPatcher.js
+ * Spec: https://www.romhacking.net/documents/746/
+ * ============================================================================
+ */
+
+#define BPS_MAGIC "BPS1"
+#define BPS_ACTION_SOURCE_READ 0
+#define BPS_ACTION_TARGET_READ 1
+#define BPS_ACTION_SOURCE_COPY 2
+#define BPS_ACTION_TARGET_COPY 3
+
+static uint64_t read_bps_vlq(const uint8_t** data, size_t* size)
+{
+    uint64_t result = 0, shift = 1;
+    while (*size > 0)
+    {
+        uint8_t x = **data;
+        (*data)++;
+        (*size)--;
+        result += (x & 0x7f) * shift;
+        if (x & 0x80)
+            break;
+        shift <<= 7;
+        result += shift;
+    }
+    return result;
+}
+
+static bool apply_bps_patch(void** rom, size_t* romsize, const SoftPatch* patch)
+{
+    size_t bps_len;
+    uint8_t* bps_data = (uint8_t*)call_with_main_stack_3(
+        cb_read_entire_file, patch->fullpath, &bps_len, kFileReadData
+    );
+    if (!bps_data)
+    {
+        playdate->system->error("Unable to open BPS patch \"%s\"", patch->fullpath);
+        return false;
+    }
+
+    const uint8_t* bps_ptr = bps_data;
+    size_t bps_remaining = bps_len;
+    uint8_t* new_rom = NULL;
+    bool success = false;
+
+    if (bps_remaining < 16)
+        goto err_corrupt;
+
+    uint32_t patch_checksum_from_file = read_littleendian_u32(bps_data + bps_len - 4);
+    uint32_t calculated_patch_checksum = crc32_for_buffer(bps_data, bps_len - 4);
+    if (patch_checksum_from_file != calculated_patch_checksum)
+    {
+        goto err_corrupt;
+    }
+
+    if (memcmp(bps_ptr, BPS_MAGIC, 4) != 0)
+        goto err_corrupt;
+    bps_ptr += 4;
+    bps_remaining -= 4;
+
+    uint64_t source_size_from_patch = read_bps_vlq(&bps_ptr, &bps_remaining);
+    uint64_t target_size_from_patch = read_bps_vlq(&bps_ptr, &bps_remaining);
+    uint64_t metadata_len = read_bps_vlq(&bps_ptr, &bps_remaining);
+
+    if (metadata_len > bps_remaining)
+        goto err_corrupt;
+    bps_ptr += metadata_len;
+    bps_remaining -= metadata_len;
+
+    if (source_size_from_patch != *romsize)
+    {
+        playdate->system->error(
+            "BPS error: Input ROM size mismatch. Expected %llu, got %zu.", source_size_from_patch,
+            *romsize
+        );
+        goto cleanup;
+    }
+
+    uint32_t source_checksum_from_patch = read_littleendian_u32(bps_data + bps_len - 12);
+    uint32_t calculated_source_checksum = crc32_for_buffer(*rom, *romsize);
+    if (source_checksum_from_patch != calculated_source_checksum)
+    {
+        playdate->system->error("BPS error: Input ROM checksum mismatch.");
+        goto cleanup;
+    }
+
+    new_rom = cb_malloc(target_size_from_patch);
+    if (!new_rom)
+    {
+        playdate->system->error("BPS error: Failed to allocate memory for patched ROM.");
+        goto cleanup;
+    }
+
+    size_t output_offset = 0;
+    size_t source_linear_offset = 0;
+    int64_t source_relative_offset = 0;
+    int64_t target_relative_offset = 0;
+
+    while (bps_remaining > 12)
+    {
+        uint64_t data = read_bps_vlq(&bps_ptr, &bps_remaining);
+        uint32_t command = data & 3;
+        uint64_t length = (data >> 2) + 1;
+
+        if (output_offset + length > target_size_from_patch)
+            goto err_bounds;
+
+        switch (command)
+        {
+        case BPS_ACTION_SOURCE_READ:
+        {
+            if (output_offset + length > *romsize)
+                goto err_bounds;
+            memcpy(new_rom + output_offset, (uint8_t*)*rom + output_offset, length);
+            output_offset += length;
+            break;
+        }
+        case BPS_ACTION_TARGET_READ:
+        {
+            if (length > bps_remaining)
+                goto err_corrupt;
+            memcpy(new_rom + output_offset, bps_ptr, length);
+            bps_ptr += length;
+            bps_remaining -= length;
+            output_offset += length;
+            break;
+        }
+        case BPS_ACTION_SOURCE_COPY:
+        {
+            uint64_t offset_data = read_bps_vlq(&bps_ptr, &bps_remaining);
+            int64_t relative_offset = (offset_data & 1 ? -1 : 1) * (offset_data >> 1);
+
+            source_relative_offset += relative_offset;
+            if (source_relative_offset < 0 ||
+                (uint64_t)(source_relative_offset + length) > *romsize)
+                goto err_bounds;
+
+            memcpy(new_rom + output_offset, (uint8_t*)*rom + source_relative_offset, length);
+
+            source_relative_offset += length;
+            output_offset += length;
+            break;
+        }
+        case BPS_ACTION_TARGET_COPY:
+        {
+            uint64_t offset_data = read_bps_vlq(&bps_ptr, &bps_remaining);
+            int64_t relative_offset = (offset_data & 1 ? -1 : 1) * (offset_data >> 1);
+
+            target_relative_offset += relative_offset;
+            if (target_relative_offset < 0 || (uint64_t)target_relative_offset >= output_offset)
+                goto err_bounds;
+
+            for (uint64_t i = 0; i < length; i++)
+            {
+                new_rom[output_offset++] = new_rom[target_relative_offset++];
+            }
+            break;
+        }
+        }
+    }
+
+    uint32_t target_checksum_from_patch = read_littleendian_u32(bps_data + bps_len - 8);
+    uint32_t calculated_target_checksum = crc32_for_buffer(new_rom, target_size_from_patch);
+    if (target_checksum_from_patch != calculated_target_checksum)
+    {
+        playdate->system->error("BPS error: Output ROM checksum mismatch. Patching failed.");
+        cb_free(new_rom);
+        goto cleanup;
+    }
+
+    cb_free(*rom);
+    *rom = new_rom;
+    *romsize = target_size_from_patch;
+    success = true;
+    goto cleanup;
+
+err_bounds:
+    playdate->system->error("BPS error: Patch tried to write out of bounds.");
+    if (new_rom)
+        cb_free(new_rom);
+    goto cleanup;
+
+err_corrupt:
+    playdate->system->error("BPS error: Patch file is corrupt or invalid.");
+    if (new_rom)
+        cb_free(new_rom);
+
+cleanup:
+    if (bps_data)
+        cb_free(bps_data);
+    return success;
+}
+
 bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
 {
     bool success = true;
@@ -576,10 +770,15 @@ bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
         {
             success = success && apply_ups_patch(rom, romsize, patch);
         }
+        else if (patch->bps)
+        {
+            success = success && apply_bps_patch(rom, romsize, patch);
+        }
         else
         {
+            // This case should ideally not be reached if flags are set correctly
             success = false;
-            playdate->system->error("BPS patches are currently unsupported.");
+            playdate->system->error("Unknown patch type for %s", patch->fullpath);
         }
     }
     return success;
