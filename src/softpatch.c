@@ -246,13 +246,16 @@ unsigned read_bigendian(void* src, int bytes)
 static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 {
     size_t ips_len;
-    void* ips =
+    void* ips_original_buffer =
         call_with_main_stack_3(cb_read_entire_file, patch->fullpath, &ips_len, kFileReadData);
-    if (!ips)
+
+    if (!ips_original_buffer)
     {
         playdate->system->error("Unable to open IPS patch \"%s\"", patch->fullpath);
         return false;
     }
+
+    void* ips = ips_original_buffer;
 
 #define ADVANCE(X)          \
     do                      \
@@ -281,7 +284,27 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
         ADVANCE(3);
 
         if (offset == IPS_EOF)
+        {
+            if (ips_len == 3)
+            {
+                unsigned new_size = read_bigendian(ips, 3);
+                if (new_size < *romsize)
+                {
+                    void* resized_rom = cb_realloc(*rom, new_size);
+                    if (!resized_rom && new_size > 0)
+                    {
+                        playdate->system->error(
+                            "IPS patch failed to truncate ROM: not enough memory."
+                        );
+                        cb_free(ips_original_buffer);
+                        return false;
+                    }
+                    *rom = resized_rom;
+                    *romsize = new_size;
+                }
+            }
             break;
+        }
 
         bool rle = false;
         CHECKLEN(2);
@@ -290,24 +313,22 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
 
         if (length == 0)
         {
-            CHECKLEN(3);
-
-            // RLE
+            CHECKLEN(2);
             length = read_bigendian(ips, 2);
             ADVANCE(2);
             rle = true;
         }
 
-        if (length + offset >= *romsize)
+        if (offset + length > *romsize)
         {
-            *romsize = length + offset;
+            *romsize = offset + length;
             *rom = cb_realloc(*rom, *romsize);
             if (!*rom)
             {
                 playdate->system->error(
                     "IPS patch requires ROM to be resized, but there was not enough memory."
                 );
-                cb_free(ips);
+                cb_free(ips_original_buffer);
                 return false;
             }
         }
@@ -319,32 +340,24 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
             unsigned v = read_bigendian(ips, 1);
             ADVANCE(1);
 
-            while (length-- > 0)
-            {
-                ((uint8_t*)*rom)[offset++] = v;
-            }
+            // RLE record
+            memset((uint8_t*)*rom + offset, v, length);
         }
         else
         {
-            // standard hunk
             CHECKLEN(length);
-            while (length-- > 0)
-            {
-                unsigned v = read_bigendian(ips, 1);
-                ADVANCE(1);
-
-                ((uint8_t*)*rom)[offset++] = v;
-            }
+            // Standard record
+            memcpy((uint8_t*)*rom + offset, ips, length);
+            ADVANCE(length);
         }
     }
 
-    // TODO: ips extension for cropping ROM length
-
+    cb_free(ips_original_buffer);
     return true;
 
 err:
     playdate->system->error("Error applying IPS patch \"%s\"", patch->fullpath);
-    cb_free(ips);
+    cb_free(ips_original_buffer);
     return false;
 }
 
