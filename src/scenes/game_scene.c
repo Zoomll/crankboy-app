@@ -1570,8 +1570,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
 #endif
 
-    context->gb->direct.joypad_interrupts =
-        preferences_joypad_interrupts && context->gb->joypad_interrupt;
+    context->gb->direct.joypad_interrupts = context->gb->joypad_interrupt;
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
