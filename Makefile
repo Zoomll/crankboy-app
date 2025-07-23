@@ -87,6 +87,9 @@ UINCDIR += libs/pdnewlib
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
 UDEFS = -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
 
+# Override the SDK's optimization flags to use -O3
+override OPT = -O3 -falign-functions=16 -fomit-frame-pointer
+
 # Define ASM defines here
 UADEFS =
 
