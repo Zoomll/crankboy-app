@@ -574,7 +574,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
             if (gameScene->audioEnabled)
             {
-                playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
+                playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
                 context->gb->direct.sound = 1;
                 audioGameScene = gameScene;
             }
@@ -656,7 +656,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (desiredAudioEnabled)
     {
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
         context->gb->direct.sound = 1;
         audioGameScene = gameScene;
     }
