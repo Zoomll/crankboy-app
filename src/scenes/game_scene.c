@@ -612,20 +612,18 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         gameScene->script_available = true;
         gameScene->script_info_available = !!scriptInfo->info;
     }
-    script_info_free(scriptInfo);
 
-    if (preferences_script_support && gameScene->script_available)
+    if (preferences_script_support && gameScene->script_available && scriptInfo)
     {
-        char name[17];
-        gb_get_rom_name(context->gb->gb_rom, name);
-        playdate->system->logToConsole("ROM name: \"%s\"", name);
-        gameScene->script = script_begin(name, gameScene);
+        playdate->system->logToConsole("ROM name: \"%s\"", scriptInfo->rom_name);
+        gameScene->script = script_begin(scriptInfo->rom_name, gameScene);
         gameScene->prev_dt = 0;
         if (!gameScene->script)
         {
             playdate->system->logToConsole("Associated script failed to load or not found.");
         }
     }
+    script_info_free(scriptInfo);
 #endif
     DTCM_VERIFY();
 
