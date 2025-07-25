@@ -6144,6 +6144,18 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
         gb->cpu_reg.pc = 0x0000;
         gb->gb_reg.DIV = 0x00;
     }
+    else if (preferences_experimental_gbc_mode)
+    {
+        playdate->system->logToConsole("Starting ROM with GBC registers");
+        gb->gb_bios_enable = 1;
+        gb->cpu_reg.af == 0x1180;
+        gb->cpu_reg.bc = 0x0000;
+        gb->cpu_reg.de = 0xFF56;
+        gb->cpu_reg.hl = 0x000D;
+        gb->cpu_reg.sp = 0xFFFE;
+        gb->cpu_reg.pc = 0x0100;
+        gb->gb_reg.DIV = 0xAC; // FIXME -- set this to the correct value
+    }
     else
     {
         /* Without a boot ROM, we use the old "skip-BIOS" method. */

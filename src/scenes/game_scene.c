@@ -1013,11 +1013,13 @@ static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16
     }
     else if (gb_err == GB_INVALID_READ)
     {
-        playdate->system->logToConsole("Invalid read: addr %04x", val);
+        if (!preferences_experimental_gbc_mode)
+            playdate->system->logToConsole("Invalid read: addr %04x", val);
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
-        playdate->system->logToConsole("Invalid write: addr %04x", val);
+        if (!preferences_experimental_gbc_mode)
+            playdate->system->logToConsole("Invalid write: addr %04x", val);
     }
     else
     {

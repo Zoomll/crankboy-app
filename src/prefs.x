@@ -37,5 +37,6 @@ PREF(itcm, (pd_rev == PD_REV_A))
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
+PREF(experimental_gbc_mode, 0)
 
 #undef PREF
